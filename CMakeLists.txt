@@ -92,4 +92,4 @@ endif()
 add_subdirectory(rayce)
 
 # spdlog_enable_warnings(rayce)
-add_subdirectory(rayce_gui)
+add_subdirectory(rayceGui)

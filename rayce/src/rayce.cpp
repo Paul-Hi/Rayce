@@ -5,39 +5,55 @@
 
 #include <rayce.hpp>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+using namespace rayce;
 
-bool rayce::init()
+RAYCE_API_HIDDEN bool rayce::init()
 {
     return true;
 }
 
-bool rayce::shutdown()
+RAYCE_API_HIDDEN bool rayce::shutdown()
 {
     return true;
 }
 
-bool rayce::testbed()
+RAYCE_API_EXPORT std::unique_ptr<RayceApp> rayce::createApplication(int32 argc, char** argv, int32 width, int32 height)
 {
-    glfwInit();
+    loguru::init(argc, argv);
+    return std::make_unique<RayceApp>(width, height);
+}
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Rayce", nullptr, nullptr);
+// Shared library attach/detach functions
 
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+#ifdef WIN32
 
-    std::cout << extensionCount << " extensions supported\n";
+RAYCE_API_EXPORT BOOL DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+    RAYCE_UNUSED(hinstDLL);
+    RAYCE_UNUSED(lpvReserved);
 
-    while (!glfwWindowShouldClose(window))
+    if (fdwReason == DLL_PROCESS_ATTACH)
     {
-        glfwPollEvents();
+        return rayce::init() ? TRUE : FALSE;
+    }
+    else if (fdwReason == DLL_PROCESS_DETACH)
+    {
+        return rayce::shutdown() ? TRUE : FALSE;
     }
 
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
-
-    return true;
+    return TRUE;
 }
+
+#else if LINUX
+
+RAYCE_API_EXPORT __attribute__((constructor)) bool soAttach()
+{
+    return rayce::init();
+}
+
+RAYCE_API_EXPORT __attribute__((destructor)) bool soDetach()
+{
+    return rayce::shutdown();
+}
+
+#endif

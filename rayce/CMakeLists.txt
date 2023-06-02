@@ -1,17 +1,23 @@
 project(rayce)
 
 set(PUBLIC_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/loguru.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/export.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/macro.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
 
 set(PRIVATE_HEADERS
+
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/.../*.hpp
 )
 
 set(SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/loguru.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayce.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 
 add_library(rayce
@@ -45,14 +51,18 @@ set_target_properties(rayce
 target_link_libraries(rayce
     PUBLIC
     Vulkan::Vulkan
+
     # spdlog::spdlog
     imgui
+
     # tinyfd
     $<$<CONFIG:Release>:$<$<BOOL:${RAYCE_PROFILE}>:tracy>>
+
     # $<$<BOOL:${RAYCE_BUILD_TESTS}>:glad>
     # tinygltf
     # PRIVATE
     glfw
+
     # stb
 )
 
