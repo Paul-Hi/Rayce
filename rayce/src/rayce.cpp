@@ -23,7 +23,7 @@ bool rayce::testbed()
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(1720, 1040, "Rayce", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Rayce", nullptr, nullptr);
 
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
