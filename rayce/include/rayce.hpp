@@ -2,6 +2,7 @@
 /// @author    Paul Himmler
 /// @version   0.01
 /// @date      2023
+/// @copyright Apache License 2.0
 
 #ifndef RAYCE_HPP
 #define RAYCE_HPP
@@ -32,10 +33,9 @@ namespace rayce
     /// @brief Creates and returns a \a RayceApp.
     /// @param[in] argc The number of command line parameters.
     /// @param[in] argv List of command line parameters.
-    /// @param[in] width The width of the window to create.
-    /// @param[in] height The height of the window to create.
+    /// @param[in] options Options to setup the application.
     /// @return A pointer to the created \a RayceApp.
-    RAYCE_API_EXPORT std::unique_ptr<RayceApp> createApplication(int32 argc, char** argv, int32 width, int32 height);
+    RAYCE_API_EXPORT std::unique_ptr<RayceApp> createApplication(int32 argc, char** argv, const RayceOptions& options);
 } // namespace rayce
 
 #endif // RAYCE_HPP

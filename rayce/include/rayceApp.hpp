@@ -2,6 +2,7 @@
 /// @author    Paul Himmler
 /// @version   0.01
 /// @date      2023
+/// @copyright Apache License 2.0
 
 #ifndef RAYCE_APP_HPP
 #define RAYCE_APP_HPP
@@ -15,14 +16,45 @@
 
 namespace rayce
 {
-    /// @brief Application state.
+    struct RAYCE_API_EXPORT RayceAppState
+    {
+    };
+
+    struct RayceInternalState
+    {
+        int32 windowWidth;
+        int32 windowHeight;
+        void (*customGui)(std::unique_ptr<RayceAppState>&);
+
+        GLFWwindow* pWindow;
+        VkInstance vkInstance;
+        VkDebugUtilsMessengerEXT vkDebugMessenger;
+
+        std::vector<const char*> instanceExtensions;
+        const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
+
+#ifdef RAYCE_DEBUG
+        const bool enableValidationLayers = true;
+#else
+        const bool enableValidationLayers = false;
+#endif
+    };
+
+    struct RAYCE_API_EXPORT RayceOptions
+    {
+        int32 windowWidth;
+        int32 windowHeight;
+
+        void (*customGui)(std::unique_ptr<RayceAppState>&);
+    };
+
+    /// @brief Application.
     class RayceApp
     {
       public:
         /// @brief Constructor.
-        /// @param[in] width The width of the application.
-        /// @param[in] height The height of the application.
-        RayceApp(int32 width, int32 height);
+        /// @param[in] options Options to setup the application.
+        RayceApp(const RayceOptions& options);
 
         bool RAYCE_API_EXPORT initializeVulkan();
 
@@ -31,11 +63,18 @@ namespace rayce
         bool RAYCE_API_EXPORT shutdown();
 
       private:
-        GLFWwindow* mWindow;
-        int32 mWidth;
-        int32 mHeight;
+        std::unique_ptr<RayceAppState> mAppState;
+        std::unique_ptr<RayceInternalState> mInternalState;
 
-        VkInstance mInstance;
+        bool checkVkValidationLayers();
+        bool provideRequiredExtensions(bool enableRequestedValidationLayers);
+        bool createDebugMessenger();
+        bool createVkInstance();
+
+        // Extension functions have to be loaded - we wrap here, since we only call these once.
+        VkResult createDebugUtilsMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
+                                           VkDebugUtilsMessengerEXT* pDebugMessenger);
+        void destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
     };
 } // namespace rayce
 

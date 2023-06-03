@@ -2,6 +2,7 @@
 /// @author    Paul Himmler
 /// @version   0.01
 /// @date      2023
+/// @copyright Apache License 2.0
 
 #ifndef TYPES_HPP
 #define TYPES_HPP
@@ -12,9 +13,6 @@
 #include <macro.hpp>
 #include <stdint.h>
 #include <string.h>
-
-#define LOGURU_EXPORT RAYCE_API_EXPORT
-#include <loguru.hpp>
 
 namespace rayce
 {

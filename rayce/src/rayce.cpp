@@ -2,6 +2,7 @@
 /// @author    Paul Himmler
 /// @version   0.01
 /// @date      2023
+/// @copyright Apache License 2.0
 
 #include <rayce.hpp>
 
@@ -17,10 +18,10 @@ RAYCE_API_HIDDEN bool rayce::shutdown()
     return true;
 }
 
-RAYCE_API_EXPORT std::unique_ptr<RayceApp> rayce::createApplication(int32 argc, char** argv, int32 width, int32 height)
+RAYCE_API_EXPORT std::unique_ptr<RayceApp> rayce::createApplication(int32 argc, char** argv, const RayceOptions& options)
 {
     loguru::init(argc, argv);
-    return std::make_unique<RayceApp>(width, height);
+    return std::make_unique<RayceApp>(options);
 }
 
 // Shared library attach/detach functions

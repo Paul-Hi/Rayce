@@ -2,6 +2,7 @@
 /// @author    Paul Himmler
 /// @version   0.01
 /// @date      2023
+/// @copyright Apache License 2.0
 
 #ifndef EXPORT_HPP
 #define EXPORT_HPP

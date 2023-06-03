@@ -25,9 +25,8 @@ set_target_properties(rayceGui
 )
 
 # add_custom_command(TARGET rayceGui POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E copy_directory
-#     ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/bin/res)
-
+# COMMAND ${CMAKE_COMMAND} -E copy_directory
+# ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/bin/res)
 target_link_libraries(rayceGui
     PUBLIC
     rayce::rayce
@@ -46,6 +45,15 @@ target_compile_options(rayceGui
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${RAYCE_ENABLE_HARD_WARNINGS}>: -pedantic -Werror -Wconversion -pedantic-errors>>
 )
 
+if (WIN32)
+    set(SUBSYSTEM_LINKER_OPTIONS "/SUBSYSTEM:CONSOLE")
+else()
+    set(SUBSYSTEM_LINKER_OPTIONS "-mwindows")
+endif()
+
+target_link_options(rayceGui PRIVATE ${SUBSYSTEM_LINKER_OPTIONS})
+
 install(TARGETS rayceGui DESTINATION bin)
+
 # install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION bin/res)
 install(FILES ${CMAKE_SOURCE_DIR}/imgui.ini DESTINATION bin)
