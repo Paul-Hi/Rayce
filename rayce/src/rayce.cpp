@@ -18,12 +18,6 @@ RAYCE_API_HIDDEN bool rayce::shutdown()
     return true;
 }
 
-RAYCE_API_EXPORT std::unique_ptr<RayceApp> rayce::createApplication(int32 argc, char** argv, const RayceOptions& options)
-{
-    loguru::init(argc, argv);
-    return std::make_unique<RayceApp>(options);
-}
-
 // Shared library attach/detach functions
 
 #ifdef WIN32

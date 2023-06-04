@@ -4,32 +4,55 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <rayce.hpp>
+#include "rayceGui.hpp"
 
 using namespace rayce;
 
-void imguiDraw(std::unique_ptr<RayceAppState>& appState)
+RayceGui::RayceGui(const RayceOptions& options)
+    : RayceApp::RayceApp(options)
 {
-    RAYCE_UNUSED(appState);
+}
+
+bool RayceGui::onInitialize()
+{
+    return RayceApp::onInitialize();
+}
+
+bool RayceGui::onShutdown()
+{
+    return RayceApp::onShutdown();
+}
+
+void RayceGui::onUpdate()
+{
+    RayceApp::onUpdate();
+}
+
+void RayceGui::onRender()
+{
+    RayceApp::onRender();
+}
+
+void RayceGui::onImGuiRender()
+{
+    RayceApp::onImGuiRender();
 }
 
 int main(int argc, char** argv)
 {
     RayceOptions options;
-    options.windowWidth = 1920;
+    options.windowWidth  = 1920;
     options.windowHeight = 1080;
-    options.customGui = &imguiDraw;
-    std::unique_ptr<RayceApp> pApplication = createApplication(argc, argv, options);
+    options.name         = "RayceGui";
+#ifdef RAYCE_DEBUG
+    options.enableValidationLayers = true;
+#else
+    options.enableValidationLayers = false;
+#endif
 
-    if (!pApplication->initializeVulkan())
-    {
-        return 1;
-    }
+    RayceGui application(options);
 
-    pApplication->run();
-
-    pApplication->shutdown();
+    application.run();
 
     return 0;
 }
-

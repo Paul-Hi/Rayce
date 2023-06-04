@@ -29,13 +29,6 @@ namespace rayce
 
     /// @brief Shuts the shared library down.
     RAYCE_API_HIDDEN bool shutdown();
-
-    /// @brief Creates and returns a \a RayceApp.
-    /// @param[in] argc The number of command line parameters.
-    /// @param[in] argv List of command line parameters.
-    /// @param[in] options Options to setup the application.
-    /// @return A pointer to the created \a RayceApp.
-    RAYCE_API_EXPORT std::unique_ptr<RayceApp> createApplication(int32 argc, char** argv, const RayceOptions& options);
 } // namespace rayce
 
 #endif // RAYCE_HPP

@@ -10,71 +10,66 @@
 #include <export.hpp>
 #include <macro.hpp>
 #include <types.hpp>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <vulkan/instance.hpp>
+#include <vulkan/window.hpp>
 
 namespace rayce
 {
-    struct RAYCE_API_EXPORT RayceAppState
-    {
-    };
-
-    struct RayceInternalState
-    {
-        int32 windowWidth;
-        int32 windowHeight;
-        void (*customGui)(std::unique_ptr<RayceAppState>&);
-
-        GLFWwindow* pWindow;
-        VkInstance vkInstance;
-        VkDebugUtilsMessengerEXT vkDebugMessenger;
-
-        std::vector<const char*> instanceExtensions;
-        const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
-
-#ifdef RAYCE_DEBUG
-        const bool enableValidationLayers = true;
-#else
-        const bool enableValidationLayers = false;
-#endif
-    };
-
     struct RAYCE_API_EXPORT RayceOptions
     {
+        str name;
         int32 windowWidth;
         int32 windowHeight;
 
-        void (*customGui)(std::unique_ptr<RayceAppState>&);
+        bool enableValidationLayers;
     };
 
     /// @brief Application.
-    class RayceApp
+    class RAYCE_API_EXPORT RayceApp
     {
       public:
+        virtual ~RayceApp();
+
+        bool run();
+
+        int32 getWindowWidth()
+        {
+            return mWindowWidth;
+        }
+
+        int32 getWindowHeight()
+        {
+            return mWindowHeight;
+        }
+
+      protected:
         /// @brief Constructor.
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
 
-        bool RAYCE_API_EXPORT initializeVulkan();
+        const std::unique_ptr<Window>& getWindow() const
+        {
+            return pWindow;
+        }
 
-        bool RAYCE_API_EXPORT run();
+        const std::unique_ptr<Instance>& getInstance() const
+        {
+            return pInstance;
+        }
 
-        bool RAYCE_API_EXPORT shutdown();
+        virtual bool onInitialize();
+        virtual bool onShutdown();
+        virtual void onUpdate();
+        virtual void onRender();
+        virtual void onImGuiRender();
 
       private:
-        std::unique_ptr<RayceAppState> mAppState;
-        std::unique_ptr<RayceInternalState> mInternalState;
+        int32 mWindowWidth;
+        int32 mWindowHeight;
+        bool mEnableValidationLayers;
 
-        bool checkVkValidationLayers();
-        bool provideRequiredExtensions(bool enableRequestedValidationLayers);
-        bool createDebugMessenger();
-        bool createVkInstance();
-
-        // Extension functions have to be loaded - we wrap here, since we only call these once.
-        VkResult createDebugUtilsMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
-                                           VkDebugUtilsMessengerEXT* pDebugMessenger);
-        void destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+        std::unique_ptr<Window> pWindow;
+        std::unique_ptr<Instance> pInstance;
     };
 } // namespace rayce
 

@@ -1,6 +1,7 @@
 project(rayceGui)
 
 set(SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceGui.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceGui.cpp
 )
 

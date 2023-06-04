@@ -14,6 +14,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#define NOMINMAX
+#define GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 namespace rayce
 {
     /// @brief Typedef for one byte.

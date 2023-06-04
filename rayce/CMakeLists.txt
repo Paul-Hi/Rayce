@@ -6,6 +6,8 @@ ${CMAKE_CURRENT_SOURCE_DIR}/include/loguru.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/include/export.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/include/log.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/include/macro.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/instance.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
@@ -18,6 +20,8 @@ set(PRIVATE_HEADERS
 set(SOURCES
 ${CMAKE_CURRENT_SOURCE_DIR}/src/loguru.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/rayce.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/window.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/instance.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 
