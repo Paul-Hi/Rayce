@@ -63,6 +63,8 @@ namespace rayce
         virtual void onRender();
         virtual void onImGuiRender();
 
+        VkPhysicalDevice pickPhysicalDevice();
+
       private:
         int32 mWindowWidth;
         int32 mWindowHeight;

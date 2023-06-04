@@ -30,6 +30,20 @@ static VkDebugUtilsMessengerCreateInfoEXT sDebugUtilsCreateInfo = {
 Instance::Instance(bool enableValidationLayers, std::vector<const char*>& deviceExtensions, std::vector<const char*>& validationLayers)
 {
     createVkInstance(enableValidationLayers, deviceExtensions, validationLayers);
+
+    uint32 extensionCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+    mVkExtensions.resize(extensionCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, mVkExtensions.data());
+
+    uint32 physicalDeviceCount;
+    vkEnumeratePhysicalDevices(mVkInstance, &physicalDeviceCount, nullptr);
+
+    mVkPhysicalDevices.resize(physicalDeviceCount);
+    vkEnumeratePhysicalDevices(mVkInstance, &physicalDeviceCount, mVkPhysicalDevices.data());
+
+    RAYCE_CHECK_GT(physicalDeviceCount, 0u, "No Vulkan compatible devices found!");
 }
 
 Instance::~Instance()
@@ -97,29 +111,6 @@ void Instance::createDebugMessenger()
     RAYCE_TRY_VK(createDebugUtilsMessenger(mVkInstance, &sDebugUtilsCreateInfo, nullptr, &mVkDebugMessenger), "Creating debug messenger failed!");
 }
 
-VkResult Instance::createDebugUtilsMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
-                                             VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-    else
-    {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void Instance::destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-{
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
 std::vector<const char*> Instance::provideRequiredExtensions(bool enableRequestedValidationLayers, const std::vector<const char*>& deviceExtensions)
 {
     std::vector<const char*> instanceExtensions = deviceExtensions;
@@ -163,4 +154,27 @@ bool Instance::checkVkValidationLayers(std::vector<const char*>& validationLayer
 
     RAYCE_LOG_INFO("Found all requested validation layers!");
     return true;
+}
+
+VkResult Instance::createDebugUtilsMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
+                                             VkDebugUtilsMessengerEXT* pDebugMessenger)
+{
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr)
+    {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    }
+    else
+    {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void Instance::destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr)
+    {
+        func(instance, debugMessenger, pAllocator);
+    }
 }
