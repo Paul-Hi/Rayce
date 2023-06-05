@@ -23,7 +23,7 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     VkPhysicalDevice physicalDevice = pickPhysicalDevice();
 
-    // TODO: Use physicalDevice to create logical device and queues. This should again be a seperate class not like the physical device which is not required further.
+    pDevice = std::make_unique<Device>(physicalDevice, pInstance->getEnabledValidationLayers());
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
@@ -86,8 +86,10 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice()
         std::vector<VkExtensionProperties> deviceExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(candidate, nullptr, &extensionCount, deviceExtensions.data());
 
-        const bool rayTracingAvailable = std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
+        bool rayTracingAvailable = std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
                                                      [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0; });
+        rayTracingAvailable &= std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
+                                                     [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
 
         if (!rayTracingAvailable)
         {
@@ -104,6 +106,14 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice()
             std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily) { return (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT); });
 
         if (!graphicsQueueFamilyAvailable)
+        {
+            continue;
+        }
+
+        const bool computeQueueFamilyAvailable =
+            std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily) { return (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT); });
+
+        if (!computeQueueFamilyAvailable)
         {
             continue;
         }

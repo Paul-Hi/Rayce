@@ -1,86 +1,87 @@
 project(rayce)
 
 set(PUBLIC_HEADERS
-${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/loguru.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/export.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/log.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/macro.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/instance.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
-${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/types.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/loguru.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/export.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/log.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/macro.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/instance.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/device.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
 
 set(PRIVATE_HEADERS
 
-# ${CMAKE_CURRENT_SOURCE_DIR}/src/.../*.hpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/src/.../*.hpp
 )
 
 set(SOURCES
-${CMAKE_CURRENT_SOURCE_DIR}/src/loguru.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/src/rayce.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/window.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/instance.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/loguru.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rayce.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/window.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/instance.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/device.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 
 add_library(rayce
-SHARED
-${PUBLIC_HEADERS}
-${PRIVATE_HEADERS}
-${SOURCES}
+    SHARED
+    ${PUBLIC_HEADERS}
+    ${PRIVATE_HEADERS}
+    ${SOURCES}
 )
 
 add_library(rayce::rayce ALIAS rayce)
 
 target_include_directories(rayce
-PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}/include
-PRIVATE
-${CMAKE_CURRENT_SOURCE_DIR}/src
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_include_directories(rayce SYSTEM
-PUBLIC
-${CMAKE_SOURCE_DIR}/dependencies/eigen
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/dependencies/eigen
 )
 
 set_target_properties(rayce
-PROPERTIES
-ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
-LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
-RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/bin
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/bin
 )
 
-
 target_link_libraries(rayce
-PUBLIC
-Vulkan::Vulkan
+    PUBLIC
+    Vulkan::Vulkan
 
-# spdlog::spdlog
-imgui
+    # spdlog::spdlog
+    imgui
 
-# tinyfd
-$<$<CONFIG:Release>:$<$<BOOL:${RAYCE_PROFILE}>:tracy>>
+    # tinyfd
+    $<$<CONFIG:Release>:$<$<BOOL:${RAYCE_PROFILE}>:tracy>>
 
-# $<$<BOOL:${RAYCE_BUILD_TESTS}>:glad>
-# tinygltf
-# PRIVATE
-glfw
+    # $<$<BOOL:${RAYCE_BUILD_TESTS}>:glad>
+    # tinygltf
+    # PRIVATE
+    glfw
 
-# stb
+    # stb
 )
 
 target_compile_definitions(rayce
-PUBLIC
-$<$<CONFIG:Debug>:RAYCE_DEBUG>
-$<$<BOOL:${RAYCE_BUILD_TESTS}>:RAYCE_TEST>
-$<$<BOOL:${RAYCE_PROFILE}>:RAYCE_PROFILE>
-$<$<CXX_COMPILER_ID:MSVC>: _CRT_SECURE_NO_WARNINGS>
-PRIVATE
-$<$<BOOL:${WIN32}>:RAYCE_WINDOWS_EXPORT>
-$<$<BOOL:${WIN32}>:WIN32>
+    PUBLIC
+    $<$<CONFIG:Debug>:RAYCE_DEBUG>
+    $<$<BOOL:${RAYCE_BUILD_TESTS}>:RAYCE_TEST>
+    $<$<BOOL:${RAYCE_PROFILE}>:RAYCE_PROFILE>
+    $<$<CXX_COMPILER_ID:MSVC>: _CRT_SECURE_NO_WARNINGS>
+    PRIVATE
+    $<$<BOOL:${WIN32}>:RAYCE_WINDOWS_EXPORT>
+    $<$<BOOL:${WIN32}>:WIN32>
     $<$<BOOL:${LINUX}>:LINUX>
 )
 

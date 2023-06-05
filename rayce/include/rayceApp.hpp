@@ -10,6 +10,7 @@
 #include <export.hpp>
 #include <macro.hpp>
 #include <types.hpp>
+#include <vulkan/device.hpp>
 #include <vulkan/instance.hpp>
 #include <vulkan/window.hpp>
 
@@ -72,6 +73,7 @@ namespace rayce
 
         std::unique_ptr<Window> pWindow;
         std::unique_ptr<Instance> pInstance;
+        std::unique_ptr<Device> pDevice;
     };
 } // namespace rayce
 

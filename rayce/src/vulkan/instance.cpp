@@ -85,8 +85,9 @@ void Instance::createVkInstance(bool enableValidationLayers, std::vector<const c
 
     if (enableRequestedValidationLayers)
     {
-        createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames = validationLayers.data();
+        mEnabledValidationLayers = validationLayers;
+        createInfo.enabledLayerCount   = static_cast<uint32_t>(mEnabledValidationLayers.size());
+        createInfo.ppEnabledLayerNames = mEnabledValidationLayers.data();
 
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&sDebugUtilsCreateInfo;
     }

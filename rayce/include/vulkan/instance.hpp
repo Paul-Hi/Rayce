@@ -44,6 +44,11 @@ namespace rayce
             return mVkPhysicalDevices;
         }
 
+        const std::vector<const char*>& getEnabledValidationLayers() const
+        {
+            return mEnabledValidationLayers;
+        }
+
       private:
         VkInstance mVkInstance;
         VkDebugUtilsMessengerEXT mVkDebugMessenger;
@@ -51,6 +56,8 @@ namespace rayce
         std::vector<VkExtensionProperties> mVkExtensions;
         std::vector<VkLayerProperties> mVkLayers;
         std::vector<VkPhysicalDevice> mVkPhysicalDevices;
+
+        std::vector<const char*> mEnabledValidationLayers;
 
         bool checkVkValidationLayers(std::vector<const char*>& validationLayers);
         std::vector<const char*> provideRequiredExtensions(bool enableRequestedValidationLayers, const std::vector<const char*>& deviceExtensions);
