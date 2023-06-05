@@ -12,6 +12,7 @@
 #include <types.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/instance.hpp>
+#include <vulkan/surface.hpp>
 #include <vulkan/window.hpp>
 
 namespace rayce
@@ -58,6 +59,16 @@ namespace rayce
             return pInstance;
         }
 
+        const std::unique_ptr<Device>& getDevice() const
+        {
+            return pDevice;
+        }
+
+        const std::unique_ptr<Surface>& getSurface() const
+        {
+            return pSurface;
+        }
+
         virtual bool onInitialize();
         virtual bool onShutdown();
         virtual void onUpdate();
@@ -73,6 +84,7 @@ namespace rayce
 
         std::unique_ptr<Window> pWindow;
         std::unique_ptr<Instance> pInstance;
+        std::unique_ptr<Surface> pSurface;
         std::unique_ptr<Device> pDevice;
     };
 } // namespace rayce

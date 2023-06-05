@@ -9,6 +9,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/instance.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/device.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
@@ -24,6 +25,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/instance.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/device.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 

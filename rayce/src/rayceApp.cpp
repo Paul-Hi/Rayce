@@ -21,9 +21,11 @@ RayceApp::RayceApp(const RayceOptions& options)
     std::vector<const char*> windowExtensions = pWindow->getVulkanExtensions();
     pInstance                                 = std::make_unique<Instance>(mEnableValidationLayers, windowExtensions, sValidationLayers);
 
+    pSurface = std::make_unique<Surface>(pInstance->getVkInstance(), pWindow->getNativeWindowHandle());
+
     VkPhysicalDevice physicalDevice = pickPhysicalDevice();
 
-    pDevice = std::make_unique<Device>(physicalDevice, pInstance->getEnabledValidationLayers());
+    pDevice = std::make_unique<Device>(physicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers());
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
@@ -87,9 +89,9 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice()
         vkEnumerateDeviceExtensionProperties(candidate, nullptr, &extensionCount, deviceExtensions.data());
 
         bool rayTracingAvailable = std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
-                                                     [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0; });
+                                               [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0; });
         rayTracingAvailable &= std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
-                                                     [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
+                                           [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
 
         if (!rayTracingAvailable)
         {
@@ -114,6 +116,20 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice()
             std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily) { return (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT); });
 
         if (!computeQueueFamilyAvailable)
+        {
+            continue;
+        }
+
+        const bool presentQueueFamilyAvailable = std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(),
+                                                             [&](const VkQueueFamilyProperties& queueFamily)
+                                                             {
+                                                                 VkBool32 presentSupport = false;
+                                                                 const uint32 i          = static_cast<uint32>(&*queueFamilyProperties.cbegin() - &queueFamily);
+                                                                 vkGetPhysicalDeviceSurfaceSupportKHR(candidate, i, pSurface->getVkSurface(), &presentSupport);
+                                                                 return queueFamily.queueCount > 0 && presentSupport;
+                                                             });
+
+        if (!presentQueueFamilyAvailable)
         {
             continue;
         }

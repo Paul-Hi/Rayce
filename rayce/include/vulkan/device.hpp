@@ -16,7 +16,7 @@ namespace rayce
     class RAYCE_API_EXPORT Device
     {
       public:
-        Device(VkPhysicalDevice physicalDevice, const std::vector<const char*>& enabledValidationLayers);
+        Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers);
         ~Device();
 
         VkDevice getVkDevice()
@@ -34,10 +34,16 @@ namespace rayce
             return mVkComputeQueue;
         }
 
+        VkQueue getVkPresentQueue()
+        {
+            return mVkPresentQueue;
+        }
+
       private:
         VkDevice mVkDevice;
         VkQueue mVkGraphicsQueue;
         VkQueue mVkComputeQueue;
+        VkQueue mVkPresentQueue;
 
         VkDeviceQueueCreateInfo createVkQueue(uint32 queueFamilyIndex);
     };

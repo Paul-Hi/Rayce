@@ -29,6 +29,11 @@ namespace rayce
             return mWindowHeight;
         }
 
+        GLFWwindow* getNativeWindowHandle()
+        {
+            return pWindow;
+        }
+
         std::vector<const char*> getVulkanExtensions();
 
         bool shouldClose()
