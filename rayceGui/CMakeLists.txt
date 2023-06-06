@@ -38,15 +38,7 @@ target_compile_definitions(rayceGui
     $<$<CXX_COMPILER_ID:MSVC>: _CRT_SECURE_NO_WARNINGS>
 )
 
-target_compile_options(rayceGui
-    PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>: /W4>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>: -Wall -Wextra>
-    $<$<CXX_COMPILER_ID:MSVC>:$<$<BOOL:${RAYCE_ENABLE_HARD_WARNINGS}>: /WX>>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${RAYCE_ENABLE_HARD_WARNINGS}>: -pedantic -Werror -Wconversion -pedantic-errors>>
-)
-
-if (WIN32)
+if(WIN32)
     set(SUBSYSTEM_LINKER_OPTIONS "/SUBSYSTEM:CONSOLE")
 else()
     set(SUBSYSTEM_LINKER_OPTIONS "-mwindows")

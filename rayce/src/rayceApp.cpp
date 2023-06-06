@@ -8,8 +8,6 @@
 
 using namespace rayce;
 
-static std::vector<const char*> sValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-
 RayceApp::RayceApp(const RayceOptions& options)
 {
     mWindowWidth            = options.windowWidth;
@@ -19,13 +17,15 @@ RayceApp::RayceApp(const RayceOptions& options)
     pWindow = std::make_unique<Window>(mWindowWidth, mWindowHeight, options.name);
 
     std::vector<const char*> windowExtensions = pWindow->getVulkanExtensions();
-    pInstance                                 = std::make_unique<Instance>(mEnableValidationLayers, windowExtensions, sValidationLayers);
+    pInstance                                 = std::make_unique<Instance>(mEnableValidationLayers, windowExtensions, mValidationLayers);
 
     pSurface = std::make_unique<Surface>(pInstance->getVkInstance(), pWindow->getNativeWindowHandle());
 
     VkPhysicalDevice physicalDevice = pickPhysicalDevice();
 
     pDevice = std::make_unique<Device>(physicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers());
+
+    pSwapchain = std::make_unique<Swapchain>(physicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
@@ -94,6 +94,14 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice()
                                            [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
 
         if (!rayTracingAvailable)
+        {
+            continue;
+        }
+
+        const bool swapchainAvailable =
+            std::any_of(deviceExtensions.begin(), deviceExtensions.end(), [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0; });
+
+        if (!swapchainAvailable)
         {
             continue;
         }

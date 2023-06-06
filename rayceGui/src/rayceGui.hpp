@@ -6,12 +6,10 @@
 
 #include <rayce.hpp>
 
-using namespace rayce;
-
-class RayceGui : public RayceApp
+class RayceGui : public rayce::RayceApp
 {
   public:
-    RayceGui(const RayceOptions& options);
+    RayceGui(const rayce::RayceOptions& options);
 
     bool onInitialize() override;
     bool onShutdown() override;

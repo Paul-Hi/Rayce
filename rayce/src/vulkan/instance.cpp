@@ -13,6 +13,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsCallback(VkDebugUtilsMessageSeve
 {
     RAYCE_LOG_ERROR("VK Validation Layer: %s!", pCallbackData->pMessage);
 
+    RAYCE_UNUSED(messageSeverity);
+    RAYCE_UNUSED(messageType);
+    RAYCE_UNUSED(pUserData);
+
     // Always return VK_FALSE
     return VK_FALSE;
 }
@@ -89,7 +93,7 @@ void Instance::createVkInstance(bool enableValidationLayers, std::vector<const c
         createInfo.enabledLayerCount   = static_cast<uint32_t>(mEnabledValidationLayers.size());
         createInfo.ppEnabledLayerNames = mEnabledValidationLayers.data();
 
-        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&sDebugUtilsCreateInfo;
+        createInfo.pNext = static_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&sDebugUtilsCreateInfo);
     }
     else
     {
@@ -160,7 +164,7 @@ bool Instance::checkVkValidationLayers(std::vector<const char*>& validationLayer
 VkResult Instance::createDebugUtilsMessenger(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator,
                                              VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
     if (func != nullptr)
     {
         return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -173,7 +177,7 @@ VkResult Instance::createDebugUtilsMessenger(VkInstance instance, const VkDebugU
 
 void Instance::destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
 {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
     if (func != nullptr)
     {
         func(instance, debugMessenger, pAllocator);

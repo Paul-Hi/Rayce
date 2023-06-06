@@ -13,6 +13,7 @@
 #include <vulkan/device.hpp>
 #include <vulkan/instance.hpp>
 #include <vulkan/surface.hpp>
+#include <vulkan/swapchain.hpp>
 #include <vulkan/window.hpp>
 
 namespace rayce
@@ -86,6 +87,9 @@ namespace rayce
         std::unique_ptr<Instance> pInstance;
         std::unique_ptr<Surface> pSurface;
         std::unique_ptr<Device> pDevice;
+        std::unique_ptr<Swapchain> pSwapchain;
+
+        std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     };
 } // namespace rayce
 

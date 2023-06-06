@@ -16,6 +16,8 @@ namespace rayce
     class RAYCE_API_EXPORT Device
     {
       public:
+        DISABLE_COPY_MOVE_VK(Device)
+
         Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers);
         ~Device();
 
@@ -39,11 +41,30 @@ namespace rayce
             return mVkPresentQueue;
         }
 
+        uint32 getGraphicsFamilyIndex() const
+        {
+            return mGraphicsFamilyIndex;
+        }
+
+        uint32 getComputeFamilyIndex() const
+        {
+            return mComputeFamilyIndex;
+        }
+
+        uint32 getPresentFamilyIndex() const
+        {
+            return mPresentFamilyIndex;
+        }
+
       private:
         VkDevice mVkDevice;
         VkQueue mVkGraphicsQueue;
         VkQueue mVkComputeQueue;
         VkQueue mVkPresentQueue;
+
+        uint32 mGraphicsFamilyIndex;
+        uint32 mComputeFamilyIndex;
+        uint32 mPresentFamilyIndex;
 
         VkDeviceQueueCreateInfo createVkQueue(uint32 queueFamilyIndex);
     };

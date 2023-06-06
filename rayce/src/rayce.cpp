@@ -39,7 +39,7 @@ RAYCE_API_EXPORT BOOL DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes
     return TRUE;
 }
 
-#else if LINUX
+#elif LINUX
 
 RAYCE_API_EXPORT __attribute__((constructor)) bool soAttach()
 {

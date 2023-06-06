@@ -8,12 +8,18 @@
 #define MACRO_HPP
 
 #include <iostream>
-#include <types.hpp>
 #include <log.hpp>
 #include <stdio.h>
+#include <types.hpp>
 
 /// @brief Macro for unused parameters.
 #define RAYCE_UNUSED(x) (void)x
+
+#define DISABLE_COPY_MOVE_VK(className)              \
+    className(const className&)            = delete; \
+    className(className&&)                 = delete; \
+    className& operator=(const className&) = delete; \
+    className& operator=(className&&)      = delete;
 
 #ifdef RAYCE_DEBUG
 

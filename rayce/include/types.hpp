@@ -14,10 +14,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#pragma warning(push, 0)
 #define NOMINMAX
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#pragma warning(pop)
 
 namespace rayce
 {

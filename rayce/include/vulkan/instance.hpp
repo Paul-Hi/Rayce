@@ -16,6 +16,8 @@ namespace rayce
     class RAYCE_API_EXPORT Instance
     {
       public:
+        DISABLE_COPY_MOVE_VK(Instance)
+
         Instance(bool enableValidationLayers, std::vector<const char*>& deviceExtensions, std::vector<const char*>& validationLayers);
         ~Instance();
 

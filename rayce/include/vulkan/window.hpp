@@ -16,6 +16,8 @@ namespace rayce
     class RAYCE_API_EXPORT Window
     {
       public:
+        DISABLE_COPY_MOVE_VK(Window)
+
         Window(int32 width, int32 height, const str& name);
         ~Window();
 

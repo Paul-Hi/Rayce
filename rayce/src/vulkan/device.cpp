@@ -36,12 +36,12 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
                                                                                     return queueFamily.queueCount > 0 && presentSupport;
                                                                                 });
 
-    const uint32 graphicsFamilyIndex = static_cast<uint32>(graphicsFamily - queueFamilyProperties.begin());
-    const uint32 computeFamilyIndex  = static_cast<uint32>(computeFamily - queueFamilyProperties.begin());
-    const uint32 presentFamilyIndex  = static_cast<uint32>(presentFamily - queueFamilyProperties.begin());
+    mGraphicsFamilyIndex = static_cast<uint32>(graphicsFamily - queueFamilyProperties.begin());
+    mComputeFamilyIndex  = static_cast<uint32>(computeFamily - queueFamilyProperties.begin());
+    mPresentFamilyIndex  = static_cast<uint32>(presentFamily - queueFamilyProperties.begin());
 
     // Sometimes queues can be the same, so we reduce them to unique indices.
-    const std::set<uint32> uniqueQueueFamilyIndices = { graphicsFamilyIndex, computeFamilyIndex, presentFamilyIndex };
+    const std::set<uint32> uniqueQueueFamilyIndices = { mGraphicsFamilyIndex, mComputeFamilyIndex, mPresentFamilyIndex };
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
@@ -53,14 +53,19 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
     physicalDeviceFeatures.geometryShader = VK_TRUE;
 
+    // Swapchain has to be enabled.
     // Adding required extensions for raytracing here.
-    std::vector<const char*> deviceExtensions = { VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+    std::vector<const char*> deviceExtensions = { // Swapchain
+                                                  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                                                  // Basic raytracing extension
+                                                  VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
                                                   // Required by VK_KHR_acceleration_structure
                                                   VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
                                                   // Required for VK_KHR_ray_tracing_pipeline
                                                   VK_KHR_SPIRV_1_4_EXTENSION_NAME,
                                                   // Required by VK_KHR_spirv_1_4
-                                                  VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME };
+                                                  VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME
+    };
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -86,9 +91,9 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     RAYCE_CHECK_VK(vkCreateDevice(physicalDevice, &createInfo, nullptr, &mVkDevice), "Creating logical device failed!");
 
     // Retrieve Queues
-    vkGetDeviceQueue(mVkDevice, graphicsFamilyIndex, 0, &mVkGraphicsQueue);
-    vkGetDeviceQueue(mVkDevice, computeFamilyIndex, 0, &mVkComputeQueue);
-    vkGetDeviceQueue(mVkDevice, presentFamilyIndex, 0, &mVkPresentQueue);
+    vkGetDeviceQueue(mVkDevice, mGraphicsFamilyIndex, 0, &mVkGraphicsQueue);
+    vkGetDeviceQueue(mVkDevice, mComputeFamilyIndex, 0, &mVkComputeQueue);
+    vkGetDeviceQueue(mVkDevice, mPresentFamilyIndex, 0, &mVkPresentQueue);
 
     RAYCE_LOG_INFO("Created logical device!");
 }

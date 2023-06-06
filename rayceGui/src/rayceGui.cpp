@@ -40,6 +40,9 @@ void RayceGui::onImGuiRender()
 
 int main(int argc, char** argv)
 {
+    RAYCE_UNUSED(argc);
+    RAYCE_UNUSED(argv);
+
     RayceOptions options;
     options.windowWidth  = 1920;
     options.windowHeight = 1080;

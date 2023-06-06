@@ -16,6 +16,8 @@ namespace rayce
     class RAYCE_API_EXPORT Surface
     {
       public:
+        DISABLE_COPY_MOVE_VK(Surface)
+
         Surface(VkInstance instance, GLFWwindow* nativeWindowHandle);
         ~Surface();
 
