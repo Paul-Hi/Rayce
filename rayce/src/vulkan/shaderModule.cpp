@@ -33,6 +33,17 @@ ShaderModule::~ShaderModule()
     }
 }
 
+VkPipelineShaderStageCreateInfo ShaderModule::createShaderStage(VkShaderStageFlagBits stage) const
+{
+    VkPipelineShaderStageCreateInfo createInfo{};
+    createInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfo.stage  = stage;
+    createInfo.module = mVkShaderModule;
+    createInfo.pName  = "main";
+
+    return createInfo;
+}
+
 std::vector<char> ShaderModule::readFile(const str& filename)
 {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);

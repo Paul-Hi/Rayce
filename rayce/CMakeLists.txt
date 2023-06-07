@@ -12,6 +12,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/graphicsPipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
@@ -30,6 +31,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/graphicsPipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 

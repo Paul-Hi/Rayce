@@ -10,12 +10,6 @@
 #include <export.hpp>
 #include <macro.hpp>
 #include <types.hpp>
-#include <vulkan/device.hpp>
-#include <vulkan/instance.hpp>
-#include <vulkan/shaderModule.hpp>
-#include <vulkan/surface.hpp>
-#include <vulkan/swapchain.hpp>
-#include <vulkan/window.hpp>
 
 namespace rayce
 {
@@ -51,22 +45,22 @@ namespace rayce
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
 
-        const std::unique_ptr<Window>& getWindow() const
+        const std::unique_ptr<class Window>& getWindow() const
         {
             return pWindow;
         }
 
-        const std::unique_ptr<Instance>& getInstance() const
+        const std::unique_ptr<class Instance>& getInstance() const
         {
             return pInstance;
         }
 
-        const std::unique_ptr<Device>& getDevice() const
+        const std::unique_ptr<class Device>& getDevice() const
         {
             return pDevice;
         }
 
-        const std::unique_ptr<Surface>& getSurface() const
+        const std::unique_ptr<class Surface>& getSurface() const
         {
             return pSurface;
         }
@@ -84,14 +78,12 @@ namespace rayce
         int32 mWindowHeight;
         bool mEnableValidationLayers;
 
-        std::unique_ptr<Window> pWindow;
-        std::unique_ptr<Instance> pInstance;
-        std::unique_ptr<Surface> pSurface;
-        std::unique_ptr<Device> pDevice;
-        std::unique_ptr<Swapchain> pSwapchain;
-
-        std::unique_ptr<ShaderModule> pBaseVertexShader;
-        std::unique_ptr<ShaderModule> pBaseFragmentShader;
+        std::unique_ptr<class Window> pWindow;
+        std::unique_ptr<class Instance> pInstance;
+        std::unique_ptr<class Surface> pSurface;
+        std::unique_ptr<class Device> pDevice;
+        std::unique_ptr<class Swapchain> pSwapchain;
+        std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline;
 
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     };

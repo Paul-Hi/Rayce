@@ -26,6 +26,16 @@ namespace rayce
             return mVkSwapchain;
         }
 
+        VkExtent2D getSwapExtent() const
+        {
+            return mSwapExtent;
+        }
+
+        VkSurfaceFormatKHR getSurfaceFormat() const
+        {
+            return mFormat;
+        }
+
       private:
         VkSwapchainKHR mVkSwapchain;
         VkDevice mVkLogicalDeviceRef;

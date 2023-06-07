@@ -4,7 +4,14 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include "rayceApp.hpp"
+#include <rayceApp.hpp>
+#include <vulkan/device.hpp>
+#include <vulkan/instance.hpp>
+#include <vulkan/shaderModule.hpp>
+#include <vulkan/surface.hpp>
+#include <vulkan/swapchain.hpp>
+#include <vulkan/window.hpp>
+#include <vulkan/graphicsPipeline.hpp>
 
 using namespace rayce;
 
@@ -27,8 +34,7 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     pSwapchain = std::make_unique<Swapchain>(physicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
-    pBaseVertexShader = std::make_unique<ShaderModule>(pDevice, ".\\assets\\shaders\\basic.vert.spv");
-    pBaseFragmentShader = std::make_unique<ShaderModule>(pDevice, ".\\assets\\shaders\\basic.frag.spv");
+    pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
