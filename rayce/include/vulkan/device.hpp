@@ -21,22 +21,22 @@ namespace rayce
         Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers);
         ~Device();
 
-        VkDevice getVkDevice()
+        VkDevice getVkDevice() const
         {
             return mVkDevice;
         }
 
-        VkQueue getVkGraphicsQueue()
+        VkQueue getVkGraphicsQueue() const
         {
             return mVkGraphicsQueue;
         }
 
-        VkQueue getVkComputeQueue()
+        VkQueue getVkComputeQueue() const
         {
             return mVkComputeQueue;
         }
 
-        VkQueue getVkPresentQueue()
+        VkQueue getVkPresentQueue() const
         {
             return mVkPresentQueue;
         }

@@ -19,10 +19,10 @@ target_compile_definitions(allTests
         RAYCE_TEST
 )
 
-set_target_properties(allTests
-    PROPERTIES
-        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-)
+#set_target_properties(allTests
+#    PROPERTIES
+#        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+#)
 
 target_link_libraries(allTests
     gtest

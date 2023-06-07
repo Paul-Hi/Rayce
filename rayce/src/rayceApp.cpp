@@ -27,6 +27,9 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     pSwapchain = std::make_unique<Swapchain>(physicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
+    pBaseVertexShader = std::make_unique<ShaderModule>(pDevice, ".\\assets\\shaders\\basic.vert.spv");
+    pBaseFragmentShader = std::make_unique<ShaderModule>(pDevice, ".\\assets\\shaders\\basic.frag.spv");
+
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
     RAYCE_LOG_INFO("Created RayceApp!");

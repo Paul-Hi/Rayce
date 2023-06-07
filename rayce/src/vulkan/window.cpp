@@ -33,7 +33,7 @@ Window::~Window()
     glfwTerminate();
 }
 
-std::vector<const char*> Window::getVulkanExtensions()
+std::vector<const char*> Window::getVulkanExtensions() const
 {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;

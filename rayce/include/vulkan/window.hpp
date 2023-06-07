@@ -21,29 +21,29 @@ namespace rayce
         Window(int32 width, int32 height, const str& name);
         ~Window();
 
-        int32 getWindowWidth()
+        int32 getWindowWidth() const
         {
             return mWindowWidth;
         }
 
-        int32 getWindowHeight()
+        int32 getWindowHeight() const
         {
             return mWindowHeight;
         }
 
-        GLFWwindow* getNativeWindowHandle()
+        GLFWwindow* getNativeWindowHandle() const
         {
             return pWindow;
         }
 
-        std::vector<const char*> getVulkanExtensions();
+        std::vector<const char*> getVulkanExtensions() const;
 
-        bool shouldClose()
+        bool shouldClose() const
         {
             return glfwWindowShouldClose(pWindow);
         }
 
-        void pollEvents()
+        void pollEvents() const
         {
             glfwPollEvents();
         }

@@ -11,6 +11,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
 )
@@ -28,6 +29,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/device.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp
 )
 
@@ -37,6 +39,9 @@ add_library(rayce
     ${PRIVATE_HEADERS}
     ${SOURCES}
 )
+
+# Depends on assets target
+add_dependencies(rayce assets)
 
 add_library(rayce::rayce ALIAS rayce)
 
@@ -95,4 +100,11 @@ target_compile_options(rayce
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>: -Wall -Wextra -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-gnu-zero-variadic-macro-arguments -Wno-documentation-unknown-command>
     $<$<CXX_COMPILER_ID:MSVC>:$<$<BOOL:${RAYCE_ENABLE_HARD_WARNINGS}>: /WX>>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${RAYCE_ENABLE_HARD_WARNINGS}>: -pedantic -Werror -Wconversion -pedantic-errors>>
+)
+
+set(BUILD_SPIRV_DIR "$<TARGET_FILE_DIR:rayce>/assets/shaders")
+add_custom_command(
+    TARGET rayce POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_SPIRV_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${OUTPUT_SPIRV_DIR} ${BUILD_SPIRV_DIR}
 )

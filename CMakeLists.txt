@@ -89,6 +89,8 @@ if(RAYCE_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
+add_subdirectory(assets)
+
 add_subdirectory(rayce)
 
 # spdlog_enable_warnings(rayce)

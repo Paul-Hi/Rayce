@@ -21,7 +21,7 @@ namespace rayce
         Swapchain(VkPhysicalDevice physicalDevice, const std::unique_ptr<class Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle);
         ~Swapchain();
 
-        VkSwapchainKHR getVkSwapchain()
+        VkSwapchainKHR getVkSwapchain() const
         {
             return mVkSwapchain;
         }

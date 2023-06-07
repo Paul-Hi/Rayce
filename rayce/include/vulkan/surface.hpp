@@ -21,7 +21,7 @@ namespace rayce
         Surface(VkInstance instance, GLFWwindow* nativeWindowHandle);
         ~Surface();
 
-        VkSurfaceKHR getVkSurface()
+        VkSurfaceKHR getVkSurface() const
         {
             return mVkSurface;
         }

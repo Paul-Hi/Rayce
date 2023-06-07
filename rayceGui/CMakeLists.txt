@@ -22,7 +22,7 @@ set_target_properties(rayceGui
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/lib
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}$<$<CONFIG:Debug>:/debug>$<$<CONFIG:Release>:/release>/bin
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    #VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
 # add_custom_command(TARGET rayceGui POST_BUILD
@@ -47,6 +47,5 @@ endif()
 target_link_options(rayceGui PRIVATE ${SUBSYSTEM_LINKER_OPTIONS})
 
 install(TARGETS rayceGui DESTINATION bin)
-
-# install(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION bin/res)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ DESTINATION bin/assets)
 install(FILES ${CMAKE_SOURCE_DIR}/imgui.ini DESTINATION bin)

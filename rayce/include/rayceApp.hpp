@@ -12,6 +12,7 @@
 #include <types.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/instance.hpp>
+#include <vulkan/shaderModule.hpp>
 #include <vulkan/surface.hpp>
 #include <vulkan/swapchain.hpp>
 #include <vulkan/window.hpp>
@@ -88,6 +89,9 @@ namespace rayce
         std::unique_ptr<Surface> pSurface;
         std::unique_ptr<Device> pDevice;
         std::unique_ptr<Swapchain> pSwapchain;
+
+        std::unique_ptr<ShaderModule> pBaseVertexShader;
+        std::unique_ptr<ShaderModule> pBaseFragmentShader;
 
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     };

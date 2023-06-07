@@ -21,12 +21,12 @@ namespace rayce
         Instance(bool enableValidationLayers, std::vector<const char*>& deviceExtensions, std::vector<const char*>& validationLayers);
         ~Instance();
 
-        VkInstance getVkInstance()
+        VkInstance getVkInstance() const
         {
             return mVkInstance;
         }
 
-        VkDebugUtilsMessengerEXT getVkDebugMessenger()
+        VkDebugUtilsMessengerEXT getVkDebugMessenger() const
         {
             return mVkDebugMessenger;
         }
