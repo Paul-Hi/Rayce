@@ -36,12 +36,16 @@ namespace rayce
             return mFormat;
         }
 
+        const std::vector<std::unique_ptr<class ImageView>>& getImageViews() const
+        {
+            return mSwapchainImageViews;
+        }
+
       private:
         VkSwapchainKHR mVkSwapchain;
         VkDevice mVkLogicalDeviceRef;
 
-        std::vector<VkImage> mSwapchainImages;
-        std::vector<VkImageView> mSwapchainImageViews;
+        std::vector<std::unique_ptr<class ImageView>> mSwapchainImageViews;
 
         uint32 mMinImageCount;
         VkPresentModeKHR mPresentMode;
@@ -51,7 +55,7 @@ namespace rayce
         VkSurfaceFormatKHR chooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
         VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& presentModes);
         VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* nativeWindowHandle);
-        void createSwapchainImageViews();
+        void createSwapchainImageViews(const std::unique_ptr<class Device>& logicalDevice, std::vector<VkImage>& swapchainImages);
     };
 } // namespace rayce
 

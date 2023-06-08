@@ -9,6 +9,9 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/instance.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/device.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/framebuffer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/renderPass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/imageView.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
@@ -28,6 +31,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/instance.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/device.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/framebuffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/renderPass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/imageView.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp

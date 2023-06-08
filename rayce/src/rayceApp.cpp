@@ -6,12 +6,13 @@
 
 #include <rayceApp.hpp>
 #include <vulkan/device.hpp>
+#include <vulkan/framebuffer.hpp>
+#include <vulkan/graphicsPipeline.hpp>
 #include <vulkan/instance.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/surface.hpp>
 #include <vulkan/swapchain.hpp>
 #include <vulkan/window.hpp>
-#include <vulkan/graphicsPipeline.hpp>
 
 using namespace rayce;
 
@@ -35,6 +36,11 @@ RayceApp::RayceApp(const RayceOptions& options)
     pSwapchain = std::make_unique<Swapchain>(physicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
     pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
+
+    for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
+    {
+        mSwapchainFramebuffers.push_back(std::make_unique<Framebuffer>(pDevice, pSwapchain, pGraphicsPipeline->getRenderPass(), imageView));
+    }
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 

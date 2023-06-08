@@ -21,9 +21,9 @@ namespace rayce
         GraphicsPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, bool wireframe);
         ~GraphicsPipeline();
 
-        VkRenderPass getVkRenderPass() const
+        const std::unique_ptr<class RenderPass>& getRenderPass() const
         {
-            return mVkRenderPass;
+            return pRenderPass;
         }
 
         VkPipelineLayout getVkPipelineLayout() const
@@ -37,10 +37,11 @@ namespace rayce
         }
 
       private:
-        VkRenderPass mVkRenderPass;
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
         VkDevice mVkLogicalDeviceRef;
+
+        std::unique_ptr<class RenderPass> pRenderPass;
 
         std::unique_ptr<class ShaderModule> pBaseVertexShader;
         std::unique_ptr<class ShaderModule> pBaseFragmentShader;

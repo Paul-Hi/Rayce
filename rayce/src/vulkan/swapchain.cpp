@@ -5,6 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include <vulkan/device.hpp>
+#include <vulkan/imageView.hpp>
 #include <vulkan/swapchain.hpp>
 
 using namespace rayce;
@@ -77,21 +78,16 @@ Swapchain::Swapchain(VkPhysicalDevice physicalDevice, const std::unique_ptr<Devi
     RAYCE_CHECK_VK(vkCreateSwapchainKHR(vkDevice, &createInfo, nullptr, &mVkSwapchain), "Creating the swap chain failed!");
 
     vkGetSwapchainImagesKHR(vkDevice, mVkSwapchain, &imageCount, nullptr);
-    mSwapchainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(vkDevice, mVkSwapchain, &imageCount, mSwapchainImages.data());
+    std::vector<VkImage> swapchainImages(imageCount);
+    vkGetSwapchainImagesKHR(vkDevice, mVkSwapchain, &imageCount, swapchainImages.data());
 
-    createSwapchainImageViews();
+    createSwapchainImageViews(logicalDevice, swapchainImages);
 
     RAYCE_LOG_INFO("Created swap chain!");
 }
 
 Swapchain::~Swapchain()
 {
-    for (VkImageView imageView : mSwapchainImageViews)
-    {
-        vkDestroyImageView(mVkLogicalDeviceRef, imageView, nullptr);
-    }
-
     if (mVkSwapchain)
     {
         vkDestroySwapchainKHR(mVkLogicalDeviceRef, mVkSwapchain, nullptr);
@@ -149,29 +145,10 @@ VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
     return actualExtent;
 }
 
-void Swapchain::createSwapchainImageViews()
+void Swapchain::createSwapchainImageViews(const std::unique_ptr<Device>& logicalDevice, std::vector<VkImage>& swapchainImages)
 {
-    mSwapchainImageViews.resize(mSwapchainImages.size());
-
-    for (ptr_size i = 0; i < mSwapchainImages.size(); ++i)
+    for (const VkImage& image : swapchainImages)
     {
-        VkImageViewCreateInfo createInfo{};
-        createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image    = mSwapchainImages[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format   = mFormat.format;
-
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel   = 0;
-        createInfo.subresourceRange.levelCount     = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount     = 1;
-
-        RAYCE_CHECK_VK(vkCreateImageView(mVkLogicalDeviceRef, &createInfo, nullptr, &mSwapchainImageViews[i]), "Creating swap chain image view failed!");
+        mSwapchainImageViews.push_back(std::make_unique<ImageView>(logicalDevice, image, mFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
     }
 }

@@ -85,6 +85,8 @@ namespace rayce
         std::unique_ptr<class Swapchain> pSwapchain;
         std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline;
 
+        std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
+
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     };
 } // namespace rayce
