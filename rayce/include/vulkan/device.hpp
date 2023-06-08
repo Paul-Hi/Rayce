@@ -18,7 +18,7 @@ namespace rayce
       public:
         DISABLE_COPY_MOVE_VK(Device)
 
-        Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers);
+        Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers, bool raytracingSupported);
         ~Device();
 
         VkDevice getVkDevice() const

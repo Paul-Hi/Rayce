@@ -28,14 +28,19 @@ void RayceGui::onUpdate()
     RayceApp::onUpdate();
 }
 
-void RayceGui::onRender()
+void RayceGui::onFrameDraw()
 {
-    RayceApp::onRender();
+    RayceApp::onFrameDraw();
 }
 
-void RayceGui::onImGuiRender()
+void RayceGui::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
-    RayceApp::onImGuiRender();
+    RayceApp::onRender(commandBuffer, imageIndex);
+}
+
+void RayceGui::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
+{
+    RayceApp::onImGuiRender(commandBuffer, imageIndex);
 }
 
 int main(int argc, char** argv)

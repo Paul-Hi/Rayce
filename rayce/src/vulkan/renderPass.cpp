@@ -39,6 +39,16 @@ RenderPass::RenderPass(const std::unique_ptr<Device>& logicalDevice, const std::
     subpassDescription.pResolveAttachments     = nullptr;
     subpassDescription.preserveAttachmentCount = 0;
     subpassDescription.pPreserveAttachments    = nullptr;
+
+    // subpass dependency
+    VkSubpassDependency subpassDependency = {};
+    subpassDependency.srcSubpass          = VK_SUBPASS_EXTERNAL;
+    subpassDependency.dstSubpass          = 0;
+    subpassDependency.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.srcAccessMask       = 0;
+    subpassDependency.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpassDependency.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     // render pass
     VkRenderPassCreateInfo renderPassCreateInfo{};
     renderPassCreateInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -46,6 +56,8 @@ RenderPass::RenderPass(const std::unique_ptr<Device>& logicalDevice, const std::
     renderPassCreateInfo.pAttachments    = &colorAttachment;
     renderPassCreateInfo.subpassCount    = 1;
     renderPassCreateInfo.pSubpasses      = &subpassDescription;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies   = &subpassDependency;
 
     RAYCE_CHECK_VK(vkCreateRenderPass(mVkLogicalDeviceRef, &renderPassCreateInfo, nullptr, &mVkRenderPass), "Creating render pass failed!");
 }

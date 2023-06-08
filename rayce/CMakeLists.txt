@@ -12,8 +12,12 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/framebuffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/renderPass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/imageView.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandPool.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandBuffers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/semaphore.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/fence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/graphicsPipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
@@ -34,8 +38,12 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/framebuffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/renderPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/imageView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandPool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandBuffers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/semaphore.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/graphicsPipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rayceApp.cpp

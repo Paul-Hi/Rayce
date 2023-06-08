@@ -9,7 +9,7 @@
 
 using namespace rayce;
 
-Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers)
+Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers, bool raytracingSupported)
 {
     // We have already queried and computed all of these earlier...
     uint32 queueFamilyPropertyCount;
@@ -56,16 +56,23 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     // Swapchain has to be enabled.
     // Adding required extensions for raytracing here.
     std::vector<const char*> deviceExtensions = { // Swapchain
-                                                  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                                                  // Basic raytracing extension
-                                                  VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-                                                  // Required by VK_KHR_acceleration_structure
-                                                  VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-                                                  // Required for VK_KHR_ray_tracing_pipeline
-                                                  VK_KHR_SPIRV_1_4_EXTENSION_NAME,
-                                                  // Required by VK_KHR_spirv_1_4
-                                                  VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME
+                                                  VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
+
+    if (raytracingSupported)
+    {
+        // Basic raytracing extension
+        deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        // Required by VK_KHR_acceleration_structure
+        deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+        // Required for VK_KHR_ray_tracing_pipeline
+        deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+        // Required by VK_KHR_spirv_1_4
+        deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+    }
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

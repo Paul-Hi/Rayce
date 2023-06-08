@@ -68,10 +68,11 @@ namespace rayce
         virtual bool onInitialize();
         virtual bool onShutdown();
         virtual void onUpdate();
-        virtual void onRender();
-        virtual void onImGuiRender();
+        virtual void onFrameDraw();
+        virtual void onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
+        virtual void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
 
-        VkPhysicalDevice pickPhysicalDevice();
+        VkPhysicalDevice pickPhysicalDevice(bool& raytracingSupported);
 
       private:
         int32 mWindowWidth;
@@ -84,8 +85,16 @@ namespace rayce
         std::unique_ptr<class Device> pDevice;
         std::unique_ptr<class Swapchain> pSwapchain;
         std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline;
+        std::unique_ptr<class CommandPool> pCommandPool;
+        std::unique_ptr<class CommandBuffers> pCommandBuffers;
 
         std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
+
+        std::vector<std::unique_ptr<class Semaphore>> mImageAvailableSemaphores;
+        std::vector<std::unique_ptr<class Semaphore>> mRenderFinishedSemaphores;
+        std::vector<std::unique_ptr<class Fence>> mInFlightFences;
+
+        uint32 mCurrentFrame;
 
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     };

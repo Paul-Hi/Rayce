@@ -13,7 +13,8 @@ class RayceGui : public rayce::RayceApp
 
     bool onInitialize() override;
     bool onShutdown() override;
+    void onFrameDraw() override;
     void onUpdate() override;
-    void onRender() override;
-    void onImGuiRender() override;
+    void onRender(VkCommandBuffer commandBuffer, const rayce::uint32 imageIndex) override;
+    void onImGuiRender(VkCommandBuffer commandBuffer, const rayce::uint32 imageIndex) override;
 };
