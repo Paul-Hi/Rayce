@@ -78,6 +78,7 @@ namespace rayce
         int32 mWindowWidth;
         int32 mWindowHeight;
         bool mEnableValidationLayers;
+        VkPhysicalDevice mPhysicalDevice;
 
         std::unique_ptr<class Window> pWindow;
         std::unique_ptr<class Instance> pInstance;
@@ -95,8 +96,9 @@ namespace rayce
         std::vector<std::unique_ptr<class Fence>> mInFlightFences;
 
         uint32 mCurrentFrame;
-
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+
+        void recreateSwapchain();
     };
 } // namespace rayce
 

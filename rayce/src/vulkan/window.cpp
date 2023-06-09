@@ -15,7 +15,7 @@ Window::Window(int32 width, int32 height, const str& name)
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    // glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     pWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, name.c_str(), nullptr, nullptr);
 

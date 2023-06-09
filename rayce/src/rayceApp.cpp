@@ -36,11 +36,11 @@ RayceApp::RayceApp(const RayceOptions& options)
     pSurface = std::make_unique<Surface>(pInstance->getVkInstance(), pWindow->getNativeWindowHandle());
 
     bool raytracingSupported;
-    VkPhysicalDevice physicalDevice = pickPhysicalDevice(raytracingSupported);
+    mPhysicalDevice = pickPhysicalDevice(raytracingSupported);
 
-    pDevice = std::make_unique<Device>(physicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers(), raytracingSupported);
+    pDevice = std::make_unique<Device>(mPhysicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers(), raytracingSupported);
 
-    pSwapchain = std::make_unique<Swapchain>(physicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
+    pSwapchain = std::make_unique<Swapchain>(mPhysicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
     pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
 
@@ -57,7 +57,7 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     pCommandPool = std::make_unique<CommandPool>(pDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    // one command buffer per swapchain image (frames in flight?)
+    // one command buffer per swapchain image
     pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
@@ -112,7 +112,17 @@ void RayceApp::onFrameDraw()
     inFlightFence->reset();
 
     uint32 imageIndex;
-    RAYCE_CHECK_VK(vkAcquireNextImageKHR(logicalDevice, swapchain, noTimeout, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex), "Acquisition of swap image failed!");
+    VkResult acquisitionResult = vkAcquireNextImageKHR(logicalDevice, swapchain, noTimeout, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    if (acquisitionResult == VK_ERROR_OUT_OF_DATE_KHR || acquisitionResult == VK_SUBOPTIMAL_KHR) // || mWireframe != pGraphicsPipeline->Iswireframe())
+    {
+        recreateSwapchain();
+        return;
+    }
+
+    if (acquisitionResult != VK_SUCCESS && acquisitionResult != VK_SUBOPTIMAL_KHR)
+    {
+        RAYCE_ABORT("Acquisition of swap image failed!");
+    }
 
     VkCommandBuffer commandBuffer = pCommandBuffers->beginCommandBuffer(imageIndex);
 
@@ -149,7 +159,18 @@ void RayceApp::onFrameDraw()
     presentInfo.pImageIndices      = &imageIndex;
     presentInfo.pResults           = nullptr;
 
-    RAYCE_CHECK_VK(vkQueuePresentKHR(pDevice->getVkPresentQueue(), &presentInfo), "Presenting to queue failed!");
+    VkResult presentResult = vkQueuePresentKHR(pDevice->getVkPresentQueue(), &presentInfo);
+
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+    {
+        recreateSwapchain();
+    }
+    else if (presentResult != VK_SUCCESS)
+    {
+        RAYCE_ABORT("Presenting to queue failed!");
+    }
+
+    mCurrentFrame = (mCurrentFrame + 1) % mInFlightFences.size();
 }
 
 void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
@@ -270,4 +291,43 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
     RAYCE_CHECK_NOTNULL(pickedDevice, "No compatible physical device available!");
 
     return pickedDevice;
+}
+
+void RayceApp::recreateSwapchain()
+{
+    VkDevice logicalDevice = pDevice->getVkDevice();
+    vkDeviceWaitIdle(logicalDevice);
+
+    pCommandBuffers.reset();
+    mSwapchainFramebuffers.clear();
+    pGraphicsPipeline.reset();
+    mInFlightFences.clear();
+    mRenderFinishedSemaphores.clear();
+    mImageAvailableSemaphores.clear();
+    pSwapchain.reset();
+
+    // Wait until the window is visible.
+    while (pWindow->isMinimized())
+    {
+        pWindow->waitEvents();
+    }
+
+    pSwapchain.reset(new Swapchain(mPhysicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle()));
+
+    pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
+
+    int32 swapchainImageCount = 0;
+    for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
+    {
+        swapchainImageCount++;
+        mSwapchainFramebuffers.push_back(std::make_unique<Framebuffer>(pDevice, pSwapchain, pGraphicsPipeline->getRenderPass(), imageView));
+
+        mImageAvailableSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
+        mRenderFinishedSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
+        mInFlightFences.push_back(std::make_unique<Fence>(pDevice, true));
+    }
+
+    pCommandPool = std::make_unique<CommandPool>(pDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
 }

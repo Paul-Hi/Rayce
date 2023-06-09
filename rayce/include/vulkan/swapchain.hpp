@@ -36,6 +36,11 @@ namespace rayce
             return mFormat;
         }
 
+        VkPresentModeKHR getPresentMode() const
+        {
+            return mPresentMode;
+        }
+
         const std::vector<std::unique_ptr<class ImageView>>& getImageViews() const
         {
             return mSwapchainImageViews;

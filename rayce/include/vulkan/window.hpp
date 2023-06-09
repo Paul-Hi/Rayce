@@ -48,6 +48,18 @@ namespace rayce
             glfwPollEvents();
         }
 
+        bool isMinimized() const
+        {
+            int32 width, height;
+            glfwGetFramebufferSize(pWindow, &width, &height);
+            return height == 0 && width == 0;
+        }
+
+        void waitEvents() const
+        {
+            glfwWaitEvents();
+        }
+
       private:
         int32 mWindowWidth;
         int32 mWindowHeight;
