@@ -18,7 +18,7 @@ namespace rayce
       public:
         DISABLE_COPY_MOVE_VK(RenderPass)
 
-        RenderPass(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain);
+        RenderPass(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const VkAttachmentLoadOp colorBufferLoadOp);
         ~RenderPass();
 
         VkRenderPass getVkRenderPass() const

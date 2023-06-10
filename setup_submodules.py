@@ -21,8 +21,8 @@ def createDependencyFiles():
     # imgui CMake
     f = open('./imgui/CMakeLists.txt','w+')
     f.write('project(imgui)\r\n')
-    f.write('add_library(imgui imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_widgets.cpp imgui_tables.cpp imgui.h imconfig.h imgui_internal.h imstb_rectpack.h imstb_textedit.h imstb_truetype.h)\r\n')
-    f.write('target_include_directories(imgui SYSTEM PUBLIC .)\r\n')
+    f.write('add_library(imgui imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_widgets.cpp imgui_tables.cpp imgui.h imconfig.h imgui_internal.h imstb_rectpack.h imstb_textedit.h imstb_truetype.h backends/imgui_impl_glfw.h backends/imgui_impl_glfw.cpp backends/imgui_impl_vulkan.h backends/imgui_impl_vulkan.cpp)\r\n')
+    f.write('target_include_directories(imgui SYSTEM PUBLIC . ../glfw/include ${Vulkan_INCLUDE_DIRS})\r\n')
     f.close()
 
     # tracy CMake

@@ -131,7 +131,7 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
     // render pass
-    pRenderPass = std::make_unique<RenderPass>(logicalDevice, swapchain);
+    pRenderPass = std::make_unique<RenderPass>(logicalDevice, swapchain, VK_ATTACHMENT_LOAD_OP_CLEAR);
 
     // shader stages
     pBaseVertexShader   = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\basic.vert.spv");

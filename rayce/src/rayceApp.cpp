@@ -4,6 +4,8 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <imgui.h>
+#include <imguiInterface.hpp>
 #include <rayceApp.hpp>
 #include <vulkan/commandBuffers.hpp>
 #include <vulkan/commandPool.hpp>
@@ -59,6 +61,8 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     // one command buffer per swapchain image
     pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
+
+    pImguiInterface = std::make_unique<ImguiInterface>(mPhysicalDevice, pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle());
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
@@ -128,7 +132,9 @@ void RayceApp::onFrameDraw()
 
     onRender(commandBuffer, imageIndex);
 
+    pImguiInterface->begin();
     onImGuiRender(commandBuffer, imageIndex);
+    pImguiInterface->end(commandBuffer, mSwapchainFramebuffers[imageIndex]);
 
     pCommandBuffers->endCommandBuffer(imageIndex);
 
@@ -147,6 +153,8 @@ void RayceApp::onFrameDraw()
     submitInfo.pSignalSemaphores      = signalSemaphores;
 
     RAYCE_CHECK_VK(vkQueueSubmit(pDevice->getVkGraphicsQueue(), 1, &submitInfo, inFlightFence->getVkFence()), "Submit to graphics queue failed!");
+
+    pImguiInterface->platformWindows();
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -195,7 +203,10 @@ void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     vkCmdEndRenderPass(commandBuffer);
 }
 
-void RayceApp::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) {}
+void RayceApp::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
+{
+    ImGui::ShowDemoWindow();
+}
 
 VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
 {
@@ -295,10 +306,16 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
 
 void RayceApp::recreateSwapchain()
 {
+    while (pWindow->isMinimized())
+    {
+        pWindow->waitEvents();
+    }
+
     VkDevice logicalDevice = pDevice->getVkDevice();
     vkDeviceWaitIdle(logicalDevice);
 
     pCommandBuffers.reset();
+    pImguiInterface.reset();
     mSwapchainFramebuffers.clear();
     pGraphicsPipeline.reset();
     mInFlightFences.clear();
@@ -306,15 +323,9 @@ void RayceApp::recreateSwapchain()
     mImageAvailableSemaphores.clear();
     pSwapchain.reset();
 
-    // Wait until the window is visible.
-    while (pWindow->isMinimized())
-    {
-        pWindow->waitEvents();
-    }
-
     pSwapchain.reset(new Swapchain(mPhysicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle()));
 
-    pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
+    pGraphicsPipeline.reset(new GraphicsPipeline(pDevice, pSwapchain, false));
 
     int32 swapchainImageCount = 0;
     for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
@@ -327,7 +338,6 @@ void RayceApp::recreateSwapchain()
         mInFlightFences.push_back(std::make_unique<Fence>(pDevice, true));
     }
 
-    pCommandPool = std::make_unique<CommandPool>(pDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
-    pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
+    pCommandBuffers.reset(new CommandBuffers(pDevice, pCommandPool, swapchainImageCount));
+    pImguiInterface.reset(new ImguiInterface(mPhysicalDevice, pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle()));
 }
