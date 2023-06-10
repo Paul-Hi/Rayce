@@ -40,12 +40,12 @@ namespace rayce
     /// @brief Typedef for size_t.
     using ptr_size = size_t;
 
-    /// @brief Typedef for a 3 component double vector.
-    using dvec3 = Eigen::Vector3<double>;
-    /// @brief Typedef for a 3x3 double matrix.
-    using dmat3 = Eigen::Matrix3<double>;
-    /// @brief Typedef for a 2 component double vector.
-    using dvec2 = Eigen::Vector2<double>;
+    /// @brief Typedef for a 3 component float vector.
+    using vec3 = Eigen::Vector3<float>;
+    /// @brief Typedef for a 3x3 float matrix.
+    using mat3 = Eigen::Matrix3<float>;
+    /// @brief Typedef for a 2 component float vector.
+    using vec2 = Eigen::Vector2<float>;
 
     /// @brief Typedef for string.
     using str = std::string;

@@ -23,8 +23,6 @@ CommandBuffers::CommandBuffers(const std::unique_ptr<Device>& logicalDevice, con
     mVkCommandBuffers.resize(number);
 
     RAYCE_CHECK_VK(vkAllocateCommandBuffers(mVkLogicalDeviceRef, &allocInfo, mVkCommandBuffers.data()), "Allocating command buffers failed!");
-
-    RAYCE_LOG_INFO("Created %d command buffers!", number);
 }
 
 CommandBuffers::~CommandBuffers()

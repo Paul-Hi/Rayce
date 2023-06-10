@@ -10,9 +10,10 @@
 
 using namespace rayce;
 
-Swapchain::Swapchain(VkPhysicalDevice physicalDevice, const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle)
+Swapchain::Swapchain( const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
+    VkPhysicalDevice physicalDevice = logicalDevice->getVkPhysicalDevice();
     // Capabilities
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);

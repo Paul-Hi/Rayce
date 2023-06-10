@@ -7,11 +7,13 @@
 #include <imgui.h>
 #include <imguiInterface.hpp>
 #include <rayceApp.hpp>
+#include <vulkan/buffer.hpp>
 #include <vulkan/commandBuffers.hpp>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/fence.hpp>
 #include <vulkan/framebuffer.hpp>
+#include <vulkan/geometry.hpp>
 #include <vulkan/graphicsPipeline.hpp>
 #include <vulkan/instance.hpp>
 #include <vulkan/renderPass.hpp>
@@ -19,6 +21,7 @@
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/surface.hpp>
 #include <vulkan/swapchain.hpp>
+#include <vulkan/vertex.hpp>
 #include <vulkan/window.hpp>
 
 using namespace rayce;
@@ -42,7 +45,7 @@ RayceApp::RayceApp(const RayceOptions& options)
 
     pDevice = std::make_unique<Device>(mPhysicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers(), raytracingSupported);
 
-    pSwapchain = std::make_unique<Swapchain>(mPhysicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
+    pSwapchain = std::make_unique<Swapchain>(pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
 
     pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
 
@@ -62,7 +65,7 @@ RayceApp::RayceApp(const RayceOptions& options)
     // one command buffer per swapchain image
     pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
 
-    pImguiInterface = std::make_unique<ImguiInterface>(mPhysicalDevice, pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle());
+    pImguiInterface = std::make_unique<ImguiInterface>(pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle());
 
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
 
@@ -92,6 +95,23 @@ bool RayceApp::run()
 
 bool RayceApp::onInitialize()
 {
+    // Test geometry
+    const std::vector<Vertex> vertices = {
+        { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } }, { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } }, { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } }
+    };
+    const std::vector<uint32> indices = { 0, 2, 1, 2, 0, 3 };
+
+    std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(pDevice, sizeof(Vertex) * vertices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(pDevice, sizeof(uint32) * indices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+    vertexBuffer->allocateMemory(pDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    indexBuffer->allocateMemory(pDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    Buffer::uploadDataWithStagingBuffer(pDevice, pCommandPool, *vertexBuffer, vertices);
+    Buffer::uploadDataWithStagingBuffer(pDevice, pCommandPool, *indexBuffer, indices);
+
+    pGeometry = std::make_unique<Geometry>(std::move(vertexBuffer), vertices.size(), std::move(indexBuffer), indices.size());
+
     return true;
 }
 
@@ -198,7 +218,13 @@ void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pGraphicsPipeline->getVkPipeline());
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        VkBuffer vertexBuffers[] = { pGeometry->getVertexBuffer()->getVkBuffer() };
+        VkDeviceSize offsets[]   = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, pGeometry->getIndexBuffer()->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDrawIndexed(commandBuffer, pGeometry->getIndexCount(), 1, 0, 0, 0);
     }
     vkCmdEndRenderPass(commandBuffer);
 }
@@ -338,7 +364,7 @@ void RayceApp::recreateSwapchain()
     mImageAvailableSemaphores.clear();
     pSwapchain.reset();
 
-    pSwapchain.reset(new Swapchain(mPhysicalDevice, pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle()));
+    pSwapchain.reset(new Swapchain(pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle()));
 
     pGraphicsPipeline.reset(new GraphicsPipeline(pDevice, pSwapchain, false));
 
@@ -354,5 +380,5 @@ void RayceApp::recreateSwapchain()
     }
 
     pCommandBuffers.reset(new CommandBuffers(pDevice, pCommandPool, swapchainImageCount));
-    pImguiInterface.reset(new ImguiInterface(mPhysicalDevice, pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle()));
+    pImguiInterface.reset(new ImguiInterface(pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle()));
 }

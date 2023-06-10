@@ -24,6 +24,10 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/fence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/graphicsPipeline.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/vertex.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/geometry.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/buffer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/deviceMemory.hpp
 )
 
 set(PRIVATE_HEADERS
@@ -50,6 +54,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/graphicsPipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/geometry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/deviceMemory.cpp
 )
 
 add_library(rayce

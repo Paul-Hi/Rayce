@@ -10,6 +10,7 @@
 using namespace rayce;
 
 Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers, bool raytracingSupported)
+    : mVkPhysicalDevice(physicalDevice)
 {
     // We have already queried and computed all of these earlier...
     uint32 queueFamilyPropertyCount;

@@ -19,8 +19,8 @@
 
 using namespace rayce;
 
-ImguiInterface::ImguiInterface(VkPhysicalDevice physicalDevice, const std::unique_ptr<Instance>& instance, const std::unique_ptr<Device>& logicalDevice,
-                               const std::unique_ptr<CommandPool>& commandPool, const std::unique_ptr<Swapchain>& swapchain, GLFWwindow* nativeWindowHandle)
+ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool,
+                               const std::unique_ptr<Swapchain>& swapchain, GLFWwindow* nativeWindowHandle)
     : mLVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mSwapchainExtent(swapchain->getSwapExtent())
 {
@@ -71,7 +71,7 @@ ImguiInterface::ImguiInterface(VkPhysicalDevice physicalDevice, const std::uniqu
 
     ImGui_ImplVulkan_InitInfo initInfo = {};
     initInfo.Instance                  = instance->getVkInstance();
-    initInfo.PhysicalDevice            = physicalDevice;
+    initInfo.PhysicalDevice            = logicalDevice->getVkPhysicalDevice();
     initInfo.Device                    = mLVkLogicalDeviceRef;
     initInfo.Queue                     = logicalDevice->getVkGraphicsQueue();
     initInfo.DescriptorPool            = mVkDescriptorPool;

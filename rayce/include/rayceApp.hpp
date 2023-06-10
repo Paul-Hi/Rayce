@@ -89,6 +89,7 @@ namespace rayce
         std::unique_ptr<class CommandPool> pCommandPool;
         std::unique_ptr<class CommandBuffers> pCommandBuffers;
         std::unique_ptr<class ImguiInterface> pImguiInterface;
+        std::unique_ptr<class Geometry> pGeometry;
 
         std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
 

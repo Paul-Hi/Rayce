@@ -18,7 +18,7 @@ namespace rayce
       public:
         DISABLE_COPY_MOVE_VK(Swapchain)
 
-        Swapchain(VkPhysicalDevice physicalDevice, const std::unique_ptr<class Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle);
+        Swapchain(const std::unique_ptr<class Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle);
         ~Swapchain();
 
         VkSwapchainKHR getVkSwapchain() const

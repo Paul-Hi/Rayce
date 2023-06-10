@@ -41,6 +41,11 @@ namespace rayce
             return mVkPresentQueue;
         }
 
+        VkPhysicalDevice getVkPhysicalDevice() const
+        {
+            return mVkPhysicalDevice;
+        }
+
         uint32 getGraphicsFamilyIndex() const
         {
             return mGraphicsFamilyIndex;
@@ -61,6 +66,7 @@ namespace rayce
         VkQueue mVkGraphicsQueue;
         VkQueue mVkComputeQueue;
         VkQueue mVkPresentQueue;
+        VkPhysicalDevice mVkPhysicalDevice;
 
         uint32 mGraphicsFamilyIndex;
         uint32 mComputeFamilyIndex;

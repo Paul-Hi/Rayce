@@ -9,6 +9,7 @@
 #include <vulkan/renderPass.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
+#include <vulkan/vertex.hpp>
 
 using namespace rayce;
 
@@ -25,12 +26,14 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
     dynamicState.pDynamicStates    = nullptr; // dynamicStates.data();
 
     // vertex input state - will be provided by assets
+    VkVertexInputBindingDescription bindingDescription                    = Vertex::getVertexInputBindingDescription();
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescription = Vertex::getVertexInputAttributeDescription();
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 0;
-    vertexInputStateCreateInfo.pVertexBindingDescriptions      = nullptr;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputStateCreateInfo.pVertexAttributeDescriptions    = nullptr;
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions      = &bindingDescription;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32>(attributeDescription.size());
+    vertexInputStateCreateInfo.pVertexAttributeDescriptions    = attributeDescription.data();
 
     // input assembly - assuming triangles for now
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
