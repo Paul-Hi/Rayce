@@ -205,7 +205,22 @@ void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
 void RayceApp::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
-    ImGui::ShowDemoWindow();
+    ImGuiWindowFlags window_flags = 0;
+    window_flags |= ImGuiWindowFlags_NoTitleBar;
+    window_flags |= ImGuiWindowFlags_NoScrollbar;
+    window_flags |= ImGuiWindowFlags_NoResize;
+    window_flags |= ImGuiWindowFlags_NoCollapse;
+    window_flags |= ImGuiWindowFlags_NoDocking;
+
+    if (!ImGui::Begin("Rayce", nullptr, window_flags))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Spacing();
+    ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 }
 
 VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
