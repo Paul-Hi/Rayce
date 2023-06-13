@@ -85,8 +85,10 @@ bool RayceApp::run()
 bool RayceApp::onInitialize()
 {
     // Test geometry
-    const std::vector<Vertex> vertices = { { { 0.25f, 0.25f, 0.0f } }, { { 0.75f, 0.25f, 0.0f } }, { { 0.5f, 0.75f, 0.0f } } };
-    const std::vector<uint32> indices  = { 0, 1, 2 };
+    const std::vector<Vertex> vertices = { { { -0.25f, -0.25f, 0.25f } },  { { 0.25f, -0.25f, 0.25f } },  { { -0.25f, 0.25f, 0.25f } },  { { 0.25f, 0.25f, 0.25f } },
+                                           { { -0.25f, -0.25f, -0.25f } }, { { 0.25f, -0.25f, -0.25f } }, { { -0.25f, 0.25f, -0.25f } }, { { 0.25f, 0.25f, -0.25f } } };
+
+    const std::vector<uint32> indices = { 2, 6, 7, 2, 3, 7, 0, 4, 5, 0, 1, 5, 0, 2, 6, 0, 4, 6, 1, 3, 7, 1, 5, 7, 0, 2, 3, 0, 1, 3, 4, 6, 7, 4, 5, 7 };
 
     std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(pDevice, sizeof(Vertex) * vertices.size(),
                                                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
@@ -107,9 +109,12 @@ bool RayceApp::onInitialize()
     accelerationStructureInitData.type                    = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
     accelerationStructureInitData.vertexDataDeviceAddress = pGeometry->getVertexBuffer()->getDeviceAddress();
     accelerationStructureInitData.indexDataDeviceAddress  = pGeometry->getIndexBuffer()->getDeviceAddress();
+    accelerationStructureInitData.maxVertex               = static_cast<uint32>(vertices.size() - 1);
+    accelerationStructureInitData.primitiveCount          = static_cast<uint32>(indices.size() / 3);
     mBLAS.push_back(std::make_unique<AccelerationStructure>(pDevice, pCommandPool, accelerationStructureInitData));
 
-    accelerationStructureInitData.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    accelerationStructureInitData.type           = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    accelerationStructureInitData.primitiveCount = 1;
     for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
     {
         accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());

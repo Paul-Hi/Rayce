@@ -4,9 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <utils.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/descriptorPool.hpp>
+#include <vulkan/descriptorSetLayout.hpp>
+#include <vulkan/descriptorSets.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/imageView.hpp>
 #include <vulkan/raytracingPipeline.hpp>
@@ -15,19 +18,13 @@
 
 using namespace rayce;
 
-// TODO: Move!
-inline uint32 quickAlign(uint32 value, uint32 alignment)
-{
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<AccelerationStructure>& tlas, const std::unique_ptr<ImageView>& outputImage,
                                        uint32 descriptorsInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mDescriptorsInFlight(descriptorsInFlight)
 {
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
-    // TODO: abstract Descriptor set layouts as well?
+
     VkDescriptorSetLayoutBinding layoutBindingDescriptorTLAS{};
     layoutBindingDescriptorTLAS.binding         = 0;
     layoutBindingDescriptorTLAS.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -42,16 +39,13 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorTargetImage };
 
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
-    descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32>(bindings.size());
-    descriptorSetLayoutCreateInfo.pBindings    = bindings.data();
-    RAYCE_CHECK_VK(vkCreateDescriptorSetLayout(mVkLogicalDeviceRef, &descriptorSetLayoutCreateInfo, nullptr, &mVkDescriptorSetLayout), "Creating descriptor set layout failed!");
+    pDescriptorSetLayout = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
+    VkDescriptorSetLayout descriptorSetLayout = pDescriptorSetLayout->getVkDescriptorLayout();
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts    = &mVkDescriptorSetLayout;
+    pipelineLayoutCreateInfo.pSetLayouts    = &descriptorSetLayout;
 
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
@@ -137,19 +131,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, descriptorsInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, descriptorsInFlight } });
     pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, descriptorsInFlight, 0);
 
-    // TODO: abstract Descriptor sets as well?
-
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(descriptorsInFlight, mVkDescriptorSetLayout);
-
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
-    descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.pNext              = nullptr;
-    descriptorSetAllocateInfo.descriptorPool     = pDescriptorPool->getVkDescriptorPool();
-    descriptorSetAllocateInfo.descriptorSetCount = descriptorsInFlight;
-    descriptorSetAllocateInfo.pSetLayouts        = descriptorSetLayouts.data();
-
-    mVkDescriptorSets.resize(descriptorsInFlight);
-    RAYCE_CHECK_VK(vkAllocateDescriptorSets(mVkLogicalDeviceRef, &descriptorSetAllocateInfo, mVkDescriptorSets.data()), "Creating descriptor sets failed!");
+    pDescriptorSets = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayout, descriptorsInFlight);
 
     // Write stuff
     VkAccelerationStructureKHR vkTLAS = tlas->getVkAccelerationStructure();
@@ -179,19 +161,25 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     for (ptr_size i = 0; i < descriptorsInFlight; ++i)
     {
-        accelerationStructureWrite.dstSet                     = mVkDescriptorSets[i];
-        imageWrite.dstSet                                     = mVkDescriptorSets[i];
+        accelerationStructureWrite.dstSet                     = pDescriptorSets->operator[](i);
+        imageWrite.dstSet                                     = pDescriptorSets->operator[](i);
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
-        vkUpdateDescriptorSets(mVkLogicalDeviceRef, static_cast<uint32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, VK_NULL_HANDLE);
+        pDescriptorSets->update(writeDescriptorSets);
     }
 
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
+VkDescriptorSet RaytracingPipeline::getVkDescriptorSet(uint32 idx) const
+{
+    return pDescriptorSets->operator[](idx);
+}
+
 RaytracingPipeline::~RaytracingPipeline()
 {
-    vkFreeDescriptorSets(mVkLogicalDeviceRef, pDescriptorPool->getVkDescriptorPool(), mDescriptorsInFlight, mVkDescriptorSets.data());
-
+    pDescriptorSets.reset();
+    pDescriptorSetLayout.reset();
+    pDescriptorPool.reset();
     if (mVkPipeline)
     {
         vkDestroyPipeline(mVkLogicalDeviceRef, mVkPipeline, nullptr);
@@ -199,9 +187,5 @@ RaytracingPipeline::~RaytracingPipeline()
     if (mVkPipelineLayout)
     {
         vkDestroyPipelineLayout(mVkLogicalDeviceRef, mVkPipelineLayout, nullptr);
-    }
-    if (mVkDescriptorSetLayout)
-    {
-        vkDestroyDescriptorSetLayout(mVkLogicalDeviceRef, mVkDescriptorSetLayout, nullptr);
     }
 }

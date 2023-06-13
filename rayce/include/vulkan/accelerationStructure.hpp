@@ -19,6 +19,8 @@ namespace rayce
         VkDeviceAddress vertexDataDeviceAddress;
         VkDeviceAddress indexDataDeviceAddress;
         std::vector<VkDeviceAddress> blasDeviceAddresses;
+        uint32 maxVertex;
+        uint32 primitiveCount;
     };
 
     class RAYCE_API_EXPORT AccelerationStructure

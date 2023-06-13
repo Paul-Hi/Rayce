@@ -27,7 +27,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureGeometry.geometry.triangles.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
         accelerationStructureGeometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
         accelerationStructureGeometry.geometry.triangles.vertexData   = { initData.vertexDataDeviceAddress };
-        accelerationStructureGeometry.geometry.triangles.maxVertex    = 3;
+        accelerationStructureGeometry.geometry.triangles.maxVertex    = initData.maxVertex;
         accelerationStructureGeometry.geometry.triangles.vertexStride = Vertex::getSize();
         accelerationStructureGeometry.geometry.triangles.indexType    = VK_INDEX_TYPE_UINT32;
         accelerationStructureGeometry.geometry.triangles.indexData    = { initData.indexDataDeviceAddress };
@@ -40,11 +40,9 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildGeometryInfo.geometryCount = 1;
         accelerationStructureBuildGeometryInfo.pGeometries   = &accelerationStructureGeometry;
 
-        const uint32 maxPrimitiveCount = 1;
-
         VkAccelerationStructureBuildSizesInfoKHR accelerationStructureBuildSizesInfo{};
         accelerationStructureBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-        pRTF->vkGetAccelerationStructureBuildSizesKHR(mVkLogicalDeviceRef, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &maxPrimitiveCount,
+        pRTF->vkGetAccelerationStructureBuildSizesKHR(mVkLogicalDeviceRef, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &initData.primitiveCount,
                                                       &accelerationStructureBuildSizesInfo);
 
         pStorageBuffer = std::make_unique<Buffer>(logicalDevice, accelerationStructureBuildSizesInfo.accelerationStructureSize,
@@ -76,7 +74,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildGeometryInfo.scratchData.deviceAddress = scratchBufferDeviceAddress;
 
         VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfo;
-        accelerationStructureBuildRangeInfo.primitiveCount                                          = 1;
+        accelerationStructureBuildRangeInfo.primitiveCount                                          = initData.primitiveCount;
         accelerationStructureBuildRangeInfo.primitiveOffset                                         = 0;
         accelerationStructureBuildRangeInfo.firstVertex                                             = 0;
         accelerationStructureBuildRangeInfo.transformOffset                                         = 0;
@@ -129,11 +127,9 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildGeometryInfo.geometryCount = 1;
         accelerationStructureBuildGeometryInfo.pGeometries   = &accelerationStructureGeometry;
 
-        const uint32 maxPrimitiveCount = 1;
-
         VkAccelerationStructureBuildSizesInfoKHR accelerationStructureBuildSizesInfo{};
         accelerationStructureBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-        pRTF->vkGetAccelerationStructureBuildSizesKHR(mVkLogicalDeviceRef, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &maxPrimitiveCount,
+        pRTF->vkGetAccelerationStructureBuildSizesKHR(mVkLogicalDeviceRef, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &initData.primitiveCount,
                                                       &accelerationStructureBuildSizesInfo);
 
         pStorageBuffer = std::make_unique<Buffer>(logicalDevice, accelerationStructureBuildSizesInfo.accelerationStructureSize,
@@ -165,7 +161,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildGeometryInfo.scratchData.deviceAddress = scratchBufferDeviceAddress;
 
         VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfo;
-        accelerationStructureBuildRangeInfo.primitiveCount                                          = 1;
+        accelerationStructureBuildRangeInfo.primitiveCount                                          = initData.primitiveCount;
         accelerationStructureBuildRangeInfo.primitiveOffset                                         = 0;
         accelerationStructureBuildRangeInfo.firstVertex                                             = 0;
         accelerationStructureBuildRangeInfo.transformOffset                                         = 0;

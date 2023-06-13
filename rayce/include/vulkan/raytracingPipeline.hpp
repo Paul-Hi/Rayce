@@ -22,9 +22,9 @@ namespace rayce
                            uint32 descriptorsInFlight);
         ~RaytracingPipeline();
 
-        VkDescriptorSetLayout getVkDescriptorSetLayout() const
+        const std::unique_ptr<class DescriptorSetLayout>& getVkDescriptorSetLayout() const
         {
-            return mVkDescriptorSetLayout;
+            return pDescriptorSetLayout;
         }
 
         VkPipelineLayout getVkPipelineLayout() const
@@ -37,10 +37,7 @@ namespace rayce
             return mVkPipeline;
         }
 
-        VkDescriptorSet getVkDescriptorSet(uint32 idx) const
-        {
-            return mVkDescriptorSets[idx];
-        }
+        VkDescriptorSet getVkDescriptorSet(uint32 idx) const;
 
         const std::unique_ptr<class Buffer>& getShaderBindingTableBuffer() const
         {
@@ -68,13 +65,14 @@ namespace rayce
         }
 
       private:
-        VkDescriptorSetLayout mVkDescriptorSetLayout;
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
         VkDevice mVkLogicalDeviceRef;
 
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayout;
+
         uint32 mDescriptorsInFlight;
-        std::vector<VkDescriptorSet> mVkDescriptorSets;
+        std::unique_ptr<class DescriptorSets> pDescriptorSets;
 
         std::unique_ptr<class ShaderModule> pRayGenShader;
         std::unique_ptr<class ShaderModule> pClosestHitShader;

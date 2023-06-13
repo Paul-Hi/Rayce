@@ -8,6 +8,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/macro.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/utils.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/imguiInterface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/immediateSubmit.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
@@ -21,6 +22,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/descriptorPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandBuffers.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/descriptorSets.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/semaphore.hpp
@@ -34,6 +36,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/deviceMemory.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/accelerationStructure.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/rtFunctions.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/descriptorSetLayout.hpp
 )
 
 set(PRIVATE_HEADERS
@@ -56,6 +59,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/descriptorPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandBuffers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/descriptorSets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/semaphore.cpp
@@ -68,6 +72,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/deviceMemory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/accelerationStructure.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/rtFunctions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/descriptorSetLayout.cpp
 )
 
 add_library(rayce
