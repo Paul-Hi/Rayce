@@ -214,7 +214,6 @@ void RayceApp::onFrameDraw()
 void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
     // raytracing
-
     VkImageSubresourceRange subresourceRange{};
     subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     subresourceRange.baseMipLevel   = 0;

@@ -65,6 +65,88 @@ namespace rayce
             return pSurface;
         }
 
+        const std::unique_ptr<class Swapchain>& getSwapchain() const
+        {
+            return pSwapchain;
+        }
+
+        const std::unique_ptr<class GraphicsPipeline>& getGraphicsPipeline() const
+        {
+            return pGraphicsPipeline;
+        }
+
+        const std::unique_ptr<class RaytracingPipeline>& getRaytracingPipeline() const
+        {
+            return pRaytracingPipeline;
+        }
+
+        const std::unique_ptr<class CommandPool>& getCommandPool() const
+        {
+            return pCommandPool;
+        }
+
+        const std::unique_ptr<class CommandBuffers>& getCommandBuffers() const
+        {
+            return pCommandBuffers;
+        }
+
+        const std::unique_ptr<class ImguiInterface>& getImguiInterface() const
+        {
+            return pImguiInterface;
+        }
+
+        const std::unique_ptr<class Geometry>& getGeometry() const
+        {
+            return pGeometry;
+        }
+
+        const std::vector<std::unique_ptr<class Framebuffer>>& getSwapchainFramebuffers() const
+        {
+            return mSwapchainFramebuffers;
+        }
+
+        const std::vector<std::unique_ptr<class AccelerationStructure>>& getBLAS() const
+        {
+            return mBLAS;
+        }
+
+        const std::unique_ptr<class AccelerationStructure>& getTLAS() const
+        {
+            return pTLAS;
+        }
+
+        const std::unique_ptr<class Image>& getRaytracingTargetImage() const
+        {
+            return pRaytracingTargetImage;
+        }
+
+        const std::unique_ptr<class ImageView>& getRaytracingTargetView() const
+        {
+            return pRaytracingTargetView;
+        }
+
+        const std::vector<std::unique_ptr<class Semaphore>>& getImageAvailableSemaphores() const
+        {
+            return mImageAvailableSemaphores;
+        }
+
+        const std::vector<std::unique_ptr<class Semaphore>>& getRenderFinishedSemaphores() const
+        {
+            return mRenderFinishedSemaphores;
+        }
+
+        const std::vector<std::unique_ptr<class Fence>>& getInFlightFences() const
+        {
+            return mInFlightFences;
+        }
+
+        uint32& getCurrentFrame()
+        {
+            return mCurrentFrame;
+        }
+
+        std::unique_ptr<class RTFunctions> pRTF;
+
         virtual bool onInitialize();
         virtual bool onShutdown();
         virtual void onUpdate();
@@ -102,8 +184,6 @@ namespace rayce
         std::vector<std::unique_ptr<class Semaphore>> mImageAvailableSemaphores;
         std::vector<std::unique_ptr<class Semaphore>> mRenderFinishedSemaphores;
         std::vector<std::unique_ptr<class Fence>> mInFlightFences;
-
-        std::unique_ptr<class RTFunctions> pRTF;
 
         uint32 mCurrentFrame;
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };

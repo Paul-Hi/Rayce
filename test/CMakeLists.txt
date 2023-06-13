@@ -19,14 +19,13 @@ target_compile_definitions(allTests
         RAYCE_TEST
 )
 
-#set_target_properties(allTests
-#    PROPERTIES
-#        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-#)
+enable_testing()
 
 target_link_libraries(allTests
-    gtest
-    gmock
     gtest_main
+    gmock_main
     rayce
 )
+
+include(GoogleTest)
+gtest_discover_tests(allTests)

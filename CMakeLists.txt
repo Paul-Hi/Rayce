@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.24)
 
 project(Rayce
     VERSION 1.0
@@ -22,7 +22,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 option(RAYCE_BUILD_DOC "Build documentation" ON)
-option(RAYCE_PROFILE "Enables profiling when build is Release!" OFF)
 option(RAYCE_BUILD_TESTS "Build Unit Tests" OFF)
 option(RAYCE_ENABLE_HARD_WARNINGS "Enables some compiler parameters. This should not be enabled, Rayce will NOT build." OFF)
 
@@ -40,11 +39,88 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+
+if(EXISTS "${LOC_PATH}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file).
+                Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+endif()
+
+# dependencies
+include(FetchContent)
+set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
+
 # Vulkan
 find_package(Vulkan REQUIRED FATAL_ERROR)
 
 if(Vulkan_FOUND)
     message(STATUS "Found Vulkan!")
+endif()
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
+
+# glfw
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw
+    GIT_TAG 7482de6071d21db77a7236155da44c172a7f6c9e
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON
+)
+set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
+set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
+set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
+set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
+FetchContent_MakeAvailable(glfw)
+message(STATUS "Added glfw in: " ${glfw_SOURCE_DIR})
+
+# imgui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui
+    GIT_TAG ef07ddf087c879baff8c0cac0ff1f40b7f0f060c
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON
+)
+FetchContent_MakeAvailable(imgui)
+add_library(imgui
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+)
+target_include_directories(imgui PUBLIC . ${glfw_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${imgui_SOURCE_DIR})
+target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)
+message(STATUS "Added dear imgui in: " ${imgui_SOURCE_DIR})
+
+# Eigen
+FetchContent_Declare(eigen3
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3147391d946bb4b6c68edd901f2add6ac1f31f8c
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON
+)
+FetchContent_MakeAvailable(eigen3)
+unset(BUILD_TESTING CACHE)
+message(STATUS "Added Eigen in: " ${eigen3_SOURCE_DIR})
+
+if(RAYCE_BUILD_TESTS)
+    # googletest
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG b796f7d44681514f58a683a3a71ff17c94edb0c1
+        GIT_SHALLOW ON
+        GIT_PROGRESS ON
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    message(STATUS "Added googletest: " ${googletest_SOURCE_DIR})
+    add_subdirectory(test)
 endif()
 
 if(RAYCE_BUILD_DOC)
@@ -58,40 +134,8 @@ if(RAYCE_BUILD_DOC)
     endif()
 endif()
 
-file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
-
-if(EXISTS "${LOC_PATH}")
-    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file).
-                Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
-endif()
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
-
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "Build the GLFW documentation")
-add_subdirectory(dependencies/glfw)
-message(STATUS "Added glfw.")
-
-add_subdirectory(dependencies/imgui)
-message(STATUS "Added dear imgui.")
-
-if(RAYCE_PROFILE)
-    add_subdirectory(dependencies/tracy)
-    message(STATUS "Added tracy.")
-endif()
-
-if(RAYCE_BUILD_TESTS)
-    if(WIN32)
-        set(gtest_force_shared_crt ON CACHE BOOL "Use shared (DLL) run-time lib even when Google Test is built as static lib.")
-    endif()
-
-    add_subdirectory(dependencies/googletest)
-    message(STATUS "Added googletest.")
-    add_subdirectory(test)
-endif()
-
 add_subdirectory(assets)
 
 add_subdirectory(rayce)
 
-# spdlog_enable_warnings(rayce)
 add_subdirectory(rayceGui)

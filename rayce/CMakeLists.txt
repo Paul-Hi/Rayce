@@ -9,6 +9,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayceApp.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/rayce.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/utils.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/scene.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/imguiInterface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/immediateSubmit.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/window.hpp
@@ -90,13 +91,10 @@ add_library(rayce::rayce ALIAS rayce)
 target_include_directories(rayce
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${eigen3_SOURCE_DIR}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-target_include_directories(rayce SYSTEM
-    PUBLIC
-    ${CMAKE_SOURCE_DIR}/dependencies/eigen
+    ${imgui_SOURCE_DIR}
 )
 
 set_target_properties(rayce
@@ -109,19 +107,10 @@ set_target_properties(rayce
 target_link_libraries(rayce
     PUBLIC
     Vulkan::Vulkan
-
-    # spdlog::spdlog
-    imgui
-
-    # tinyfd
-    $<$<CONFIG:Release>:$<$<BOOL:${RAYCE_PROFILE}>:tracy>>
-
-    # $<$<BOOL:${RAYCE_BUILD_TESTS}>:glad>
-    # tinygltf
-    # PRIVATE
+    Eigen3::Eigen
     glfw
-
-    # stb
+    PRIVATE
+    imgui
 )
 
 target_compile_definitions(rayce

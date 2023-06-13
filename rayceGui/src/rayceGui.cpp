@@ -40,6 +40,7 @@ void RayceGui::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
 void RayceGui::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
+    // Only call provided stuff - we do not want to share imgui context...
     RayceApp::onImGuiRender(commandBuffer, imageIndex);
 }
 
