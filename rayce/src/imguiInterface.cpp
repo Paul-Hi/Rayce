@@ -25,23 +25,23 @@ ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const 
     , mSwapchainExtent(swapchain->getSwapExtent())
 {
     // Copied from example - lower count
-    VkDescriptorPoolSize pool_sizes[]    = { { VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 10 },
-                                             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
-                                             { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-                                             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
-                                             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 10 },
-                                             { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 10 } };
-    VkDescriptorPoolCreateInfo pool_info = {};
-    pool_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets                    = 10 * std::size(pool_sizes);
-    pool_info.poolSizeCount              = static_cast<uint32>(std::size(pool_sizes));
-    pool_info.pPoolSizes                 = pool_sizes;
+    VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 10 },
+                                          { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
+                                          { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+                                          { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
+                                          { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 10 },
+                                          { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 10 } };
+    VkDescriptorPoolCreateInfo pool_info{};
+    pool_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets       = 10 * std::size(pool_sizes);
+    pool_info.poolSizeCount = static_cast<uint32>(std::size(pool_sizes));
+    pool_info.pPoolSizes    = pool_sizes;
     RAYCE_CHECK_VK(vkCreateDescriptorPool(mLVkLogicalDeviceRef, &pool_info, nullptr, &mVkDescriptorPool), "Creating Imgui descriptor pool failed!");
 
     pRenderPass = std::make_unique<RenderPass>(logicalDevice, swapchain, VK_ATTACHMENT_LOAD_OP_LOAD);
@@ -69,16 +69,16 @@ ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const 
 
     ImGui_ImplGlfw_InitForVulkan(nativeWindowHandle, true);
 
-    ImGui_ImplVulkan_InitInfo initInfo = {};
-    initInfo.Instance                  = instance->getVkInstance();
-    initInfo.PhysicalDevice            = logicalDevice->getVkPhysicalDevice();
-    initInfo.Device                    = mLVkLogicalDeviceRef;
-    initInfo.Queue                     = logicalDevice->getVkGraphicsQueue();
-    initInfo.DescriptorPool            = mVkDescriptorPool;
-    initInfo.Subpass                   = 0;
-    initInfo.MinImageCount             = 3;
-    initInfo.ImageCount                = 3;
-    initInfo.MSAASamples               = VK_SAMPLE_COUNT_1_BIT;
+    ImGui_ImplVulkan_InitInfo initInfo{};
+    initInfo.Instance       = instance->getVkInstance();
+    initInfo.PhysicalDevice = logicalDevice->getVkPhysicalDevice();
+    initInfo.Device         = mLVkLogicalDeviceRef;
+    initInfo.Queue          = logicalDevice->getVkGraphicsQueue();
+    initInfo.DescriptorPool = mVkDescriptorPool;
+    initInfo.Subpass        = 0;
+    initInfo.MinImageCount  = 3;
+    initInfo.ImageCount     = 3;
+    initInfo.MSAASamples    = VK_SAMPLE_COUNT_1_BIT;
 
     ImGui_ImplVulkan_Init(&initInfo, pRenderPass->getVkRenderPass());
 
@@ -105,18 +105,18 @@ void ImguiInterface::begin()
     ImGui::NewFrame();
 }
 
-void ImguiInterface::end(VkCommandBuffer commandBuffer, const std::unique_ptr<Framebuffer>& framebuffer)
+void ImguiInterface::end(VkCommandBuffer commandBuffer, const std::unique_ptr<Framebuffer>& framebuffer, const std::vector<VkClearValue>& clearValues)
 {
     ImGui::Render();
 
-    VkRenderPassBeginInfo renderPassInfo = {};
-    renderPassInfo.sType                 = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass            = pRenderPass->getVkRenderPass();
-    renderPassInfo.framebuffer           = framebuffer->getVkFramebuffer();
-    renderPassInfo.renderArea.offset     = { 0, 0 };
-    renderPassInfo.renderArea.extent     = mSwapchainExtent;
-    renderPassInfo.clearValueCount       = 0;
-    renderPassInfo.pClearValues          = nullptr;
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass        = pRenderPass->getVkRenderPass();
+    renderPassInfo.framebuffer       = framebuffer->getVkFramebuffer();
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    renderPassInfo.renderArea.extent = mSwapchainExtent;
+    renderPassInfo.clearValueCount   = static_cast<uint32>(clearValues.size());
+    renderPassInfo.pClearValues      = clearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);

@@ -5,17 +5,18 @@
 /// @copyright Apache License 2.0
 
 #include <vulkan/device.hpp>
+#include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
 
 using namespace rayce;
 
-ImageView::ImageView(const std::unique_ptr<Device>& logicalDevice, VkImage image, VkFormat format, VkImageAspectFlagBits aspectMask)
+ImageView::ImageView(const std::unique_ptr<Device>& logicalDevice, Image& image, VkFormat format, VkImageAspectFlagBits aspectMask)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
-    , mVkBaseImageRef(image)
+    , mVkBaseImageRef(image.getVkImage())
 {
     VkImageViewCreateInfo createInfo{};
     createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfo.image    = image;
+    createInfo.image    = mVkBaseImageRef;
     createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     createInfo.format   = format;
 

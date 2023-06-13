@@ -86,16 +86,24 @@ namespace rayce
         std::unique_ptr<class Device> pDevice;
         std::unique_ptr<class Swapchain> pSwapchain;
         std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline;
+        std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
         std::unique_ptr<class CommandPool> pCommandPool;
         std::unique_ptr<class CommandBuffers> pCommandBuffers;
         std::unique_ptr<class ImguiInterface> pImguiInterface;
         std::unique_ptr<class Geometry> pGeometry;
-
         std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
+
+        std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
+        std::unique_ptr<class AccelerationStructure> pTLAS;
+
+        std::unique_ptr<class Image> pRaytracingTargetImage;
+        std::unique_ptr<class ImageView> pRaytracingTargetView;
 
         std::vector<std::unique_ptr<class Semaphore>> mImageAvailableSemaphores;
         std::vector<std::unique_ptr<class Semaphore>> mRenderFinishedSemaphores;
         std::vector<std::unique_ptr<class Fence>> mInFlightFences;
+
+        std::unique_ptr<class RTFunctions> pRTF;
 
         uint32 mCurrentFrame;
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };

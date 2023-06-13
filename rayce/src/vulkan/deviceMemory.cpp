@@ -9,7 +9,7 @@
 
 using namespace rayce;
 
-DeviceMemory::DeviceMemory(const std::unique_ptr<Device>& logicalDevice, const ptr_size size, const uint32 memoryTypeBits, const VkMemoryAllocateFlags allocateFLags,
+DeviceMemory::DeviceMemory(const std::unique_ptr<Device>& logicalDevice, const ptr_size size, const uint32 memoryTypeBits, const VkMemoryAllocateFlags allocateFlags,
                            const VkMemoryPropertyFlags propertyFlags)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
@@ -22,6 +22,12 @@ DeviceMemory::DeviceMemory(const std::unique_ptr<Device>& logicalDevice, const p
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.allocationSize  = size;
     allocateInfo.memoryTypeIndex = typeIdx;
+
+    VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
+    memoryAllocateFlagsInfo.sType                     = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+    memoryAllocateFlagsInfo.flags                     = allocateFlags;
+
+    allocateInfo.pNext = &memoryAllocateFlagsInfo;
 
     RAYCE_CHECK_VK(vkAllocateMemory(mVkLogicalDeviceRef, &allocateInfo, nullptr, &mVkDeviceMemory), "Allocating device memory failed!");
 }

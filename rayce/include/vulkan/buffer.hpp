@@ -33,12 +33,14 @@ namespace rayce
             return pDeviceMemory;
         }
 
+        VkDeviceAddress getDeviceAddress() const;
+
         void allocateMemory(const std::unique_ptr<class Device>& logicalDevice, const VkMemoryAllocateFlags allocateFlags, const VkMemoryPropertyFlags propertyFlags);
 
-        void fillFrom(const std::unique_ptr<class Device>& logicalDevice, std::unique_ptr<CommandPool>& commandPool, const Buffer& src, VkDeviceSize size);
+        void fillFrom(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const Buffer& src, VkDeviceSize size);
 
         template <class T>
-        static void uploadDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, std::unique_ptr<CommandPool>& commandPool, Buffer& dstBuffer, const std::vector<T>& data)
+        static void uploadDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Buffer& dstBuffer, const std::vector<T>& data)
         {
             const ptr_size size = sizeof(data[0]) * data.size();
 

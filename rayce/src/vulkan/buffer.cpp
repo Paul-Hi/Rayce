@@ -40,7 +40,17 @@ void Buffer::allocateMemory(const std::unique_ptr<Device>& logicalDevice, const 
     RAYCE_CHECK_VK(vkBindBufferMemory(mVkLogicalDeviceRef, mVkBuffer, pDeviceMemory->getVkDeviceMemory(), 0), "Binding buffer device memory failed!");
 }
 
-void Buffer::fillFrom(const std::unique_ptr<Device>& logicalDevice, std::unique_ptr<class CommandPool>& commandPool, const Buffer& srcBuffer, VkDeviceSize size)
+VkDeviceAddress Buffer::getDeviceAddress() const
+{
+    VkBufferDeviceAddressInfo info{};
+    info.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    info.pNext  = nullptr;
+    info.buffer = mVkBuffer;
+
+    return vkGetBufferDeviceAddress(mVkLogicalDeviceRef, &info);
+}
+
+void Buffer::fillFrom(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const Buffer& srcBuffer, VkDeviceSize size)
 {
     ImmediateSubmit::Execute(logicalDevice, commandPool,
                              [&](VkCommandBuffer commandBuffer)

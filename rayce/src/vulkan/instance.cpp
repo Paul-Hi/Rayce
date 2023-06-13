@@ -21,7 +21,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsCallback(VkDebugUtilsMessageSeve
     return VK_FALSE;
 }
 
-static VkDebugUtilsMessengerCreateInfoEXT sDebugUtilsCreateInfo = {
+static VkDebugUtilsMessengerCreateInfoEXT sDebugUtilsCreateInfo{
     VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
     nullptr,
     0,
@@ -76,7 +76,7 @@ void Instance::createVkInstance(bool enableValidationLayers, std::vector<const c
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName        = "Rayce";
     appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion         = VK_API_VERSION_1_0;
+    appInfo.apiVersion         = VK_API_VERSION_1_2;
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -89,7 +89,7 @@ void Instance::createVkInstance(bool enableValidationLayers, std::vector<const c
 
     if (enableRequestedValidationLayers)
     {
-        mEnabledValidationLayers = validationLayers;
+        mEnabledValidationLayers       = validationLayers;
         createInfo.enabledLayerCount   = static_cast<uint32_t>(mEnabledValidationLayers.size());
         createInfo.ppEnabledLayerNames = mEnabledValidationLayers.data();
 

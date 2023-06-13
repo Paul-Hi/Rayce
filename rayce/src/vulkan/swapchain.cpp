@@ -5,12 +5,13 @@
 /// @copyright Apache License 2.0
 
 #include <vulkan/device.hpp>
+#include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
 #include <vulkan/swapchain.hpp>
 
 using namespace rayce;
 
-Swapchain::Swapchain( const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle)
+Swapchain::Swapchain(const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
     VkPhysicalDevice physicalDevice = logicalDevice->getVkPhysicalDevice();
@@ -45,20 +46,20 @@ Swapchain::Swapchain( const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR
         imageCount = capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR createInfo = {};
-    createInfo.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface                  = surface;
-    createInfo.minImageCount            = imageCount;
-    createInfo.imageFormat              = mFormat.format;
-    createInfo.imageColorSpace          = mFormat.colorSpace;
-    createInfo.imageExtent              = mSwapExtent;
-    createInfo.imageArrayLayers         = 1;
-    createInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    createInfo.preTransform             = capabilities.currentTransform;
-    createInfo.compositeAlpha           = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode              = mPresentMode;
-    createInfo.clipped                  = VK_TRUE;
-    createInfo.oldSwapchain             = nullptr;
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface          = surface;
+    createInfo.minImageCount    = imageCount;
+    createInfo.imageFormat      = mFormat.format;
+    createInfo.imageColorSpace  = mFormat.colorSpace;
+    createInfo.imageExtent      = mSwapExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    createInfo.preTransform     = capabilities.currentTransform;
+    createInfo.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode      = mPresentMode;
+    createInfo.clipped          = VK_TRUE;
+    createInfo.oldSwapchain     = nullptr;
 
     if (logicalDevice->getGraphicsFamilyIndex() != logicalDevice->getPresentFamilyIndex())
     {
@@ -150,6 +151,7 @@ void Swapchain::createSwapchainImageViews(const std::unique_ptr<Device>& logical
 {
     for (const VkImage& image : swapchainImages)
     {
-        mSwapchainImageViews.push_back(std::make_unique<ImageView>(logicalDevice, image, mFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
+        Image wrapped(logicalDevice, image);
+        mSwapchainImageViews.push_back(std::make_unique<ImageView>(logicalDevice, wrapped, mFormat.format, VK_IMAGE_ASPECT_COLOR_BIT));
     }
 }

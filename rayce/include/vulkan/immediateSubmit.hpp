@@ -20,7 +20,7 @@ namespace rayce
         {
             CommandBuffers commandBuffers(logicalDevice, commandPool, 1);
 
-            VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+            VkCommandBufferBeginInfo commandBufferBeginInfo{};
             commandBufferBeginInfo.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             commandBufferBeginInfo.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
@@ -30,7 +30,7 @@ namespace rayce
 
             vkEndCommandBuffer(commandBuffers[0]);
 
-            VkSubmitInfo submitInfo       = {};
+            VkSubmitInfo submitInfo{};
             submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             submitInfo.commandBufferCount = 1;
             submitInfo.pCommandBuffers    = &commandBuffers[0];

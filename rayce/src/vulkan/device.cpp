@@ -55,11 +55,10 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     physicalDeviceFeatures.geometryShader = VK_TRUE;
 
     // Swapchain has to be enabled.
-    // Adding required extensions for raytracing here.
-    std::vector<const char*> deviceExtensions = { // Swapchain
-                                                  VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
+    // Swapchain
+    std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
+    // Adding required extensions for raytracing here.
     if (raytracingSupported)
     {
         // Basic raytracing extension
@@ -75,9 +74,32 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
         deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
     }
 
+    // additional device features for raytracing
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
+    bufferDeviceAddressFeatures.sType                                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bufferDeviceAddressFeatures.pNext                                       = nullptr;
+    bufferDeviceAddressFeatures.bufferDeviceAddress                         = VK_TRUE;
+
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+    indexingFeatures.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexingFeatures.pNext                                      = &bufferDeviceAddressFeatures;
+    indexingFeatures.runtimeDescriptorArray                     = VK_TRUE;
+    indexingFeatures.shaderSampledImageArrayNonUniformIndexing  = VK_TRUE;
+
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+    accelerationStructureFeatures.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    accelerationStructureFeatures.pNext                                            = &indexingFeatures;
+    accelerationStructureFeatures.accelerationStructure                            = VK_TRUE;
+
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures{};
+    rayTracingFeatures.sType                                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    rayTracingFeatures.pNext                                         = &accelerationStructureFeatures;
+    rayTracingFeatures.rayTracingPipeline                            = VK_TRUE;
+
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.pQueueCreateInfos    = queueCreateInfos.data();
+    createInfo.pNext                = raytracingSupported ? &rayTracingFeatures : nullptr;
     createInfo.queueCreateInfoCount = static_cast<uint32>(queueCreateInfos.size());
     createInfo.pEnabledFeatures     = &physicalDeviceFeatures;
 

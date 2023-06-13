@@ -18,7 +18,7 @@ namespace rayce
       public:
         DISABLE_COPY_MOVE_VK(DeviceMemory)
 
-        DeviceMemory(const std::unique_ptr<class Device>& logicalDevice, const ptr_size size, const uint32 memoryTypeBits, const VkMemoryAllocateFlags allocateFLags,
+        DeviceMemory(const std::unique_ptr<class Device>& logicalDevice, const ptr_size size, const uint32 memoryTypeBits, const VkMemoryAllocateFlags allocateFlags,
                      const VkMemoryPropertyFlags propertyFlags);
         ~DeviceMemory();
 

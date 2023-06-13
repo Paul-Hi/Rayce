@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <imguiInterface.hpp>
 #include <rayceApp.hpp>
+#include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandBuffers.hpp>
 #include <vulkan/commandPool.hpp>
@@ -15,8 +16,13 @@
 #include <vulkan/framebuffer.hpp>
 #include <vulkan/geometry.hpp>
 #include <vulkan/graphicsPipeline.hpp>
+#include <vulkan/image.hpp>
+#include <vulkan/imageMemoryBarrier.hpp>
+#include <vulkan/imageView.hpp>
 #include <vulkan/instance.hpp>
+#include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/renderPass.hpp>
+#include <vulkan/rtFunctions.hpp>
 #include <vulkan/semaphore.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/surface.hpp>
@@ -44,30 +50,13 @@ RayceApp::RayceApp(const RayceOptions& options)
     mPhysicalDevice = pickPhysicalDevice(raytracingSupported);
 
     pDevice = std::make_unique<Device>(mPhysicalDevice, pSurface->getVkSurface(), pInstance->getEnabledValidationLayers(), raytracingSupported);
-
-    pSwapchain = std::make_unique<Swapchain>(pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle());
-
-    pGraphicsPipeline = std::make_unique<GraphicsPipeline>(pDevice, pSwapchain, false);
-
-    int32 swapchainImageCount = 0;
-    for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
-    {
-        swapchainImageCount++;
-        mSwapchainFramebuffers.push_back(std::make_unique<Framebuffer>(pDevice, pSwapchain, pGraphicsPipeline->getRenderPass(), imageView));
-
-        mImageAvailableSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
-        mRenderFinishedSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
-        mInFlightFences.push_back(std::make_unique<Fence>(pDevice, true));
-    }
+    pRTF    = std::make_unique<RTFunctions>(pDevice);
 
     pCommandPool = std::make_unique<CommandPool>(pDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    // one command buffer per swapchain image
-    pCommandBuffers = std::make_unique<CommandBuffers>(pDevice, pCommandPool, swapchainImageCount);
-
-    pImguiInterface = std::make_unique<ImguiInterface>(pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle());
-
     RAYCE_CHECK(onInitialize(), "onInitialize() failed!");
+
+    recreateSwapchain();
 
     RAYCE_LOG_INFO("Created RayceApp!");
 }
@@ -96,21 +85,36 @@ bool RayceApp::run()
 bool RayceApp::onInitialize()
 {
     // Test geometry
-    const std::vector<Vertex> vertices = {
-        { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } }, { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } }, { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } }
-    };
-    const std::vector<uint32> indices = { 0, 2, 1, 2, 0, 3 };
+    const std::vector<Vertex> vertices = { { { 0.25f, 0.25f, 0.0f } }, { { 0.75f, 0.25f, 0.0f } }, { { 0.5f, 0.75f, 0.0f } } };
+    const std::vector<uint32> indices  = { 0, 1, 2 };
 
-    std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(pDevice, sizeof(Vertex) * vertices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(pDevice, sizeof(uint32) * indices.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(pDevice, sizeof(Vertex) * vertices.size(),
+                                                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+    std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(pDevice, sizeof(uint32) * indices.size(),
+                                                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
 
-    vertexBuffer->allocateMemory(pDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    indexBuffer->allocateMemory(pDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vertexBuffer->allocateMemory(pDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    indexBuffer->allocateMemory(pDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     Buffer::uploadDataWithStagingBuffer(pDevice, pCommandPool, *vertexBuffer, vertices);
     Buffer::uploadDataWithStagingBuffer(pDevice, pCommandPool, *indexBuffer, indices);
 
     pGeometry = std::make_unique<Geometry>(std::move(vertexBuffer), vertices.size(), std::move(indexBuffer), indices.size());
+
+    AccelerationStructureInitData accelerationStructureInitData{};
+    accelerationStructureInitData.type                    = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    accelerationStructureInitData.vertexDataDeviceAddress = pGeometry->getVertexBuffer()->getDeviceAddress();
+    accelerationStructureInitData.indexDataDeviceAddress  = pGeometry->getIndexBuffer()->getDeviceAddress();
+    mBLAS.push_back(std::make_unique<AccelerationStructure>(pDevice, pCommandPool, accelerationStructureInitData));
+
+    accelerationStructureInitData.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
+    {
+        accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());
+    }
+    pTLAS = std::make_unique<AccelerationStructure>(pDevice, pCommandPool, accelerationStructureInitData);
 
     return true;
 }
@@ -154,7 +158,8 @@ void RayceApp::onFrameDraw()
 
     pImguiInterface->begin();
     onImGuiRender(commandBuffer, imageIndex);
-    pImguiInterface->end(commandBuffer, mSwapchainFramebuffers[imageIndex]);
+    std::vector<VkClearValue> clearValues; //{ { { 0.1f, 0.1f, 0.1f, 1.0f } } };
+    pImguiInterface->end(commandBuffer, mSwapchainFramebuffers[imageIndex], clearValues);
 
     pCommandBuffers->endCommandBuffer(imageIndex);
 
@@ -203,30 +208,91 @@ void RayceApp::onFrameDraw()
 
 void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
-    std::array<VkClearValue, 1> clearValues = {};
-    clearValues[0].color                    = { { 0.1f, 0.1f, 0.1f, 1.0f } };
+    // raytracing
 
-    VkRenderPassBeginInfo renderPassBeginInfo{};
-    renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass        = pGraphicsPipeline->getRenderPass()->getVkRenderPass();
-    renderPassBeginInfo.framebuffer       = mSwapchainFramebuffers[imageIndex]->getVkFramebuffer();
-    renderPassBeginInfo.renderArea.offset = { 0, 0 };
-    renderPassBeginInfo.renderArea.extent = pSwapchain->getSwapExtent();
-    renderPassBeginInfo.clearValueCount   = static_cast<uint32>(clearValues.size());
-    renderPassBeginInfo.pClearValues      = clearValues.data();
+    VkImageSubresourceRange subresourceRange{};
+    subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceRange.baseMipLevel   = 0;
+    subresourceRange.levelCount     = 1;
+    subresourceRange.baseArrayLayer = 0;
+    subresourceRange.layerCount     = 1;
 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    {
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pGraphicsPipeline->getVkPipeline());
+    const std::vector<std::unique_ptr<ImageView>>& swapchainImageViews = pSwapchain->getImageViews();
+    const VkImage swapchainImage                                       = swapchainImageViews[imageIndex]->getVkImage();
+    const VkImage rtImage                                              = pRaytracingTargetImage->getVkImage();
 
-        VkBuffer vertexBuffers[] = { pGeometry->getVertexBuffer()->getVkBuffer() };
-        VkDeviceSize offsets[]   = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, pGeometry->getIndexBuffer()->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    ImageMemoryBarrier::Create(commandBuffer, rtImage, subresourceRange, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
-        vkCmdDrawIndexed(commandBuffer, pGeometry->getIndexCount(), 1, 0, 0, 0);
-    }
-    vkCmdEndRenderPass(commandBuffer);
+    const uint32 alignedHandleSize = pRaytracingPipeline->getAlignedHandleSize();
+
+    const std::unique_ptr<Buffer>& shaderBindingTableBuffer = pRaytracingPipeline->getShaderBindingTableBuffer();
+
+    VkStridedDeviceAddressRegionKHR raygenEntry{};
+    raygenEntry.deviceAddress = pRaytracingPipeline->getRayGenAddress();
+    raygenEntry.stride        = alignedHandleSize;
+    raygenEntry.size          = alignedHandleSize;
+
+    VkStridedDeviceAddressRegionKHR hitEntry{};
+    hitEntry.deviceAddress = pRaytracingPipeline->getClosestHitAddress();
+    hitEntry.stride        = alignedHandleSize;
+    hitEntry.size          = alignedHandleSize;
+
+    VkStridedDeviceAddressRegionKHR missEntry{};
+    missEntry.deviceAddress = pRaytracingPipeline->getMissAddress();
+    missEntry.stride        = alignedHandleSize;
+    missEntry.size          = alignedHandleSize;
+
+    VkStridedDeviceAddressRegionKHR callableEntry{};
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipeline());
+    VkDescriptorSet rtDescriptorSet = pRaytracingPipeline->getVkDescriptorSet(imageIndex);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, 1, &rtDescriptorSet, 0, 0);
+
+    VkExtent2D extent = pSwapchain->getSwapExtent();
+    pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
+
+    // copy image
+
+    ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    ImageMemoryBarrier::Create(commandBuffer, rtImage, subresourceRange, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.srcOffset      = { 0, 0, 0 };
+    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.dstOffset      = { 0, 0, 0 };
+    copyRegion.extent         = { extent.width, extent.height, 1 };
+    vkCmdCopyImage(commandBuffer, rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+    ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    // UI rasterization is done later as overlay
+
+    // std::array<VkClearValue, 1> clearValues = {};
+    // clearValues[0].color                    = { { 0.1f, 0.1f, 0.1f, 1.0f } };
+
+    // VkRenderPassBeginInfo renderPassBeginInfo{};
+    // renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    // renderPassBeginInfo.renderPass        = pGraphicsPipeline->getRenderPass()->getVkRenderPass();
+    // renderPassBeginInfo.framebuffer       = mSwapchainFramebuffers[imageIndex]->getVkFramebuffer();
+    // renderPassBeginInfo.renderArea.offset = { 0, 0 };
+    // renderPassBeginInfo.renderArea.extent = pSwapchain->getSwapExtent();
+    // renderPassBeginInfo.clearValueCount   = static_cast<uint32>(clearValues.size());
+    // renderPassBeginInfo.pClearValues      = clearValues.data();
+
+    // vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    //{
+    //     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pGraphicsPipeline->getVkPipeline());
+    //
+    //    //    VkBuffer vertexBuffers[] = { pGeometry->getVertexBuffer()->getVkBuffer() };
+    //    VkDeviceSize offsets[]   = { 0 };
+    //    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    //    vkCmdBindIndexBuffer(commandBuffer, pGeometry->getIndexBuffer()->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    //
+    //    //    vkCmdDrawIndexed(commandBuffer, pGeometry->getIndexCount(), 1, 0, 0, 0);
+    //}
+    // vkCmdEndRenderPass(commandBuffer);
 }
 
 void RayceApp::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
@@ -379,6 +445,14 @@ void RayceApp::recreateSwapchain()
         mInFlightFences.push_back(std::make_unique<Fence>(pDevice, true));
     }
 
+    VkFormat format        = pSwapchain->getSurfaceFormat().format;
+    pRaytracingTargetImage = std::make_unique<Image>(pDevice, pSwapchain->getSwapExtent(), format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    pRaytracingTargetImage->allocateMemory(pDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    pRaytracingTargetView = std::make_unique<ImageView>(pDevice, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
+    pRaytracingPipeline.reset(new RaytracingPipeline(pDevice, pTLAS, pRaytracingTargetView, swapchainImageCount));
+
+    // one command buffer per swapchain image
     pCommandBuffers.reset(new CommandBuffers(pDevice, pCommandPool, swapchainImageCount));
     pImguiInterface.reset(new ImguiInterface(pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle()));
 }

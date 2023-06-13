@@ -16,12 +16,12 @@ namespace rayce
     class RAYCE_API_EXPORT ImguiInterface
     {
       public:
-        ImguiInterface(const std::unique_ptr<class Instance>& instance, const std::unique_ptr<class Device>& logicalDevice,
-                       const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain, GLFWwindow* nativeWindowHandle);
+        ImguiInterface(const std::unique_ptr<class Instance>& instance, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool,
+                       const std::unique_ptr<class Swapchain>& swapchain, GLFWwindow* nativeWindowHandle);
         ~ImguiInterface();
 
         void begin();
-        void end(VkCommandBuffer commandBuffer, const std::unique_ptr<class Framebuffer>& framebuffer);
+        void end(VkCommandBuffer commandBuffer, const std::unique_ptr<class Framebuffer>& framebuffer, const std::vector<VkClearValue>& clearValues);
 
         void platformWindows();
 

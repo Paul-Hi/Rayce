@@ -12,7 +12,7 @@ using namespace rayce;
 Fence::Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSignaled)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
-    VkFenceCreateInfo fenceCreateInfo = {};
+    VkFenceCreateInfo fenceCreateInfo{};
     fenceCreateInfo.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags             = createSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
 

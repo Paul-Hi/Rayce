@@ -13,7 +13,7 @@
 
 using namespace rayce;
 
-GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, bool wireframe)
+GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<Swapchain>& swapchain, bool wireframe)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
     // Dynamic state
@@ -27,7 +27,7 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
 
     // vertex input state - will be provided by assets
     VkVertexInputBindingDescription bindingDescription                    = Vertex::getVertexInputBindingDescription();
-    std::array<VkVertexInputAttributeDescription, 2> attributeDescription = Vertex::getVertexInputAttributeDescription();
+    std::array<VkVertexInputAttributeDescription, 1> attributeDescription = Vertex::getVertexInputAttributeDescription();
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;
@@ -64,18 +64,18 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
     viewportStateCreateInfo.pScissors     = &scissor;
 
     // rasterization state setup
-    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {};
-    rasterizationStateCreateInfo.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizationStateCreateInfo.depthClampEnable                       = VK_FALSE;
-    rasterizationStateCreateInfo.rasterizerDiscardEnable                = VK_FALSE;
-    rasterizationStateCreateInfo.polygonMode                            = wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-    rasterizationStateCreateInfo.lineWidth                              = 1.0f;
-    rasterizationStateCreateInfo.cullMode                               = VK_CULL_MODE_BACK_BIT;
-    rasterizationStateCreateInfo.frontFace                              = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizationStateCreateInfo.depthBiasEnable                        = VK_FALSE;
-    rasterizationStateCreateInfo.depthBiasConstantFactor                = 0.0f;
-    rasterizationStateCreateInfo.depthBiasClamp                         = 0.0f;
-    rasterizationStateCreateInfo.depthBiasSlopeFactor                   = 0.0f;
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
+    rasterizationStateCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStateCreateInfo.depthClampEnable        = VK_FALSE;
+    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationStateCreateInfo.polygonMode             = wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+    rasterizationStateCreateInfo.lineWidth               = 1.0f;
+    rasterizationStateCreateInfo.cullMode                = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizationStateCreateInfo.depthBiasEnable         = VK_FALSE;
+    rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
+    rasterizationStateCreateInfo.depthBiasClamp          = 0.0f;
+    rasterizationStateCreateInfo.depthBiasSlopeFactor    = 0.0f;
 
     // multisample state setup - for now disabled
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
@@ -88,17 +88,17 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
     multisampleStateCreateInfo.alphaToOneEnable      = VK_FALSE;
 
     // depth stencil setup
-    VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = {};
-    depthStencilStateCreateInfo.sType                                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencilStateCreateInfo.depthTestEnable                       = VK_TRUE;
-    depthStencilStateCreateInfo.depthWriteEnable                      = VK_TRUE;
-    depthStencilStateCreateInfo.depthCompareOp                        = VK_COMPARE_OP_LESS;
-    depthStencilStateCreateInfo.depthBoundsTestEnable                 = VK_FALSE;
-    depthStencilStateCreateInfo.minDepthBounds                        = 0.0f;
-    depthStencilStateCreateInfo.maxDepthBounds                        = 1.0f;
-    depthStencilStateCreateInfo.stencilTestEnable                     = VK_FALSE;
-    depthStencilStateCreateInfo.front                                 = {};
-    depthStencilStateCreateInfo.back                                  = {};
+    VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
+    depthStencilStateCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilStateCreateInfo.depthTestEnable       = VK_TRUE;
+    depthStencilStateCreateInfo.depthWriteEnable      = VK_TRUE;
+    depthStencilStateCreateInfo.depthCompareOp        = VK_COMPARE_OP_LESS;
+    depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+    depthStencilStateCreateInfo.minDepthBounds        = 0.0f;
+    depthStencilStateCreateInfo.maxDepthBounds        = 1.0f;
+    depthStencilStateCreateInfo.stencilTestEnable     = VK_FALSE;
+    depthStencilStateCreateInfo.front                 = {};
+    depthStencilStateCreateInfo.back                  = {};
 
     // blend state per attachment - for now only one...
     VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
@@ -161,7 +161,7 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<class Device>& logicalD
     pipelineCreateInfo.basePipelineHandle  = VK_NULL_HANDLE;
     pipelineCreateInfo.basePipelineIndex   = -1;
 
-    RAYCE_CHECK_VK(vkCreateGraphicsPipelines(mVkLogicalDeviceRef, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mVkPipeline), "Creating pipeline failed!");
+    RAYCE_CHECK_VK(vkCreateGraphicsPipelines(mVkLogicalDeviceRef, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mVkPipeline), "Creating graphics pipeline failed!");
 
     RAYCE_LOG_INFO("Created graphics pipeline!");
 }

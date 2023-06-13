@@ -15,8 +15,11 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/device.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/framebuffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/renderPass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/image.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/imageView.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/imageMemoryBarrier.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandPool.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/descriptorPool.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/commandBuffers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/surface.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/swapchain.hpp
@@ -24,10 +27,13 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/fence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/shaderModule.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/graphicsPipeline.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/raytracingPipeline.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/vertex.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/geometry.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/buffer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/deviceMemory.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/accelerationStructure.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/vulkan/rtFunctions.hpp
 )
 
 set(PRIVATE_HEADERS
@@ -46,7 +52,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/framebuffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/renderPass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/imageView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/image.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandPool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/descriptorPool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/commandBuffers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/swapchain.cpp
@@ -54,9 +62,12 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/fence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/shaderModule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/graphicsPipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/raytracingPipeline.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/deviceMemory.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/accelerationStructure.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan/rtFunctions.cpp
 )
 
 add_library(rayce

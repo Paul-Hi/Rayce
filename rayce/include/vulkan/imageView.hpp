@@ -18,7 +18,7 @@ namespace rayce
       public:
         DISABLE_COPY_MOVE_VK(ImageView)
 
-        ImageView(const std::unique_ptr<class Device>& logicalDevice, VkImage image, VkFormat format, VkImageAspectFlagBits aspectMask);
+        ImageView(const std::unique_ptr<class Device>& logicalDevice, class Image& image, VkFormat format, VkImageAspectFlagBits aspectMask);
         ~ImageView();
 
         VkImageView getVkImageView() const
@@ -26,10 +26,15 @@ namespace rayce
             return mVkImageView;
         }
 
+        VkImage getVkImage() const
+        {
+            return mVkBaseImageRef;
+        }
+
       private:
         VkImageView mVkImageView;
-        VkImage mVkBaseImageRef;
         VkDevice mVkLogicalDeviceRef;
+        VkImage mVkBaseImageRef;
     };
 } // namespace rayce
 
