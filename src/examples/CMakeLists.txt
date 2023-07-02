@@ -1,0 +1,4 @@
+
+SET(RAYCE_EXAMPLES_INCLUDE_DIRECTORY ${RAYCE_INCLUDE_DIRECTORY}/examples)
+
+add_subdirectory(simpleGUI)

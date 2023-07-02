@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.26)
 
 project(Rayce
     VERSION 1.0
@@ -8,6 +8,10 @@ project(Rayce
 
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)
+endif()
+
+if(MSVC)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 endif()
 
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -47,17 +51,34 @@ if(EXISTS "${LOC_PATH}")
 endif()
 
 # dependencies
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 include(FetchContent)
 set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 
 # Vulkan
-find_package(Vulkan REQUIRED FATAL_ERROR)
+find_package(Vulkan REQUIRED)
 
-if(Vulkan_FOUND)
-    message(STATUS "Found Vulkan!")
-endif()
+# USD
+set(PXR_DIR $ENV{PXR_DIR} CACHE STRING "The root directory of the USD installation")
+set(MATERIALX_DIR $ENV{MATERIALX_DIR} CACHE STRING "PXR_DIR/lib/cmake/MaterialX")
+find_package(PXR REQUIRED)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
+# imgui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui
+    GIT_TAG a88e5be7f478233e74c72c72eabb1d5f1cb69bb5
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON
+)
+
+# Eigen
+FetchContent_Declare(eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG 3147391d946bb4b6c68edd901f2add6ac1f31f8c
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON
+)
 
 # glfw
 FetchContent_Declare(
@@ -67,23 +88,19 @@ FetchContent_Declare(
     GIT_SHALLOW ON
     GIT_PROGRESS ON
 )
+
+
+set(BUILD_SHARED_LIBS TRUE)
+FetchContent_MakeAvailable(imgui eigen glfw)
+
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
 set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
 set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
 set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
-FetchContent_MakeAvailable(glfw)
 message(STATUS "Added glfw in: " ${glfw_SOURCE_DIR})
+set(glfw_INCLUDE_DIRS ${glfw_SOURCE_DIR}/include)
 
-# imgui
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG ef07ddf087c879baff8c0cac0ff1f40b7f0f060c
-    GIT_SHALLOW ON
-    GIT_PROGRESS ON
-)
-FetchContent_MakeAvailable(imgui)
-add_library(imgui
+add_library(imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -93,19 +110,12 @@ add_library(imgui
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 target_include_directories(imgui PUBLIC . ${glfw_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${imgui_SOURCE_DIR})
+target_link_directories(imgui PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)
 message(STATUS "Added dear imgui in: " ${imgui_SOURCE_DIR})
 
-# Eigen
-FetchContent_Declare(eigen3
-    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-    GIT_TAG 3147391d946bb4b6c68edd901f2add6ac1f31f8c
-    GIT_SHALLOW ON
-    GIT_PROGRESS ON
-)
-FetchContent_MakeAvailable(eigen3)
 unset(BUILD_TESTING CACHE)
-message(STATUS "Added Eigen in: " ${eigen3_SOURCE_DIR})
+message(STATUS "Added Eigen in: " ${eigen_SOURCE_DIR})
 
 if(RAYCE_BUILD_TESTS)
     # googletest
@@ -116,10 +126,12 @@ if(RAYCE_BUILD_TESTS)
         GIT_SHALLOW ON
         GIT_PROGRESS ON
     )
+
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
 
     message(STATUS "Added googletest: " ${googletest_SOURCE_DIR})
+
     add_subdirectory(test)
 endif()
 
@@ -134,8 +146,8 @@ if(RAYCE_BUILD_DOC)
     endif()
 endif()
 
+set(RAYCE_INCLUDE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 add_subdirectory(assets)
 
-add_subdirectory(rayce)
-
-add_subdirectory(rayceGui)
+add_subdirectory(src)

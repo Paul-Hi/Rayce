@@ -21,10 +21,13 @@ target_compile_definitions(allTests
 
 enable_testing()
 
+target_link_directories(allTests PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(allTests
     gtest_main
     gmock_main
-    rayce
+    rayce::core
+    rayce::vulkan
+    rayce::app
 )
 
 include(GoogleTest)
