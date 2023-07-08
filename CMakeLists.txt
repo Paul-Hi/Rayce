@@ -1,20 +1,16 @@
 cmake_minimum_required(VERSION 3.26)
 
 project(Rayce
-    VERSION 1.0
+    VERSION 0.01
     DESCRIPTION "Vulkan Raytracer."
     LANGUAGES CXX
 )
 
+set(CMAKE_COLOR_MAKEFILE ON)
+
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)
 endif()
-
-if(MSVC)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-endif()
-
-set(CMAKE_COLOR_MAKEFILE ON)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING
@@ -25,43 +21,62 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/install/rayce/" CACHE PATH "Install path prefix" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-option(RAYCE_BUILD_DOC "Build documentation" ON)
+option(RAYCE_BUILD_DOC "Build Documentation" ON)
+option(RAYCE_MONOLYTHIC "Build Monolythic" OFF)
 option(RAYCE_BUILD_TESTS "Build Unit Tests" OFF)
-option(RAYCE_ENABLE_HARD_WARNINGS "Enables some compiler parameters. This should not be enabled, Rayce will NOT build." OFF)
 
 set(VERSION_MAJOR 0 CACHE STRING "Project major version number.")
 set(VERSION_MINOR 0 CACHE STRING "Project minor version number.")
 set(VERSION_PATCH 1 CACHE STRING "Project patch version number.")
 mark_as_advanced(VERSION_MAJOR VERSION_MINOR VERSION_PATCH)
-message(STATUS "Rayce Build type: " ${CMAKE_BUILD_TYPE})
+
+message(STATUS "================================================")
+message(STATUS " ########     ###    ##    ##  ######  ######## ")
+message(STATUS " ##     ##   ## ##    ##  ##  ##    ## ##       ")
+message(STATUS " ##     ##  ##   ##    ####   ##       ##       ")
+message(STATUS " ########  ##     ##    ##    ##       ######   ")
+message(STATUS " ##   ##   #########    ##    ##       ##       ")
+message(STATUS " ##    ##  ##     ##    ##    ##    ## ##       ")
+message(STATUS " ##     ## ##     ##    ##     ######  ######## ")
+message(STATUS "================================================")
+message(STATUS "Copyright (c) 2021-present, Paul Himmler")
+message(STATUS "================================================")
+message(STATUS "Version v" ${VERSION_MAJOR} "." ${VERSION_MINOR} ${VERSION_PATCH} " Licensed Apache License 2.0")
+message(STATUS "================================================")
+message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    message(STATUS "Setting project standards.")
+    message(STATUS "Setting Project Standards.")
     set(CMAKE_CXX_STANDARD 20)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
-    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
 
 if(EXISTS "${LOC_PATH}")
-    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file).
-                Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
 endif()
 
+message(STATUS "================================================")
+
+message(STATUS "Fetching Dependencies.")
 # dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 include(FetchContent)
+set(FETCHCONTENT_QUIET TRUE)
 set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
+
+cmake_language(GET_MESSAGE_LOG_LEVEL CMAKE_MESSAGE_LOG_LEVEL_BACKUP)
+set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
 
 # USD
-set(PXR_DIR $ENV{PXR_DIR} CACHE STRING "The root directory of the USD installation")
-set(MATERIALX_DIR $ENV{MATERIALX_DIR} CACHE STRING "PXR_DIR/lib/cmake/MaterialX")
-find_package(PXR REQUIRED)
+# set(PXR_DIR $ENV{PXR_DIR} CACHE STRING "The root directory of the USD installation")
+# set(MATERIALX_DIR $ENV{MATERIALX_DIR} CACHE STRING "PXR_DIR/lib/cmake/MaterialX")
+# find_package(PXR REQUIRED)
 
 # imgui
 FetchContent_Declare(
@@ -89,8 +104,6 @@ FetchContent_Declare(
     GIT_PROGRESS ON
 )
 
-
-set(BUILD_SHARED_LIBS TRUE)
 FetchContent_MakeAvailable(imgui eigen glfw)
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
@@ -112,6 +125,8 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC . ${glfw_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${imgui_SOURCE_DIR})
 target_link_directories(imgui PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)
+
+set(CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL_BACKUP})
 message(STATUS "Added dear imgui in: " ${imgui_SOURCE_DIR})
 
 unset(BUILD_TESTING CACHE)
@@ -146,8 +161,15 @@ if(RAYCE_BUILD_DOC)
     endif()
 endif()
 
-set(RAYCE_INCLUDE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include)
+message(STATUS "================================================")
+
+set(RAYCE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rayce)
 
 add_subdirectory(assets)
 
-add_subdirectory(src)
+add_subdirectory(rayce)
+
+add_subdirectory(examples)
+
+message(STATUS "Done!")
+message(STATUS "================================================")

@@ -1,3 +1,7 @@
+message(STATUS "================================================")
+message(STATUS "Adding rayce::assets!")
+
+
 if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64")
     set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 else()
@@ -31,3 +35,5 @@ add_custom_target(
     DEPENDS ${SPIRV_BINARY_FILES}
     SOURCES ${GLSL_SOURCE_FILES}
 )
+
+message(STATUS "================================================")
