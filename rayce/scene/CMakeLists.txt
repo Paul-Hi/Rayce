@@ -1,40 +1,34 @@
 message(STATUS "================================================")
-message(STATUS "Adding rayce::core!")
+message(STATUS "Adding rayce::scene!")
 
 file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
-add_library(core
+add_library(scene
     STATIC
     ${HEADERS}
     ${SOURCES}
 )
 
-add_library(rayce::core ALIAS core)
+add_library(rayce::scene ALIAS scene)
 
-target_include_directories(core
-    PUBLIC
-    $<BUILD_INTERFACE:${eigen_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${glfw_INCLUDE_DIRS}>
-    $<BUILD_INTERFACE:${imgui_SOURCE_DIR}>
+target_include_directories(scene
     PRIVATE
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
 )
 
-set_target_properties(core
+set_target_properties(scene
     PROPERTIES
     CXX_STANDARD ${CMAKE_CXX_STANDARD}
 )
 
-target_link_libraries(core
-    PUBLIC
-    Eigen3::Eigen
+target_link_libraries(scene
     PRIVATE
-    glfw
-    imgui
+    rayce::core
+    rayce::vulkan
 )
 
-target_compile_definitions(core
+target_compile_definitions(scene
     PUBLIC
     $<$<CONFIG:Debug>:RAYCE_DEBUG>
     $<$<BOOL:${RAYCE_BUILD_TESTS}>:RAYCE_TEST>
@@ -45,7 +39,7 @@ target_compile_definitions(core
     $<$<BOOL:${LINUX}>:LINUX>
 )
 
-target_compile_options(core
+target_compile_options(scene
     PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>: /W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>: -Wall -Wextra -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-gnu-zero-variadic-macro-arguments -Wno-documentation-unknown-command>

@@ -8,7 +8,7 @@ add_executable(allTests
 target_include_directories(allTests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../rayce/src
+        ${RAYCE_INCLUDE_DIR}
 )
 
 target_compile_definitions(allTests
@@ -21,7 +21,6 @@ target_compile_definitions(allTests
 
 enable_testing()
 
-target_link_directories(allTests PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(allTests
     gtest_main
     gmock_main

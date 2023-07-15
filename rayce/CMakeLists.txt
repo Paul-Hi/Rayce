@@ -3,6 +3,7 @@ project(raycelib)
 add_subdirectory(core)
 add_subdirectory(vulkan)
 add_subdirectory(app)
+add_subdirectory(scene)
 
 if(RAYCE_MONOLYTHIC)
     message(STATUS "================================================")
@@ -22,6 +23,7 @@ if(RAYCE_MONOLYTHIC)
         rayce::core
         rayce::vulkan
         rayce::app
+        rayce::scene
     )
 
     target_include_directories(rayce

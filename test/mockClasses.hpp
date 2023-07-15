@@ -1,4 +1,4 @@
-/// @file      mock_classes.hpp
+/// @file      mockClasses.hpp
 //! The classes in this file are all used to fake classes for testing.
 /// @author    Paul Himmler
 /// @version   1.0

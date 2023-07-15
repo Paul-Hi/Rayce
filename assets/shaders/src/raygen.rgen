@@ -25,7 +25,7 @@ vec3 fakePerspective(vec2 screenUV, float aspect)
 void main() {
     const vec2 pixelC = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     vec2 uv = pixelC / vec2(gl_LaunchSizeEXT.xy);
-    uv = vec2(uv.x, 1.0 - uv.y) * 2.0 - 1.0;
+    uv = vec2(uv.x, uv.y) * 2.0 - 1.0;
 
     const vec4 origin = vec4(5.0, 0.0, 5.0, 0.0);
     const vec4 direction = vec4(fakePerspective(uv, 16.0/9.0), 0.0);

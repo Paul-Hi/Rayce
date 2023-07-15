@@ -80,11 +80,6 @@ namespace rayce
             return pGraphicsPipeline;
         }
 
-        const std::unique_ptr<class RaytracingPipeline>& getRaytracingPipeline() const
-        {
-            return pRaytracingPipeline;
-        }
-
         const std::unique_ptr<class CommandPool>& getCommandPool() const
         {
             return pCommandPool;
@@ -100,34 +95,9 @@ namespace rayce
             return pImguiInterface;
         }
 
-        const std::unique_ptr<class Geometry>& getGeometry() const
-        {
-            return pGeometry;
-        }
-
         const std::vector<std::unique_ptr<class Framebuffer>>& getSwapchainFramebuffers() const
         {
             return mSwapchainFramebuffers;
-        }
-
-        const std::vector<std::unique_ptr<class AccelerationStructure>>& getBLAS() const
-        {
-            return mBLAS;
-        }
-
-        const std::unique_ptr<class AccelerationStructure>& getTLAS() const
-        {
-            return pTLAS;
-        }
-
-        const std::unique_ptr<class Image>& getRaytracingTargetImage() const
-        {
-            return pRaytracingTargetImage;
-        }
-
-        const std::unique_ptr<class ImageView>& getRaytracingTargetView() const
-        {
-            return pRaytracingTargetView;
         }
 
         const std::vector<std::unique_ptr<class Semaphore>>& getImageAvailableSemaphores() const
@@ -158,6 +128,7 @@ namespace rayce
         virtual void onFrameDraw();
         virtual void onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
         virtual void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
+        virtual void recreateSwapchain();
 
         VkPhysicalDevice pickPhysicalDevice(bool& raytracingSupported);
 
@@ -172,19 +143,12 @@ namespace rayce
         std::unique_ptr<class Surface> pSurface;
         std::unique_ptr<class Device> pDevice;
         std::unique_ptr<class Swapchain> pSwapchain;
-        std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline;
-        std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
+        std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
         std::unique_ptr<class CommandPool> pCommandPool;
         std::unique_ptr<class CommandBuffers> pCommandBuffers;
         std::unique_ptr<class ImguiInterface> pImguiInterface;
-        std::unique_ptr<class Geometry> pGeometry;
-        std::vector<std::unique_ptr<class Framebuffer>> mSwapchainFramebuffers;
 
-        std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
-        std::unique_ptr<class AccelerationStructure> pTLAS;
-
-        std::unique_ptr<class Image> pRaytracingTargetImage;
-        std::unique_ptr<class ImageView> pRaytracingTargetView;
+        std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline; // used to create swapchain framebuffers
 
         std::vector<std::unique_ptr<class Semaphore>> mImageAvailableSemaphores;
         std::vector<std::unique_ptr<class Semaphore>> mRenderFinishedSemaphores;
@@ -192,8 +156,6 @@ namespace rayce
 
         uint32 mCurrentFrame;
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-
-        void recreateSwapchain();
     };
 } // namespace rayce
 

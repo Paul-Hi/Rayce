@@ -6,6 +6,6 @@ hitAttributeEXT vec2 hitAttributes;
 
 void main()
 {
-    const vec3 barycentricCoords = vec3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
-    hitValue = vec3(barycentricCoords);
+    const vec3 barycentrics = vec3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
+    hitValue = barycentrics;
 }

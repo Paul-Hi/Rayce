@@ -16,9 +16,9 @@ target_include_directories(app
     PUBLIC
     $<BUILD_INTERFACE:${eigen_SOURCE_DIR}>
     $<BUILD_INTERFACE:${glfw_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:${imgui_SOURCE_DIR}>
     PRIVATE
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
-    $<BUILD_INTERFACE:${imgui_SOURCE_DIR}>
 )
 
 set_target_properties(app

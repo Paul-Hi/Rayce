@@ -6,15 +6,29 @@
 
 #include <app/rayceApp.hpp>
 
-class SimpleGUI : public rayce::RayceApp
+namespace rayce
 {
-  public:
-    SimpleGUI(const rayce::RayceOptions& options);
+    class SimpleGUI : public RayceApp
+    {
+      public:
+        SimpleGUI(const RayceOptions& options);
 
-    bool onInitialize() override;
-    bool onShutdown() override;
-    void onFrameDraw() override;
-    void onUpdate() override;
-    void onRender(VkCommandBuffer commandBuffer, const rayce::uint32 imageIndex) override;
-    void onImGuiRender(VkCommandBuffer commandBuffer, const rayce::uint32 imageIndex) override;
-};
+        bool onInitialize() override;
+        bool onShutdown() override;
+        void onFrameDraw() override;
+        void onUpdate() override;
+        void onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) override;
+        void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) override;
+        void recreateSwapchain() override;
+
+      private:
+        std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
+        std::unique_ptr<class Scene> pScene;
+
+        std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
+        std::unique_ptr<class AccelerationStructure> pTLAS;
+
+        std::unique_ptr<class Image> pRaytracingTargetImage;
+        std::unique_ptr<class ImageView> pRaytracingTargetView;
+    };
+} // namespace rayce

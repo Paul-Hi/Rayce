@@ -31,9 +31,10 @@ set_target_properties(${APP_NAME}
 
 target_link_libraries(${APP_NAME}
     PUBLIC
-    rayce::vulkan
-    rayce::core
-    rayce::app
+    rayce::rayce
+    # rayce::vulkan
+    # rayce::core
+    # rayce::app
 )
 
 target_include_directories(${APP_NAME}

@@ -1,4 +1,4 @@
-/// @file      test_main.cpp
+/// @file      testMain.cpp
 /// @author    Paul Himmler
 /// @version   1.0
 /// @date      2023
