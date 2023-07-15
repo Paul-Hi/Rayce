@@ -13,10 +13,17 @@
 
 namespace rayce
 {
+    struct SceneReflectionInfo
+    {
+        str filename;
+        std::vector<str> shapeNames;
+        std::vector<uint32> shapeTriCounts;
+    };
+
     class RAYCE_API_EXPORT Scene
     {
-      public:
-        Scene()  = default;
+    public:
+        Scene();
         ~Scene() = default;
 
         void loadFromObj(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool);
@@ -30,16 +37,23 @@ namespace rayce
         {
             return mMaxVertex;
         }
+
         uint32 primitiveCount()
         {
             return mPrimitiveCount;
         }
 
-      private:
+        void onImGuiRender();
+
+    private:
         std::unique_ptr<class Geometry> pGeometry;
 
         uint32 mMaxVertex;
         uint32 mPrimitiveCount;
+
+        bool mReflectionOpen;
+
+        SceneReflectionInfo mReflectionInfo;
     };
 
 } // namespace rayce

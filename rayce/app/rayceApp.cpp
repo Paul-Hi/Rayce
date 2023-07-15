@@ -228,9 +228,11 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
         vkEnumerateDeviceExtensionProperties(candidate, nullptr, &extensionCount, deviceExtensions.data());
 
         bool rayTracingAvailable = std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
-                                               [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0; });
+                                               [](const VkExtensionProperties& extension)
+                                               { return strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0; });
         rayTracingAvailable &= std::any_of(deviceExtensions.begin(), deviceExtensions.end(),
-                                           [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
+                                           [](const VkExtensionProperties& extension)
+                                           { return strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0; });
 
         if (!rayTracingAvailable)
         {
@@ -238,7 +240,8 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
         }
 
         const bool swapchainAvailable =
-            std::any_of(deviceExtensions.begin(), deviceExtensions.end(), [](const VkExtensionProperties& extension) { return strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0; });
+            std::any_of(deviceExtensions.begin(), deviceExtensions.end(), [](const VkExtensionProperties& extension)
+                        { return strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0; });
 
         if (!swapchainAvailable)
         {
@@ -253,7 +256,8 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueFamilyPropertyCount, queueFamilyProperties.data());
 
         const bool graphicsQueueFamilyAvailable =
-            std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily) { return (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT); });
+            std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily)
+                        { return (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT); });
 
         if (!graphicsQueueFamilyAvailable)
         {
@@ -262,7 +266,8 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
         }
 
         const bool computeQueueFamilyAvailable =
-            std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily) { return (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT); });
+            std::any_of(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](const VkQueueFamilyProperties& queueFamily)
+                        { return (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT); });
 
         if (!computeQueueFamilyAvailable)
         {

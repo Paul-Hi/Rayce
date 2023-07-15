@@ -17,7 +17,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Buffer
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Buffer)
 
         Buffer(const std::unique_ptr<class Device>& logicalDevice, const ptr_size size, const VkBufferUsageFlags usage);
@@ -57,7 +57,7 @@ namespace rayce
             stagingBuffer.reset();
         }
 
-      private:
+    private:
         VkBuffer mVkBuffer;
         VkDevice mVkLogicalDeviceRef;
 

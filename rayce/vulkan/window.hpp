@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Window
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Window)
 
         Window(int32 width, int32 height, const str& name);
@@ -60,7 +60,7 @@ namespace rayce
             glfwWaitEvents();
         }
 
-      private:
+    private:
         int32 mWindowWidth;
         int32 mWindowHeight;
 

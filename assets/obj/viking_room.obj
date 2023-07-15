@@ -1,6 +1,7 @@
 # Blender 3.5.1
 # www.blender.org
-o mesh_all1_Texture1_0
+mtllib viking_room.mtl
+o VikingRoom
 v 0.001530 0.713748 -0.573651
 v 0.151382 -0.000154 -0.573651
 v 0.164474 0.619081 -0.573651
@@ -12305,6 +12306,7 @@ vt 0.344615 0.215210
 vt 0.344498 0.305514
 vt 0.344498 0.305514
 s 0
+usemtl VikingRoomTexture
 f 1/1/1 2/2/1 3/3/1
 f 4/4/1 5/5/1 1/1/1
 f 1/1/1 5/5/1 2/2/1

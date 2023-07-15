@@ -30,7 +30,7 @@ namespace rayce
     /// @brief Application.
     class RAYCE_API_EXPORT RayceApp
     {
-      public:
+    public:
         virtual ~RayceApp();
 
         bool run();
@@ -45,7 +45,7 @@ namespace rayce
             return mWindowHeight;
         }
 
-      protected:
+    protected:
         /// @brief Constructor.
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
@@ -132,7 +132,7 @@ namespace rayce
 
         VkPhysicalDevice pickPhysicalDevice(bool& raytracingSupported);
 
-      private:
+    private:
         int32 mWindowWidth;
         int32 mWindowHeight;
         bool mEnableValidationLayers;

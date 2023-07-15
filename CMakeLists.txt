@@ -69,6 +69,7 @@ set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 
 cmake_language(GET_MESSAGE_LOG_LEVEL CMAKE_MESSAGE_LOG_LEVEL_BACKUP)
 set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
+set(FETCHCONTENT_QUIET ON)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
@@ -90,16 +91,17 @@ FetchContent_Declare(
 # Eigen
 FetchContent_Declare(eigen
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-    GIT_TAG 3147391d946bb4b6c68edd901f2add6ac1f31f8c
+    GIT_TAG 3.4.0
     GIT_SHALLOW ON
     GIT_PROGRESS ON
+    GIT_VERBOSE ON
 )
 
 # glfw
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw
-    GIT_TAG 7482de6071d21db77a7236155da44c172a7f6c9e
+    GIT_TAG 3.3.8
     GIT_SHALLOW ON
     GIT_PROGRESS ON
 )

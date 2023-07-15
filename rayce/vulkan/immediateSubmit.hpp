@@ -15,14 +15,14 @@ namespace rayce
 {
     class ImmediateSubmit
     {
-      public:
+    public:
         static void Execute(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const std::function<void(VkCommandBuffer)>& immediateFunction)
         {
             CommandBuffers commandBuffers(logicalDevice, commandPool, 1);
 
             VkCommandBufferBeginInfo commandBufferBeginInfo{};
-            commandBufferBeginInfo.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            commandBufferBeginInfo.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
             vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
 

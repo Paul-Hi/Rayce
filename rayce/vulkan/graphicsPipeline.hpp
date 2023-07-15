@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT GraphicsPipeline
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(GraphicsPipeline)
 
         GraphicsPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, bool wireframe);
@@ -36,7 +36,7 @@ namespace rayce
             return mVkPipeline;
         }
 
-      private:
+    private:
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
         VkDevice mVkLogicalDeviceRef;

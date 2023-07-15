@@ -30,7 +30,7 @@
 
 #define RAYCE_CHECK_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log_and_abort(0, "VULKAN CHECK FAILED (" #x "):  " info "  ", __FILE__, __LINE__, ##__VA_ARGS__)
 
-#define RAYCE_TRY_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log(-1, __FILE__, __LINE__, "VULKAN TRY FAILED (" #x "):  " info "  " ##__VA_ARGS__)
+#define RAYCE_TRY_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log(-1, __FILE__, __LINE__, "VULKAN TRY FAILED (" #x "):  " info "  "##__VA_ARGS__)
 
 #define RAYCE_DCHECK(test, ...) DCHECK_F(test, __VA_ARGS__)
 #define RAYCE_DCHECK_NOTNULL(x, ...) DCHECK_NOTNULL_F(x, __VA_ARGS__)
@@ -43,7 +43,7 @@
 
 #ifdef LOGURU_DEBUG_CHECKS
 #define RAYCE_DCHECK_VK(x, info, ...) RAYCE_CHECK_VK(x, info, __VA_ARGS__)
-#define RAYCE_DTRY_VK(x, info , ...) RAYCE_TRY_VK(x, info, __VA_ARGS__)
+#define RAYCE_DTRY_VK(x, info, ...) RAYCE_TRY_VK(x, info, __VA_ARGS__)
 #else
 #define RAYCE_DCHECK_VK(x, info, ...)
 #define RAYCE_DTRY_VK(x, info, ...)

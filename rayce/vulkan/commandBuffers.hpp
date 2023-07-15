@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT CommandBuffers
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(CommandBuffers)
 
         CommandBuffers(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const uint32 number);
@@ -29,7 +29,7 @@ namespace rayce
         VkCommandBuffer beginCommandBuffer(const uint32 idx);
         void endCommandBuffer(const uint32 idx);
 
-      private:
+    private:
         std::vector<VkCommandBuffer> mVkCommandBuffers;
         VkDevice mVkLogicalDeviceRef;
         VkCommandPool mVkCommandPoolRef;

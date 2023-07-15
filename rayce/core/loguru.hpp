@@ -249,7 +249,7 @@ namespace loguru
     // Simple RAII ownership of a char*.
     class LOGURU_EXPORT Text
     {
-      public:
+    public:
         explicit Text(char* owned_str)
             : _str(owned_str)
         {
@@ -280,7 +280,7 @@ namespace loguru
             return result;
         }
 
-      private:
+    private:
         char* _str;
     };
 
@@ -593,7 +593,7 @@ namespace loguru
     // Helper class for LOG_SCOPE_F
     class LOGURU_EXPORT LogScopeRAII
     {
-      public:
+    public:
         LogScopeRAII()
             : _file(nullptr)
         {
@@ -623,13 +623,13 @@ namespace loguru
         LogScopeRAII(LogScopeRAII&&) = default;
 #endif
 
-      private:
+    private:
         LogScopeRAII(const LogScopeRAII&)            = delete;
         LogScopeRAII& operator=(const LogScopeRAII&) = delete;
         void operator=(LogScopeRAII&&)               = delete;
 
         Verbosity _verbosity;
-        const char* _file;   // Set to null if we are disabled due to verbosity
+        const char* _file; // Set to null if we are disabled due to verbosity
         unsigned _line;
         bool _indent_stderr; // Did we?
         long long _start_time_ns;
@@ -812,7 +812,7 @@ namespace loguru
 
     class LOGURU_EXPORT EcEntryBase
     {
-      public:
+    public:
         EcEntryBase(const char* file, unsigned line, const char* descr);
         ~EcEntryBase();
         EcEntryBase(const EcEntryBase&)            = delete;
@@ -837,7 +837,7 @@ namespace loguru
     template <typename T>
     class EcEntryData : public EcEntryBase
     {
-      public:
+    public:
         using Printer = Text (*)(T data);
 
         EcEntryData(const char* file, unsigned line, const char* descr, T data, Printer&& printer)
@@ -853,7 +853,7 @@ namespace loguru
             stream_print(out_string_stream, str.c_str());
         }
 
-      private:
+    private:
         T _data;
         Printer _printer;
     };
@@ -942,12 +942,12 @@ namespace loguru
     const loguru::EcEntryData<loguru::make_ec_type<decltype(data)>::type> LOGURU_ANONYMOUS_VARIABLE(error_context_scope_)( \
         __FILE__, __LINE__, descr, data, static_cast<loguru::EcEntryData<loguru::make_ec_type<decltype(data)>::type>::Printer>(loguru::ec_to_text)) // For better error messages
 
-                                                                                                                                                    /*
-                                                                                                                                                            #define ERROR_CONTEXT(descr, data)                                 \
-                                                                                                                                                                    const auto LOGURU_ANONYMOUS_VARIABLE(error_context_scope_)(    \
-                                                                                                                                                                            loguru::make_ec_entry_lambda(__FILE__, __LINE__, descr,    \
-                                                                                                                                                                                    [=](){ return loguru::ec_to_text(data); }))
-                                                                                                                                                    */
+    /*
+            #define ERROR_CONTEXT(descr, data)                                 \
+                    const auto LOGURU_ANONYMOUS_VARIABLE(error_context_scope_)(    \
+                            loguru::make_ec_entry_lambda(__FILE__, __LINE__, descr,    \
+                                    [=](){ return loguru::ec_to_text(data); }))
+    */
 
     using EcHandle = const EcEntryBase*;
 
@@ -1201,7 +1201,7 @@ namespace loguru
 
     class LOGURU_EXPORT StreamLogger
     {
-      public:
+    public:
         StreamLogger(Verbosity verbosity, const char* file, unsigned line)
             : _verbosity(verbosity)
             , _file(file)
@@ -1224,7 +1224,7 @@ namespace loguru
             return *this;
         }
 
-      private:
+    private:
         Verbosity _verbosity;
         const char* _file;
         unsigned _line;
@@ -1233,7 +1233,7 @@ namespace loguru
 
     class LOGURU_EXPORT AbortLogger
     {
-      public:
+    public:
         AbortLogger(const char* expr, const char* file, unsigned line)
             : _expr(expr)
             , _file(file)
@@ -1256,7 +1256,7 @@ namespace loguru
             return *this;
         }
 
-      private:
+    private:
         const char* _expr;
         const char* _file;
         unsigned _line;
@@ -1265,7 +1265,7 @@ namespace loguru
 
     class LOGURU_EXPORT Voidify
     {
-      public:
+    public:
         Voidify() {}
         // This has to be an operator with a precedence lower than << but higher than ?:
         void operator&(const StreamLogger&) {}

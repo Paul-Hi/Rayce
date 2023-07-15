@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT DescriptorSetLayout
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(DescriptorSetLayout)
 
         DescriptorSetLayout(const std::unique_ptr<class Device>& logicalDevice, const std::vector<VkDescriptorSetLayoutBinding>& layoutBindings, const VkDescriptorSetLayoutCreateFlags createFlags);
@@ -26,7 +26,7 @@ namespace rayce
             return mVkDescriptorSetLayout;
         }
 
-      private:
+    private:
         VkDescriptorSetLayout mVkDescriptorSetLayout;
         VkDevice mVkLogicalDeviceRef;
     };

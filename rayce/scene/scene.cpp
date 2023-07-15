@@ -4,6 +4,7 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <imgui.h>
 #include <scene/scene.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandPool.hpp>
@@ -16,6 +17,13 @@
 
 using namespace rayce;
 
+Scene::Scene()
+    : mMaxVertex(0)
+    , mPrimitiveCount(0)
+    , mReflectionOpen(true)
+{
+}
+
 void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool)
 {
     tinyobj::attrib_t attrib;
@@ -25,6 +33,8 @@ void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logi
     str warn;
     str err;
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str());
+
+    mReflectionInfo.filename = filename;
 
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
@@ -40,6 +50,8 @@ void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logi
 
     for (auto& shape : shapes)
     {
+        mReflectionInfo.shapeNames.push_back(shape.name);
+        mReflectionInfo.shapeTriCounts.push_back(shape.mesh.indices.size() / 3);
         for (ptr_size f = 0; f < shape.mesh.indices.size(); f += 3)
         {
             tinyobj::index_t i0 = shape.mesh.indices[f + 0];
@@ -69,4 +81,28 @@ void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logi
     mPrimitiveCount = static_cast<uint32>(indices.size() / 3);
 
     pGeometry = std::make_unique<Geometry>(std::move(vertexBuffer), vertices.size(), std::move(indexBuffer), indices.size());
+}
+
+void Scene::onImGuiRender()
+{
+    ImGuiWindowFlags window_flags = 0;
+
+    if (!ImGui::Begin("Scene Reflection", &mReflectionOpen, window_flags))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Spacing();
+    ImGui::Text("Scene File: %s", mReflectionInfo.filename.c_str());
+    ImGui::Separator();
+    ImGui::Separator();
+    for (ptr_size i = 0; i < mReflectionInfo.shapeNames.size(); ++i)
+    {
+        ImGui::Text("Shape: %s with %d triangles", mReflectionInfo.shapeNames[i].c_str(), mReflectionInfo.shapeTriCounts[i]);
+        ImGui::Separator();
+    }
+
+    ImGui::Separator();
+    ImGui::End();
 }

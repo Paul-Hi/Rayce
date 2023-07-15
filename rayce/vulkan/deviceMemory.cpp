@@ -24,8 +24,8 @@ DeviceMemory::DeviceMemory(const std::unique_ptr<Device>& logicalDevice, const p
     allocateInfo.memoryTypeIndex = typeIdx;
 
     VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
-    memoryAllocateFlagsInfo.sType                     = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
-    memoryAllocateFlagsInfo.flags                     = allocateFlags;
+    memoryAllocateFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+    memoryAllocateFlagsInfo.flags = allocateFlags;
 
     allocateInfo.pNext = &memoryAllocateFlagsInfo;
 

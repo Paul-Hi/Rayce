@@ -16,7 +16,7 @@ namespace rayce
 
     class RAYCE_API_EXPORT ImageMemoryBarrier
     {
-      public:
+    public:
         static void Create(const VkCommandBuffer commandBuffer, const VkImage image, const VkImageSubresourceRange subresourceRange, const VkAccessFlags srcAccessMask,
                            const VkAccessFlags dstAccessMask, const VkImageLayout oldLayout, const VkImageLayout newLayout)
         {

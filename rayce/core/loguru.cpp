@@ -59,7 +59,7 @@
 #ifdef __linux__
 #include <linux/limits.h> // PATH_MAX
 #elif !defined(_WIN32)
-#include <limits.h>       // PATH_MAX
+#include <limits.h> // PATH_MAX
 #endif
 
 #ifndef PATH_MAX
@@ -635,7 +635,7 @@ namespace loguru
                 out += "\\ ";
             }
             else if (0 <= c && c < 0x20)
-            {   // ASCI control character:
+            { // ASCI control character:
                 // else if (c < 0x20 || c != (c & 127)) { // ASCII control character or UTF-8:
                 out += "\\x";
                 write_hex_byte(out, static_cast<uint8_t>(c));
@@ -1038,7 +1038,8 @@ namespace loguru
     bool remove_callback(const char* id)
     {
         std::lock_guard<std::recursive_mutex> lock(s_mutex);
-        auto it = std::find_if(begin(s_callbacks), end(s_callbacks), [&](const Callback& c) { return c.id == id; });
+        auto it = std::find_if(begin(s_callbacks), end(s_callbacks), [&](const Callback& c)
+                               { return c.id == id; });
         if (it != s_callbacks.end())
         {
             if (it->close)
@@ -1298,7 +1299,7 @@ namespace loguru
         return prettify_stacktrace(result);
     }
 
-#else  // LOGURU_STACKTRACES
+#else // LOGURU_STACKTRACES
     Text demangle(const char* name)
     {
         return Text(STRDUP(name));
@@ -2016,7 +2017,12 @@ namespace loguru
 #if LOGURU_CATCH_SIGABRT
         { SIGABRT, "SIGABRT" },
 #endif
-        { SIGBUS, "SIGBUS" },   { SIGFPE, "SIGFPE" }, { SIGILL, "SIGILL" }, { SIGINT, "SIGINT" }, { SIGSEGV, "SIGSEGV" }, { SIGTERM, "SIGTERM" },
+        { SIGBUS, "SIGBUS" },
+        { SIGFPE, "SIGFPE" },
+        { SIGILL, "SIGILL" },
+        { SIGINT, "SIGINT" },
+        { SIGSEGV, "SIGSEGV" },
+        { SIGTERM, "SIGTERM" },
     };
 
     void write_to_stderr(const char* data, size_t size)

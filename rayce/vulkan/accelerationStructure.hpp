@@ -25,7 +25,7 @@ namespace rayce
 
     class RAYCE_API_EXPORT AccelerationStructure
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(AccelerationStructure)
 
         AccelerationStructure(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const AccelerationStructureInitData initData);
@@ -38,7 +38,7 @@ namespace rayce
 
         VkDeviceAddress getDeviceAddress() const;
 
-      private:
+    private:
         VkAccelerationStructureKHR mVkAccelerationStructure;
         VkDevice mVkLogicalDeviceRef;
 

@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Framebuffer
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Framebuffer)
 
         Framebuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class RenderPass>& renderPass,
@@ -27,7 +27,7 @@ namespace rayce
             return mVkFramebuffer;
         }
 
-      private:
+    private:
         VkFramebuffer mVkFramebuffer;
         VkDevice mVkLogicalDeviceRef;
     };

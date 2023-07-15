@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Swapchain
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Swapchain)
 
         Swapchain(const std::unique_ptr<class Device>& logicalDevice, VkSurfaceKHR surface, GLFWwindow* nativeWindowHandle);
@@ -46,7 +46,7 @@ namespace rayce
             return mSwapchainImageViews;
         }
 
-      private:
+    private:
         VkSwapchainKHR mVkSwapchain;
         VkDevice mVkLogicalDeviceRef;
 

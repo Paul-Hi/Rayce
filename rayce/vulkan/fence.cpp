@@ -13,8 +13,8 @@ Fence::Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSign
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
 {
     VkFenceCreateInfo fenceCreateInfo{};
-    fenceCreateInfo.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceCreateInfo.flags             = createSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = createSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
 
     RAYCE_CHECK_VK(vkCreateFence(mVkLogicalDeviceRef, &fenceCreateInfo, nullptr, &mVkFence), "Creating fence failed!");
 }

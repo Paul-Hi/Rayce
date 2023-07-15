@@ -15,7 +15,7 @@ namespace rayce
 {
     struct RAYCE_API_EXPORT Vertex
     {
-      public:
+    public:
         vec3 position;
 
         static VkVertexInputBindingDescription getVertexInputBindingDescription()

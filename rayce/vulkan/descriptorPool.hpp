@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT DescriptorPool
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(DescriptorPool)
 
         DescriptorPool(const std::unique_ptr<class Device>& logicalDevice, std::vector<VkDescriptorPoolSize> poolSizes, uint32 maxSets, VkDescriptorPoolCreateFlags flags);
@@ -26,7 +26,7 @@ namespace rayce
             return mVkDescriptorPool;
         }
 
-      private:
+    private:
         VkDescriptorPool mVkDescriptorPool;
         VkDevice mVkLogicalDeviceRef;
     };

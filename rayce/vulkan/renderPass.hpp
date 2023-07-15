@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT RenderPass
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(RenderPass)
 
         RenderPass(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const VkAttachmentLoadOp colorBufferLoadOp);
@@ -26,7 +26,7 @@ namespace rayce
             return mVkRenderPass;
         }
 
-      private:
+    private:
         VkRenderPass mVkRenderPass;
         VkDevice mVkLogicalDeviceRef;
     };

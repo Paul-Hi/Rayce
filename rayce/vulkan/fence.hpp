@@ -16,7 +16,7 @@ namespace rayce
     // binary
     class RAYCE_API_EXPORT Fence
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Fence)
 
         Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSignaled);
@@ -30,7 +30,7 @@ namespace rayce
         void reset();
         void wait(const uint64 timeout);
 
-      private:
+    private:
         VkFence mVkFence;
         VkDevice mVkLogicalDeviceRef;
     };

@@ -43,4 +43,3 @@ void DescriptorSets::update(const std::vector<VkWriteDescriptorSet>& writeDescri
 {
     vkUpdateDescriptorSets(mVkLogicalDeviceRef, static_cast<uint32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, VK_NULL_HANDLE);
 }
-

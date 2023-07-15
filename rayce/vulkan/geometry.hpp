@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Geometry
     {
-      public:
+    public:
         Geometry(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 vertexCount, std::unique_ptr<class Buffer>&& indexBuffer, uint32 indexCount);
         ~Geometry();
 
@@ -39,7 +39,7 @@ namespace rayce
             return mIndexCount;
         }
 
-      private:
+    private:
         std::unique_ptr<class Buffer> pVertexBuffer;
         std::unique_ptr<class Buffer> pIndexBuffer;
 

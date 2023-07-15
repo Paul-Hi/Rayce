@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT DeviceMemory
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(DeviceMemory)
 
         DeviceMemory(const std::unique_ptr<class Device>& logicalDevice, const ptr_size size, const uint32 memoryTypeBits, const VkMemoryAllocateFlags allocateFlags,
@@ -30,7 +30,7 @@ namespace rayce
         void* map(const ptr_size offset, const ptr_size size);
         void unmap();
 
-      private:
+    private:
         VkDeviceMemory mVkDeviceMemory;
         VkDevice mVkLogicalDeviceRef;
 

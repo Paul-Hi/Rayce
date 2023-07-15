@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT ImageView
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(ImageView)
 
         ImageView(const std::unique_ptr<class Device>& logicalDevice, class Image& image, VkFormat format, VkImageAspectFlagBits aspectMask);
@@ -31,7 +31,7 @@ namespace rayce
             return mVkBaseImageRef;
         }
 
-      private:
+    private:
         VkImageView mVkImageView;
         VkDevice mVkLogicalDeviceRef;
         VkImage mVkBaseImageRef;

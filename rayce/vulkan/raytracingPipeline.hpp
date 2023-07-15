@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT RaytracingPipeline
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
         RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class AccelerationStructure>& tlas, const std::unique_ptr<class ImageView>& outputImage,
@@ -64,7 +64,7 @@ namespace rayce
             return mAlignedHandleSize;
         }
 
-      private:
+    private:
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
         VkDevice mVkLogicalDeviceRef;

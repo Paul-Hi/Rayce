@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Image
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Image)
 
         Image(const std::unique_ptr<class Device>& logicalDevice, VkExtent2D extent, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
@@ -36,7 +36,7 @@ namespace rayce
 
         void allocateMemory(const std::unique_ptr<class Device>& logicalDevice, const VkMemoryAllocateFlags allocateFlags, const VkMemoryPropertyFlags propertyFlags);
 
-      private:
+    private:
         VkDevice mVkLogicalDeviceRef;
 
         bool mOwned;

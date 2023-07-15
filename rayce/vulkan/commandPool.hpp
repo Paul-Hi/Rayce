@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT CommandPool
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(CommandPool)
 
         CommandPool(const std::unique_ptr<class Device>& logicalDevice, VkCommandPoolCreateFlags flags);
@@ -26,7 +26,7 @@ namespace rayce
             return mVkCommandPool;
         }
 
-      private:
+    private:
         VkCommandPool mVkCommandPool;
         VkDevice mVkLogicalDeviceRef;
     };

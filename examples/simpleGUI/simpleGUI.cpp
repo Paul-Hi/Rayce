@@ -143,6 +143,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
 {
     RayceApp::onImGuiRender(commandBuffer, imageIndex);
 
+    pScene->onImGuiRender();
+
     ImGuiWindowFlags window_flags = 0;
     window_flags |= ImGuiWindowFlags_NoTitleBar;
     window_flags |= ImGuiWindowFlags_NoScrollbar;

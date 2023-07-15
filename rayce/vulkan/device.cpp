@@ -21,11 +21,13 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
 
     std::vector<VkQueueFamilyProperties>::iterator graphicsFamily =
         std::find_if(queueFamilyProperties.begin(), queueFamilyProperties.end(),
-                     [](const VkQueueFamilyProperties& queueFamily) { return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT; });
+                     [](const VkQueueFamilyProperties& queueFamily)
+                     { return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT; });
     // We want a separate family for compute stuff
     std::vector<VkQueueFamilyProperties>::iterator computeFamily = std::find_if(
         queueFamilyProperties.begin(), queueFamilyProperties.end(),
-        [](const VkQueueFamilyProperties& queueFamily) { return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT); });
+        [](const VkQueueFamilyProperties& queueFamily)
+        { return queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT); });
 
     // Present family - most of the time equal to graphics family
     std::vector<VkQueueFamilyProperties>::iterator presentFamily = std::find_if(queueFamilyProperties.begin(), queueFamilyProperties.end(),
@@ -76,25 +78,25 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
 
     // additional device features for raytracing
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
-    bufferDeviceAddressFeatures.sType                                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-    bufferDeviceAddressFeatures.pNext                                       = nullptr;
-    bufferDeviceAddressFeatures.bufferDeviceAddress                         = VK_TRUE;
+    bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bufferDeviceAddressFeatures.pNext               = nullptr;
+    bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
 
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
-    indexingFeatures.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    indexingFeatures.pNext                                      = &bufferDeviceAddressFeatures;
-    indexingFeatures.runtimeDescriptorArray                     = VK_TRUE;
-    indexingFeatures.shaderSampledImageArrayNonUniformIndexing  = VK_TRUE;
+    indexingFeatures.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexingFeatures.pNext                                     = &bufferDeviceAddressFeatures;
+    indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
+    indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
-    accelerationStructureFeatures.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-    accelerationStructureFeatures.pNext                                            = &indexingFeatures;
-    accelerationStructureFeatures.accelerationStructure                            = VK_TRUE;
+    accelerationStructureFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    accelerationStructureFeatures.pNext                 = &indexingFeatures;
+    accelerationStructureFeatures.accelerationStructure = VK_TRUE;
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingFeatures{};
-    rayTracingFeatures.sType                                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-    rayTracingFeatures.pNext                                         = &accelerationStructureFeatures;
-    rayTracingFeatures.rayTracingPipeline                            = VK_TRUE;
+    rayTracingFeatures.sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    rayTracingFeatures.pNext              = &accelerationStructureFeatures;
+    rayTracingFeatures.rayTracingPipeline = VK_TRUE;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

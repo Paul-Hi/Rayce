@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT ImguiInterface
     {
-      public:
+    public:
         ImguiInterface(const std::unique_ptr<class Instance>& instance, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool,
                        const std::unique_ptr<class Swapchain>& swapchain, GLFWwindow* nativeWindowHandle);
         ~ImguiInterface();
@@ -25,7 +25,7 @@ namespace rayce
 
         void platformWindows();
 
-      private:
+    private:
         VkDescriptorPool mVkDescriptorPool;
         VkDevice mLVkLogicalDeviceRef;
         VkExtent2D mSwapchainExtent;

@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT Device
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Device)
 
         Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std::vector<const char*>& enabledValidationLayers, bool raytracingSupported);
@@ -61,7 +61,7 @@ namespace rayce
             return mPresentFamilyIndex;
         }
 
-      private:
+    private:
         VkDevice mVkDevice;
         VkQueue mVkGraphicsQueue;
         VkQueue mVkComputeQueue;

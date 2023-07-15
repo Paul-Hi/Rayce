@@ -4,10 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <app/imguiInterface.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
-#include <app/imguiInterface.hpp>
 #include <imstb_truetype.h>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
@@ -82,7 +82,8 @@ ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const 
 
     ImGui_ImplVulkan_Init(&initInfo, pRenderPass->getVkRenderPass());
 
-    ImmediateSubmit::Execute(logicalDevice, commandPool, [&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
+    ImmediateSubmit::Execute(logicalDevice, commandPool, [&](VkCommandBuffer cmd)
+                             { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
 
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 }

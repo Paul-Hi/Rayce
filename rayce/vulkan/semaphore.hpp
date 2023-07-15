@@ -16,7 +16,7 @@ namespace rayce
     // binary
     class RAYCE_API_EXPORT Semaphore
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(Semaphore)
 
         Semaphore(const std::unique_ptr<class Device>& logicalDevice);
@@ -27,7 +27,7 @@ namespace rayce
             return mVkSemaphore;
         }
 
-      private:
+    private:
         VkSemaphore mVkSemaphore;
         VkDevice mVkLogicalDeviceRef;
     };

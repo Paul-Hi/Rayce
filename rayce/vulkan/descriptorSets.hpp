@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT DescriptorSets
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(DescriptorSets)
 
         DescriptorSets(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class DescriptorPool>& descriptorPool,
@@ -29,7 +29,7 @@ namespace rayce
 
         void update(const std::vector<VkWriteDescriptorSet>& writeDescriptorSets);
 
-      private:
+    private:
         std::vector<VkDescriptorSet> mVkDescriptorSets;
         VkDevice mVkLogicalDeviceRef;
         VkDescriptorPool mVkDescriptorPoolRef;

@@ -17,7 +17,7 @@ vec3 fakePerspective(vec2 screenUV, float aspect)
     u *= (planeWidth * aspect);
     v *= planeWidth;
 
-    const vec3 rayDir = normalize(normalize(vec3(-5,0,-5)) + (u * screenUV.x) - (v * screenUV.y));
+    const vec3 rayDir = normalize(normalize(vec3(-5,-3,-5)) + (u * screenUV.x) - (v * screenUV.y));
     return rayDir;
 }
 
@@ -27,7 +27,7 @@ void main() {
     vec2 uv = pixelC / vec2(gl_LaunchSizeEXT.xy);
     uv = vec2(uv.x, uv.y) * 2.0 - 1.0;
 
-    const vec4 origin = vec4(5.0, 0.0, 5.0, 0.0);
+    const vec4 origin = vec4(5.0, 3.0, 5.0, 0.0);
     const vec4 direction = vec4(fakePerspective(uv, 16.0/9.0), 0.0);
 
     const uint rayFlags = gl_RayFlagsNoneEXT;

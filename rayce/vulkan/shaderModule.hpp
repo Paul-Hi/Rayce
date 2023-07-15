@@ -15,7 +15,7 @@ namespace rayce
 {
     class RAYCE_API_EXPORT ShaderModule
     {
-      public:
+    public:
         RAYCE_DISABLE_COPY_MOVE(ShaderModule)
 
         ShaderModule(const std::unique_ptr<class Device>& logicalDevice, const str& spirvSourceFilename);
@@ -28,7 +28,7 @@ namespace rayce
 
         VkPipelineShaderStageCreateInfo createShaderStage(VkShaderStageFlagBits stage) const;
 
-      private:
+    private:
         VkShaderModule mVkShaderModule;
         VkDevice mVkLogicalDeviceRef;
 
