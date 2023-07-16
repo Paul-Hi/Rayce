@@ -4,8 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef MACRO_HPP
+/// @cond NO_DOC
 #define MACRO_HPP
+/// @endcond
 
 #include <core/log.hpp>
 #include <core/types.hpp>
@@ -15,6 +19,7 @@
 /// @brief Macro for unused parameters.
 #define RAYCE_UNUSED(x) (void)x
 
+/// @brief Macro disabling copy and move constructors of a given class.
 #define RAYCE_DISABLE_COPY_MOVE(className)           \
     className(const className&)            = delete; \
     className(className&&)                 = delete; \

@@ -173,7 +173,7 @@ void RayceApp::onFrameDraw()
     mCurrentFrame = (mCurrentFrame + 1) % mInFlightFences.size();
 }
 
-void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
+void RayceApp::onRender(VkCommandBuffer, const uint32)
 {
     // UI rasterization is done later as overlay
 
@@ -203,7 +203,7 @@ void RayceApp::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     // vkCmdEndRenderPass(commandBuffer);
 }
 
-void RayceApp::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) {}
+void RayceApp::onImGuiRender(VkCommandBuffer, const uint32) {}
 
 VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
 {
@@ -329,7 +329,7 @@ void RayceApp::recreateSwapchain()
 
     pGraphicsPipeline.reset(new GraphicsPipeline(pDevice, pSwapchain, false));
 
-    int32 swapchainImageCount = 0;
+    uint32 swapchainImageCount = 0;
     for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
     {
         swapchainImageCount++;

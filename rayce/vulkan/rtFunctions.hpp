@@ -4,12 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef RT_FUNCTIONS_HPP
 #define RT_FUNCTIONS_HPP
-
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
 
 namespace rayce
 {
@@ -46,7 +44,7 @@ namespace rayce
                                      const VkRayTracingPipelineCreateInfoKHR* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines)>
             vkCreateRayTracingPipelinesKHR;
 
-        const std::function<VkResult(VkDevice device, VkPipeline pipeline, uint32 firstGroup, uint32 groupCount, size_t dataSize, void* pData)> vkGetRayTracingShaderGroupHandlesKHR;
+        const std::function<VkResult(VkDevice device, VkPipeline pipeline, uint32 firstGroup, uint32 groupCount, ptr_size dataSize, void* pData)> vkGetRayTracingShaderGroupHandlesKHR;
 
         const std::function<VkDeviceAddress(VkDevice device, const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)> vkGetAccelerationStructureDeviceAddressKHR;
 

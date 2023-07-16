@@ -4,12 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef SEMAPHORE_HPP
 #define SEMAPHORE_HPP
-
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
 
 namespace rayce
 {

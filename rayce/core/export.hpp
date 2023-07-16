@@ -4,8 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef EXPORT_HPP
+/// @cond NO_DOC
 #define EXPORT_HPP
+/// @endcond
 
 #ifdef RAYCE_SHARED
 

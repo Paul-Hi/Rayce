@@ -39,8 +39,8 @@ Swapchain::Swapchain(const std::unique_ptr<Device>& logicalDevice, VkSurfaceKHR 
     mSwapExtent  = chooseSwapExtent(capabilities, nativeWindowHandle);
 
     // Image count, try at least more then minimum
-    uint32 mMinImageCount = capabilities.minImageCount + 1;
-    uint32 imageCount     = mMinImageCount;
+    mMinImageCount    = capabilities.minImageCount + 1;
+    uint32 imageCount = mMinImageCount;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
     {
         imageCount = capabilities.maxImageCount;

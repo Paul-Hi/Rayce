@@ -28,6 +28,11 @@ target_link_libraries(scene
     rayce::vulkan
 )
 
+target_precompile_headers(scene
+    PUBLIC
+    ${RAYCE_PRECOMPILED_HEADER}
+)
+
 target_compile_definitions(scene
     PUBLIC
     $<$<CONFIG:Debug>:RAYCE_DEBUG>

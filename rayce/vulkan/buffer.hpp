@@ -4,12 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef BUFFER_HPP
 #define BUFFER_HPP
-
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/deviceMemory.hpp>
 

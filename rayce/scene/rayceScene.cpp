@@ -5,7 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include <imgui.h>
-#include <scene/scene.hpp>
+#include <scene/rayceScene.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
@@ -17,14 +17,14 @@
 
 using namespace rayce;
 
-Scene::Scene()
+RayceScene::RayceScene()
     : mMaxVertex(0)
     , mPrimitiveCount(0)
     , mReflectionOpen(true)
 {
 }
 
-void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool)
+void RayceScene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool)
 {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -34,33 +34,39 @@ void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logi
     str err;
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str());
 
+    if (!ret)
+    {
+        RAYCE_LOG_ERROR("Can not load: %s", filename.c_str());
+        return;
+    }
+
     mReflectionInfo.filename = filename;
 
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
 
-    for (size_t v = 0; v < attrib.vertices.size(); v += 3)
+    for (ptr_size v = 0; v < attrib.vertices.size(); v += 3)
     {
         Vertex vert;
-        vert.position.x() = attrib.vertices[v + 0];
-        vert.position.y() = attrib.vertices[v + 1];
-        vert.position.z() = attrib.vertices[v + 2];
+        vert.position.x() = attrib.vertices[static_cast<uint32>(v) + 0];
+        vert.position.y() = attrib.vertices[static_cast<uint32>(v) + 1];
+        vert.position.z() = attrib.vertices[static_cast<uint32>(v) + 2];
         vertices.push_back(vert);
     }
 
     for (auto& shape : shapes)
     {
         mReflectionInfo.shapeNames.push_back(shape.name);
-        mReflectionInfo.shapeTriCounts.push_back(shape.mesh.indices.size() / 3);
+        mReflectionInfo.shapeTriCounts.push_back(static_cast<uint32>(shape.mesh.indices.size() / 3));
         for (ptr_size f = 0; f < shape.mesh.indices.size(); f += 3)
         {
-            tinyobj::index_t i0 = shape.mesh.indices[f + 0];
-            tinyobj::index_t i1 = shape.mesh.indices[f + 1];
-            tinyobj::index_t i2 = shape.mesh.indices[f + 2];
+            tinyobj::index_t i0 = shape.mesh.indices[static_cast<uint32>(f) + 0];
+            tinyobj::index_t i1 = shape.mesh.indices[static_cast<uint32>(f) + 1];
+            tinyobj::index_t i2 = shape.mesh.indices[static_cast<uint32>(f) + 2];
 
-            indices.push_back(i0.vertex_index);
-            indices.push_back(i1.vertex_index);
-            indices.push_back(i2.vertex_index);
+            indices.push_back(static_cast<uint32>(i0.vertex_index));
+            indices.push_back(static_cast<uint32>(i1.vertex_index));
+            indices.push_back(static_cast<uint32>(i2.vertex_index));
         }
     }
 
@@ -83,7 +89,7 @@ void Scene::loadFromObj(const str& filename, const std::unique_ptr<Device>& logi
     pGeometry = std::make_unique<Geometry>(std::move(vertexBuffer), vertices.size(), std::move(indexBuffer), indices.size());
 }
 
-void Scene::onImGuiRender()
+void RayceScene::onImGuiRender()
 {
     ImGuiWindowFlags window_flags = 0;
 

@@ -4,10 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#ifndef RAYCE_APP_HPP
-#define RAYCE_APP_HPP
+#pragma once
+
+#ifndef APP_HPP
+#define APP_HPP
 
 #include "app/imguiInterface.hpp"
 #include "app/rayceApp.hpp"
 
-#endif // RAYCE_APP_HPP
+#endif // APP_HPP

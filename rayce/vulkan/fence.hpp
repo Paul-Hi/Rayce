@@ -4,34 +4,45 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef FENCE_HPP
 #define FENCE_HPP
 
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
-
 namespace rayce
 {
-    // binary
+    /// @brief A binary fence to synchronize GPU and CPU.
     class RAYCE_API_EXPORT Fence
     {
     public:
         RAYCE_DISABLE_COPY_MOVE(Fence)
 
+        /// @brief COnstructs a new \a Fence.
+        /// @param logicalDevice The logical \a Device.
+        /// @param createSignaled Create the \a Fence signaled (saves one call).
         Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSignaled);
+
+        /// @brief Destructor.
         ~Fence();
 
+        /// @brief Retrieves the vulkan fence handle.
+        /// @return The vulkan fence handle.
         VkFence getVkFence() const
         {
             return mVkFence;
         }
 
+        /// @brief Resets the \a Fence.
         void reset();
+
+        /// @brief Waits for the \a Fence to get signaled.
+        /// @param timeout Maximum waiting time.
         void wait(const uint64 timeout);
 
     private:
+        /// @brief The vulkan fence handle.
         VkFence mVkFence;
+        /// @brief The vulkan handle referencing the vulkan device.
         VkDevice mVkLogicalDeviceRef;
     };
 } // namespace rayce

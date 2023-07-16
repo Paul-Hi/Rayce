@@ -35,6 +35,11 @@ target_link_libraries(rayceVulkan
     rayce::core
 )
 
+target_precompile_headers(rayceVulkan
+    PUBLIC
+    ${RAYCE_PRECOMPILED_HEADER}
+)
+
 target_compile_definitions(rayceVulkan
     PUBLIC
     $<$<CONFIG:Debug>:RAYCE_DEBUG>

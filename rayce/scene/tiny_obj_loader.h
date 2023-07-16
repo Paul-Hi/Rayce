@@ -1,3 +1,4 @@
+/// @cond NO_DOC
 /*
 The MIT License (MIT)
 
@@ -3457,3 +3458,5 @@ bool ObjReader::ParseFromString(const std::string &obj_text,
 }  // namespace tinyobj
 
 #endif
+
+/// @endcond

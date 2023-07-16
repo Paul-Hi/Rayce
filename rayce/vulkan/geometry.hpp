@@ -4,12 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef GEOMETRY_HPP
 #define GEOMETRY_HPP
-
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
 
 namespace rayce
 {
@@ -29,12 +27,12 @@ namespace rayce
             return pIndexBuffer;
         }
 
-        const uint32 getVertexCount() const
+        uint32 getVertexCount() const
         {
             return mVertexCount;
         }
 
-        const uint32 getIndexCount() const
+        uint32 getIndexCount() const
         {
             return mIndexCount;
         }

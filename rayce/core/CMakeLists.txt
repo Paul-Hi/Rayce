@@ -34,6 +34,11 @@ target_link_libraries(core
     imgui
 )
 
+target_precompile_headers(core
+    PUBLIC
+    ${RAYCE_PRECOMPILED_HEADER}
+)
+
 target_compile_definitions(core
     PUBLIC
     $<$<CONFIG:Debug>:RAYCE_DEBUG>

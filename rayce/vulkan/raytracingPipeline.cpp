@@ -161,8 +161,8 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     for (ptr_size i = 0; i < descriptorsInFlight; ++i)
     {
-        accelerationStructureWrite.dstSet                     = pDescriptorSets->operator[](i);
-        imageWrite.dstSet                                     = pDescriptorSets->operator[](i);
+        accelerationStructureWrite.dstSet                     = pDescriptorSets->operator[](static_cast<uint32>(i));
+        imageWrite.dstSet                                     = pDescriptorSets->operator[](static_cast<uint32>(i));
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
         pDescriptorSets->update(writeDescriptorSets);
     }

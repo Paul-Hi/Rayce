@@ -6,7 +6,7 @@
 
 #include "simpleGUI.hpp"
 #include <imgui.h>
-#include <scene/scene.hpp>
+#include <scene/rayceScene.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandPool.hpp>
@@ -36,7 +36,7 @@ bool SimpleGUI::onInitialize()
 
     // Test geometry
 
-    pScene = std::make_unique<Scene>();
+    pScene = std::make_unique<RayceScene>();
 
     const str cVikingRoomObj = ".\\assets\\obj\\viking_room.obj";
 
@@ -117,7 +117,7 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipeline());
     VkDescriptorSet rtDescriptorSet = pRaytracingPipeline->getVkDescriptorSet(imageIndex);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, 1, &rtDescriptorSet, 0, 0);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, 1, &rtDescriptorSet, 0, nullptr);
 
     VkExtent2D extent = getSwapchain()->getSwapExtent();
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
@@ -159,7 +159,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     }
 
     ImGui::Spacing();
-    ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    double fr = static_cast<double>(ImGui::GetIO().Framerate); // cast since text implicitely casts as well -> Warning.
+    ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0 / fr, fr);
     ImGui::End();
 }
 

@@ -4,8 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#ifndef RAYCE_VULKAN_HPP
-#define RAYCE_VULKAN_HPP
+#pragma once
+
+#ifndef VULKAN_HPP
+#define VULKAN_HPP
 
 #include "vulkan/accelerationStructure.hpp"
 #include "vulkan/buffer.hpp"
@@ -35,4 +37,4 @@
 #include "vulkan/vertex.hpp"
 #include "vulkan/window.hpp"
 
-#endif // RAYCE_VULKAN_HPP
+#endif // VULKAN_HPP

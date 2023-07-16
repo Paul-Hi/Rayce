@@ -1,5 +1,11 @@
 project(raycelib)
 
+set(RAYCE_PRECOMPILED_HEADER
+    ../core/export.hpp
+    ../core/macro.hpp
+    ../core/types.hpp
+)
+
 add_subdirectory(core)
 add_subdirectory(vulkan)
 add_subdirectory(app)
@@ -8,6 +14,12 @@ add_subdirectory(scene)
 if(RAYCE_MONOLYTHIC)
     message(STATUS "================================================")
     message(STATUS "Building Shared Monolythic Rayce Library!")
+
+    set(RAYCE_PRECOMPILED_HEADER
+        core/export.hpp
+        core/macro.hpp
+        core/types.hpp
+    )
 
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
@@ -29,6 +41,11 @@ if(RAYCE_MONOLYTHIC)
     target_include_directories(rayce
         PUBLIC
         ${RAYCE_INCLUDE_DIR}
+    )
+
+    target_precompile_headers(rayce
+        PUBLIC
+        ${RAYCE_PRECOMPILED_HEADER}
     )
 
     add_library(rayce::rayce ALIAS rayce)

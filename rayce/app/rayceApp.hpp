@@ -4,12 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef RAYCE_APP_HPP
 #define RAYCE_APP_HPP
-
-#include <core/export.hpp>
-#include <core/macro.hpp>
-#include <core/types.hpp>
 
 namespace rayce
 {
@@ -46,7 +44,7 @@ namespace rayce
         }
 
     protected:
-        /// @brief Constructor.
+        /// @brief Constructs a \a RayceApp.
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
 

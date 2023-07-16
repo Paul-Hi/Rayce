@@ -64,5 +64,4 @@ uint32 DeviceMemory::findMemoryType(const uint32 typeFilter, const VkPhysicalDev
     }
 
     RAYCE_ABORT("No suitable memory format available!");
-    return -1;
 }

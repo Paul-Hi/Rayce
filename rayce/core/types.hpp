@@ -4,8 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#pragma once
+
 #ifndef TYPES_HPP
+/// @cond NO_DOC
 #define TYPES_HPP
+/// @endcond
 
 #include <Eigen/Core>
 #include <Eigen/Eigen>
@@ -14,12 +18,14 @@
 #include <stdint.h>
 #include <string.h>
 
+/// @cond NO_DOC
 #pragma warning(push, 0)
 #define NOMINMAX
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #pragma warning(pop)
+/// @endcond
 
 namespace rayce
 {
@@ -37,7 +43,7 @@ namespace rayce
     using uint32 = unsigned int;
     /// @brief Typedef for 64 bit unsigned integers.
     using uint64 = unsigned long long;
-    /// @brief Typedef for size_t.
+    /// @brief Typedef for ptr_size.
     using ptr_size = size_t;
 
     /// @brief Typedef for a 3 component float vector.
@@ -50,7 +56,7 @@ namespace rayce
     /// @brief Typedef for string.
     using str = std::string;
 
-    /// @cond NO_COND
+    /// @cond NO_DOC
 
     template <typename e>
     struct bit_mask_operations
