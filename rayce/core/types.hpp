@@ -309,7 +309,7 @@ namespace rayce
         tr(1, 1)             = -focalLength;
         tr(2, 2)             = zFar / (zNear - zFar);
         tr(3, 2)             = -static_cast<Scalar>(1);
-        tr(2, 3)             = zNear * tr(2, 2);
+        tr(2, 3)             = -(zFar * zNear) / (zFar - zNear);
         return tr.matrix();
     }
 

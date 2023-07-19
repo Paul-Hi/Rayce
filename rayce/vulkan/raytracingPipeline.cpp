@@ -203,8 +203,8 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkExtent2D extent = swapchain->getSwapExtent();
     float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
     CameraBufferRT cb;
-    cb.inverseView       = lookAt(vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
-    cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f);
+    cb.inverseView       = lookAt(vec3(3.0f, 2.0f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
+    cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f).inverse();
 
     for (ptr_size i = 0; i < framesInFlight; ++i)
     {
