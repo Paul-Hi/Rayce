@@ -591,9 +591,9 @@ namespace loguru
     {
         for (char c : str)
         {
-            /**/ if (c == '\a')
+            /**/ if (c == '@a')
             {
-                out += "\\a";
+                out += "\@a";
             }
             else if (c == '\b')
             {

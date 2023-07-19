@@ -17,9 +17,9 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(Surface)
 
-        /// @brief Constructs a new vulkan \a Surface.
-        /// @param instance Handle to the vulkan instance.
-        /// @param nativeWindowHandle Native platform window handle.
+        /// @brief Constructs a new vulkan @a Surface.
+        /// @param[in] instance Handle to the vulkan instance.
+        /// @param[in] nativeWindowHandle Native platform window handle.
         Surface(VkInstance instance, GLFWwindow* nativeWindowHandle);
         /// @brief Destructor.
         ~Surface();

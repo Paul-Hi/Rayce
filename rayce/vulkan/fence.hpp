@@ -17,9 +17,9 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(Fence)
 
-        /// @brief COnstructs a new \a Fence.
-        /// @param logicalDevice The logical \a Device.
-        /// @param createSignaled Create the \a Fence signaled (saves one call).
+        /// @brief COnstructs a new @a Fence.
+        /// @param[in] logicalDevice The logical @a Device.
+        /// @param[in] createSignaled Create the @a Fence signaled (saves one call).
         Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSignaled);
 
         /// @brief Destructor.
@@ -32,11 +32,11 @@ namespace rayce
             return mVkFence;
         }
 
-        /// @brief Resets the \a Fence.
+        /// @brief Resets the @a Fence.
         void reset();
 
-        /// @brief Waits for the \a Fence to get signaled.
-        /// @param timeout Maximum waiting time.
+        /// @brief Waits for the @a Fence to get signaled.
+        /// @param[in] timeout Maximum waiting time.
         void wait(const uint64 timeout);
 
     private:

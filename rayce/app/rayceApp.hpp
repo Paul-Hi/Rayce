@@ -11,7 +11,7 @@
 
 namespace rayce
 {
-    /// @brief Options for creating any \a RayceApp.
+    /// @brief Options for creating any @a RayceApp.
     struct RAYCE_API_EXPORT RayceOptions
     {
         /// @brief The name of the application.
@@ -44,7 +44,7 @@ namespace rayce
         }
 
     protected:
-        /// @brief Constructs a \a RayceApp.
+        /// @brief Constructs a @a RayceApp.
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
 

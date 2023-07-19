@@ -10,7 +10,7 @@ set(DOXYGEN_DOXYFILE_OUT ${DOXYGEN_OUT}/Doxyfile)
 configure_file(${PROJECT_SOURCE_DIR}/doc/Doxyfile.in ${DOXYGEN_DOXYFILE_OUT} @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/doc/rayce_header.html.in ${DOXYGEN_OUT}/header.html @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/doc/rayce_footer.html.in ${DOXYGEN_OUT}/footer.html @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/doc/rayce_stylesheet.css.in ${DOXYGEN_OUT}/extra_style.css @ONLY)
+# configure_file(${PROJECT_SOURCE_DIR}/doc/rayce_stylesheet.css.in ${DOXYGEN_OUT}/extra_style.css @ONLY)
 
 message("Doxygen build started.")
 

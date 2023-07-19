@@ -15,13 +15,14 @@
 #include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/rtFunctions.hpp>
 #include <vulkan/shaderModule.hpp>
+#include <vulkan/swapchain.hpp>
 
 using namespace rayce;
 
-RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<AccelerationStructure>& tlas, const std::unique_ptr<ImageView>& outputImage,
-                                       uint32 descriptorsInFlight)
+RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, const std::unique_ptr<ImageView>& outputImage,
+                                       uint32 framesInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
-    , mDescriptorsInFlight(descriptorsInFlight)
+    , mFramesInFlight(framesInFlight)
 {
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
 
@@ -39,13 +40,25 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorTargetImage };
 
-    pDescriptorSetLayout = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
+    pDescriptorSetLayoutRT = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
-    VkDescriptorSetLayout descriptorSetLayout = pDescriptorSetLayout->getVkDescriptorLayout();
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorCameraBuffer{};
+    layoutBindingDescriptorCameraBuffer.binding         = 0;
+    layoutBindingDescriptorCameraBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBindingDescriptorCameraBuffer.descriptorCount = 1;
+    layoutBindingDescriptorCameraBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    bindings = { layoutBindingDescriptorCameraBuffer };
+
+    pDescriptorSetLayoutCamera = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
+
+    VkDescriptorSetLayout descriptorSetLayoutRT     = pDescriptorSetLayoutRT->getVkDescriptorLayout();
+    VkDescriptorSetLayout descriptorSetLayoutCamera = pDescriptorSetLayoutCamera->getVkDescriptorLayout();
+    VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutRT, descriptorSetLayoutCamera };
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts    = &descriptorSetLayout;
+    pipelineLayoutCreateInfo.setLayoutCount = 2;
+    pipelineLayoutCreateInfo.pSetLayouts    = setLayouts;
 
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
@@ -128,10 +141,27 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 
     // descriptor sets
-    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, descriptorsInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, descriptorsInFlight } });
-    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, descriptorsInFlight, 0);
+    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight } });
+    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // max sets correct?
 
-    pDescriptorSets = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayout, descriptorsInFlight);
+    pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
+    pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);
+
+    // buffers
+    mCameraBuffers.resize(framesInFlight);
+    mCameraBuffersMapped.resize(framesInFlight);
+
+    uint32 bufferSize = sizeof(CameraBufferRT);
+
+    for (ptr_size i = 0; i < framesInFlight; ++i)
+    {
+        mCameraBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        mCameraBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        const std::unique_ptr<DeviceMemory>& deviceMemory = mCameraBuffers[i]->getDeviceMemory();
+
+        mCameraBuffersMapped[i] = deviceMemory->map(0, bufferSize); // persistent mapping
+    }
 
     // Write stuff
     VkAccelerationStructureKHR vkTLAS = tlas->getVkAccelerationStructure();
@@ -159,26 +189,53 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     imageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     imageWrite.pImageInfo      = &descriptorImageInfo;
 
-    for (ptr_size i = 0; i < descriptorsInFlight; ++i)
+    VkDescriptorBufferInfo cameraBufferInfo{};
+    cameraBufferInfo.offset = 0;
+    cameraBufferInfo.range  = sizeof(CameraBufferRT);
+
+    VkWriteDescriptorSet cameraBufferWrite{};
+    cameraBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    cameraBufferWrite.dstBinding      = 0;
+    cameraBufferWrite.descriptorCount = 1;
+    cameraBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    // uniform buffer update
+    VkExtent2D extent = swapchain->getSwapExtent();
+    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    CameraBufferRT cb;
+    cb.inverseView       = lookAt(vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
+    cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f);
+
+    for (ptr_size i = 0; i < framesInFlight; ++i)
     {
-        accelerationStructureWrite.dstSet                     = pDescriptorSets->operator[](static_cast<uint32>(i));
-        imageWrite.dstSet                                     = pDescriptorSets->operator[](static_cast<uint32>(i));
+        accelerationStructureWrite.dstSet                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
+        imageWrite.dstSet                                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
-        pDescriptorSets->update(writeDescriptorSets);
+        pDescriptorSetsRT->update(writeDescriptorSets);
+
+        cameraBufferInfo.buffer       = mCameraBuffers[i]->getVkBuffer();
+        cameraBufferWrite.pBufferInfo = &cameraBufferInfo;
+        cameraBufferWrite.dstSet      = pDescriptorSetsCamera->operator[](static_cast<uint32>(i));
+        writeDescriptorSets           = { cameraBufferWrite };
+        pDescriptorSetsCamera->update(writeDescriptorSets);
+
+        memcpy(mCameraBuffersMapped[i], &cb, sizeof(cb));
     }
 
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
-VkDescriptorSet RaytracingPipeline::getVkDescriptorSet(uint32 idx) const
+std::vector<VkDescriptorSet> RaytracingPipeline::getVkDescriptorSets(uint32 idx) const
 {
-    return pDescriptorSets->operator[](idx);
+    return { pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx) };
 }
 
 RaytracingPipeline::~RaytracingPipeline()
 {
-    pDescriptorSets.reset();
-    pDescriptorSetLayout.reset();
+    pDescriptorSetsRT.reset();
+    pDescriptorSetsCamera.reset();
+    pDescriptorSetLayoutRT.reset();
+    pDescriptorSetLayoutCamera.reset();
     pDescriptorPool.reset();
     if (mVkPipeline)
     {

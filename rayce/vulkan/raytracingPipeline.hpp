@@ -16,14 +16,9 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
-        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class AccelerationStructure>& tlas, const std::unique_ptr<class ImageView>& outputImage,
-                           uint32 descriptorsInFlight);
+        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, const std::unique_ptr<class ImageView>& outputImage,
+                           uint32 framesInFlight);
         ~RaytracingPipeline();
-
-        const std::unique_ptr<class DescriptorSetLayout>& getVkDescriptorSetLayout() const
-        {
-            return pDescriptorSetLayout;
-        }
 
         VkPipelineLayout getVkPipelineLayout() const
         {
@@ -35,7 +30,7 @@ namespace rayce
             return mVkPipeline;
         }
 
-        VkDescriptorSet getVkDescriptorSet(uint32 idx) const;
+        std::vector<VkDescriptorSet> getVkDescriptorSets(uint32 idx) const;
 
         const std::unique_ptr<class Buffer>& getShaderBindingTableBuffer() const
         {
@@ -67,10 +62,14 @@ namespace rayce
         VkPipeline mVkPipeline;
         VkDevice mVkLogicalDeviceRef;
 
-        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayout;
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutRT;
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutCamera;
 
-        uint32 mDescriptorsInFlight;
-        std::unique_ptr<class DescriptorSets> pDescriptorSets;
+        uint32 mFramesInFlight;
+        std::unique_ptr<class DescriptorSets> pDescriptorSetsRT;
+        std::unique_ptr<class DescriptorSets> pDescriptorSetsCamera;
+        std::vector<std::unique_ptr<class Buffer>> mCameraBuffers;
+        std::vector<void*> mCameraBuffersMapped;
 
         std::unique_ptr<class ShaderModule> pRayGenShader;
         std::unique_ptr<class ShaderModule> pClosestHitShader;
@@ -85,6 +84,12 @@ namespace rayce
         std::unique_ptr<class DescriptorPool> pDescriptorPool;
 
         std::unique_ptr<class RTFunctions> pRTF;
+
+        struct CameraBufferRT
+        {
+            mat4 inverseView;
+            mat4 inverseProjection;
+        };
     };
 } // namespace rayce
 

@@ -11,7 +11,7 @@
 
 namespace rayce
 {
-    /// @brief Stores reflection information for a \a RayceScene.
+    /// @brief Stores reflection information for a @a RayceScene.
     struct SceneReflectionInfo
     {
         /// @brief The file name the scene was loaded from (currently obj).
@@ -26,19 +26,19 @@ namespace rayce
     class RAYCE_API_EXPORT RayceScene
     {
     public:
-        /// @brief Constructs a new \a RaceScene.
+        /// @brief Constructs a new @a RaceScene.
         RayceScene();
         /// @brief Destructor.
         ~RayceScene() = default;
 
-        /// @brief Loads a model from an obj file and preprocesses it for \a Rayces use case.
-        /// @param filename The obj filename.
-        /// @param logicalDevice The logical \a Device used to create necessary GPU structures.
-        /// @param commandPool \a CommandPool to get command buffers.
+        /// @brief Loads a model from an obj file and preprocesses it for @a Rayces use case.
+        /// @param[in] filename The obj filename.
+        /// @param[in] logicalDevice The logical @a Device used to create necessary GPU structures.
+        /// @param[in] commandPool @a CommandPool to get command buffers.
         void loadFromObj(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool);
 
-        /// @brief Returns the created \a Geometry of the \a RayceScene.
-        /// @return The created \a Geometry of the \a RayceScene.
+        /// @brief Returns the created @a Geometry of the @a RayceScene.
+        /// @return The created @a Geometry of the @a RayceScene.
         const std::unique_ptr<class Geometry>& getGeometry()
         {
             return pGeometry;
@@ -51,18 +51,18 @@ namespace rayce
             return mMaxVertex;
         }
 
-        /// @brief Returns the number of triangles in the \a RayceScene.
-        /// @return The number of triangles in the \a RayceScene.
+        /// @brief Returns the number of triangles in the @a RayceScene.
+        /// @return The number of triangles in the @a RayceScene.
         uint32 primitiveCount()
         {
             return mPrimitiveCount;
         }
 
-        /// @brief Renders the \a SceneReflectionInfo in an ImGui window.
+        /// @brief Renders the @a SceneReflectionInfo in an ImGui window.
         void onImGuiRender();
 
     private:
-        /// @brief The \a Geometry of the \a RayceScene.
+        /// @brief The @a Geometry of the @a RayceScene.
         std::unique_ptr<class Geometry> pGeometry;
 
         /// @brief The maximum vertex index.
@@ -73,7 +73,7 @@ namespace rayce
         /// @brief True if the reflection info window is open, else False.
         bool mReflectionOpen;
 
-        /// @brief The \a SceneReflectionInfo.
+        /// @brief The @a SceneReflectionInfo.
         SceneReflectionInfo mReflectionInfo;
     };
 

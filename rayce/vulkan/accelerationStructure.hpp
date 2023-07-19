@@ -11,7 +11,7 @@
 
 namespace rayce
 {
-    /// @brief Initialization data for \a AccelerationStructures.
+    /// @brief Initialization data for @a AccelerationStructures.
     struct RAYCE_API_EXPORT AccelerationStructureInitData
     {
         /// @brief The structure type (BLAS or TLAS).
@@ -34,10 +34,10 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(AccelerationStructure)
 
-        /// @brief Constructs a new \a AccelerationStructure.
-        /// @param logicalDevice The logical \a Device.
-        /// @param commandPool The \a CommandPool to use.
-        /// @param initData The \a AccelerationStructureInitData providing initialization information.
+        /// @brief Constructs a new @a AccelerationStructure.
+        /// @param[in] logicalDevice The logical @a Device.
+        /// @param[in] commandPool The @a CommandPool to use.
+        /// @param[in] initData The @a AccelerationStructureInitData providing initialization information.
         AccelerationStructure(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const AccelerationStructureInitData initData);
 
         /// @brief Destructor.
@@ -50,8 +50,8 @@ namespace rayce
             return mVkAccelerationStructure;
         }
 
-        /// @brief Retrieves the vulkan device address of the \a AccelerationStructure.
-        /// @return The vulkan device address of the \a AccelerationStructure.
+        /// @brief Retrieves the vulkan device address of the @a AccelerationStructure.
+        /// @return The vulkan device address of the @a AccelerationStructure.
         VkDeviceAddress getDeviceAddress() const;
 
     private:
@@ -60,7 +60,7 @@ namespace rayce
         /// @brief The vulkan device handle.
         VkDevice mVkLogicalDeviceRef;
 
-        /// @brief The storage \a Buffer storing the \a AccelerationStructures data.
+        /// @brief The storage @a Buffer storing the @a AccelerationStructures data.
         std::unique_ptr<class Buffer> pStorageBuffer;
 
         /// @brief Loaded raytracing extension functions are stored there.

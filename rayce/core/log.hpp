@@ -14,6 +14,8 @@
 #define LOGURU_EXPORT RAYCE_API_EXPORT
 #include <core/loguru.hpp>
 
+#include <vulkan/vk_enum_string_helper.h>
+
 /// @brief Info log.
 #define RAYCE_LOG_INFO(...) LOG_F(INFO, __VA_ARGS__)
 /// @brief Warning log.
@@ -48,10 +50,10 @@
 #define RAYCE_CHECK_GE(a, b, ...) CHECK_GE_F(a, b, __VA_ARGS__)
 
 /// @brief Check vulkan status and abort if fails.
-#define RAYCE_CHECK_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log_and_abort(0, "VULKAN CHECK FAILED (" #x "):  " info "  ", __FILE__, __LINE__, ##__VA_ARGS__)
+#define RAYCE_CHECK_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log_and_abort(0, str("VULKAN CHECK FAILED (" + str(#x) + " =  " + str(string_VkResult(x)) + "): " + str(info) + "  ").c_str(), __FILE__, __LINE__, ##__VA_ARGS__)
 
 /// @brief Check vulkan status and log if it fails without aborting.
-#define RAYCE_TRY_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log(-1, __FILE__, __LINE__, "VULKAN TRY FAILED (" #x "):  " info "  "##__VA_ARGS__)
+#define RAYCE_TRY_VK(x, info, ...) LOGURU_PREDICT_TRUE((x) == VK_SUCCESS) ? (void)0 : loguru::log(-1, __FILE__, __LINE__, str("VULKAN TRY FAILED (" + str(#x) + " =  " + str(string_VkResult(x)) + "): " + str(info) + "  ").c_str(), ##__VA_ARGS__)
 
 #ifdef LOGURU_DEBUG_CHECKS
 /// @brief Debug check and abort if fails.

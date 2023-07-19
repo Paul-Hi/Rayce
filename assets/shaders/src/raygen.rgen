@@ -6,29 +6,27 @@ layout(set = 0, binding = 1, rgba8) uniform image2D outImage;
 
 layout(location = 0) rayPayloadEXT vec3 hitValue;
 
-vec3 fakePerspective(vec2 screenUV, float aspect)
+layout(set = 1, binding = 0) uniform CameraBufferRT
 {
-    vec3 u = normalize(vec3(5,0,-5));
-    vec3 v = vec3(0,1,0);
-    const float fov = 0.8;
+    mat4 inverseView;
+    mat4 inverseProjection;
+} camera;
 
-    const float planeWidth = tan(fov * 0.5);
-
-    u *= (planeWidth * aspect);
-    v *= planeWidth;
-
-    const vec3 rayDir = normalize(normalize(vec3(-5,-3,-5)) + (u * screenUV.x) - (v * screenUV.y));
-    return rayDir;
+void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
+{
+    origin = camera.inverseView * vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 target = camera.inverseProjection * vec4(screenUV.x, screenUV.y, 1.0, 1.0);
+    direction = camera.inverseView * vec4(normalize(target.xyz), 0.0);
 }
 
-
 void main() {
-    const vec2 pixelC = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 uv = pixelC / vec2(gl_LaunchSizeEXT.xy);
-    uv = vec2(uv.x, uv.y) * 2.0 - 1.0;
+    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    vec2 uv = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+    uv = uv * 2.0 - 1.0;
 
-    const vec4 origin = vec4(5.0, 3.0, 5.0, 0.0);
-    const vec4 direction = vec4(fakePerspective(uv, 16.0/9.0), 0.0);
+    // create ray origin and direction from camera data.
+    vec4 origin, direction;
+    createRay(uv, origin, direction);
 
     const uint rayFlags = gl_RayFlagsNoneEXT;
     const uint cullMask = 0xff;
