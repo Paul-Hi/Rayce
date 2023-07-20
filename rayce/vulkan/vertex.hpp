@@ -15,6 +15,7 @@ namespace rayce
     {
     public:
         vec3 position;
+        vec2 uv;
 
         static VkVertexInputBindingDescription getVertexInputBindingDescription()
         {
@@ -26,13 +27,18 @@ namespace rayce
             return vertexInputBindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 1> getVertexInputAttributeDescription()
+        static std::array<VkVertexInputAttributeDescription, 2> getVertexInputAttributeDescription()
         {
-            std::array<VkVertexInputAttributeDescription, 1> vertexInputAttributeDescription{};
+            std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributeDescription{};
             vertexInputAttributeDescription[0].binding  = 0;
             vertexInputAttributeDescription[0].location = 0;
             vertexInputAttributeDescription[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
             vertexInputAttributeDescription[0].offset   = offsetof(Vertex, position);
+
+            vertexInputAttributeDescription[1].binding  = 0;
+            vertexInputAttributeDescription[1].location = 1;
+            vertexInputAttributeDescription[1].format   = VK_FORMAT_R32G32_SFLOAT;
+            vertexInputAttributeDescription[1].offset   = offsetof(Vertex, uv);
 
             return vertexInputAttributeDescription;
         }

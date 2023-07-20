@@ -9,6 +9,8 @@
 #ifndef IMAGE_HPP
 #define IMAGE_HPP
 
+#include <vulkan/buffer.hpp>
+
 namespace rayce
 {
     class RAYCE_API_EXPORT Image
@@ -33,6 +35,30 @@ namespace rayce
         void adaptImageLayout(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, VkImageLayout newLayout);
 
         void allocateMemory(const std::unique_ptr<class Device>& logicalDevice, const VkMemoryAllocateFlags allocateFlags, const VkMemoryPropertyFlags propertyFlags);
+
+        void fillFromBuffer(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<Buffer>& buffer, VkExtent3D extent);
+
+        template <class T>
+        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Image& dstImage, const std::vector<T>& data, VkExtent3D extent)
+        {
+            Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, dstImage, data.data(), sizeof(data[0]) * data.size(), extent);
+        }
+
+        template <class T>
+        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Image& dstImage, const T* data, uint32 size, VkExtent3D extent)
+        {
+            std::unique_ptr<Buffer> stagingBuffer = std::make_unique<Buffer>(logicalDevice, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            stagingBuffer->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            const std::unique_ptr<DeviceMemory>& deviceMemory = stagingBuffer->getDeviceMemory();
+
+            void* mapped = deviceMemory->map(0, size);
+            std::memcpy(mapped, data, size);
+            deviceMemory->unmap();
+
+            dstImage.fillFromBuffer(logicalDevice, commandPool, stagingBuffer, extent);
+
+            stagingBuffer.reset();
+        }
 
     private:
         VkDevice mVkLogicalDeviceRef;

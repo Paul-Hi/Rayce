@@ -119,6 +119,19 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     std::vector<VkDescriptorSet> rtDescriptorSets = pRaytracingPipeline->getVkDescriptorSets(imageIndex);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, rtDescriptorSets.size(), rtDescriptorSets.data(), 0, nullptr);
 
+    struct BufferReferences
+    {
+        uint64 vertices;
+        uint64 indices;
+    } bufferReferences;
+
+    auto& geometry = pScene->getGeometry();
+
+    bufferReferences.vertices = geometry->getVertexBuffer()->getDeviceAddress();
+    bufferReferences.indices  = geometry->getIndexBuffer()->getDeviceAddress();
+
+    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(uint64) * 2, &bufferReferences);
+
     VkExtent2D extent = getSwapchain()->getSwapExtent();
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
 
@@ -177,6 +190,9 @@ void SimpleGUI::recreateSwapchain()
 
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
     pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, pRaytracingTargetView, static_cast<uint32>(swapchain->getImageViews().size())));
+
+    pRaytracingPipeline->updateImageView(pScene->getTextureView(0));
+
 }
 
 int main(int argc, char** argv)

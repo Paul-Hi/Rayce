@@ -13,6 +13,8 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     : mVkPhysicalDevice(physicalDevice)
 {
     // We have already queried and computed all of these earlier...
+    vkGetPhysicalDeviceProperties(physicalDevice, &mProperties);
+
     uint32 queueFamilyPropertyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, nullptr);
 
@@ -54,7 +56,9 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     }
 
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
-    physicalDeviceFeatures.geometryShader = VK_TRUE;
+    physicalDeviceFeatures.geometryShader    = VK_TRUE;
+    physicalDeviceFeatures.shaderInt64       = VK_TRUE;
+    physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
 
     // Swapchain has to be enabled.
     // Swapchain

@@ -1,16 +1,41 @@
 #version 460
-#extension GL_EXT_ray_tracing  : require
+
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "globals.glsl"
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT TLAS;
 layout(set = 0, binding = 1, rgba8) uniform image2D outImage;
 
-layout(location = 0) rayPayloadEXT vec3 hitValue;
+layout(location = 0) rayPayloadEXT RayPayload pld;
 
 layout(set = 1, binding = 0) uniform CameraBufferRT
 {
     mat4 inverseView;
     mat4 inverseProjection;
 } camera;
+
+layout(set = 2, binding = 0) uniform sampler2D diffuse;
+
+const float GAMMA     = 2.2;
+const float INV_GAMMA = 1.0 / GAMMA;
+vec3 linearTosRGB(vec3 color)
+{
+    return pow(color, vec3(INV_GAMMA));
+}
+
+// ACES tone map
+// see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+vec3 toneMapACES(vec3 color)
+{
+    const float A = 2.51;
+    const float B = 0.03;
+    const float C = 2.43;
+    const float D = 0.59;
+    const float E = 0.14;
+    return linearTosRGB(clamp((color * (A * color + B)) / (color * (C * color + D) + E), 0.0, 1.0));
+}
 
 void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
 {
@@ -19,7 +44,9 @@ void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
     direction = camera.inverseView * vec4(normalize(target.xyz), 0.0);
 }
 
-void main() {
+void main()
+{
+    vec3 color = vec3(0.0, 0.0, 0.0125);
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     vec2 uv = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
     uv = uv * 2.0 - 1.0;
@@ -39,5 +66,10 @@ void main() {
 
     traceRayEXT(TLAS, rayFlags, cullMask, sbtRecordOffset, sbtRecordStride, missIndex, origin.xyz, tmin, direction.xyz, tmax, payload);
 
-    imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 1.0));
+    if(pld.hitT != INFINITY)
+    {
+        color = texture(diffuse, pld.triangle.interpolatedUV).rgb;
+    }
+
+    imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(toneMapACES(color), 1.0));
 }

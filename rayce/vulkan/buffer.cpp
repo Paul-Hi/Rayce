@@ -50,7 +50,7 @@ VkDeviceAddress Buffer::getDeviceAddress() const
     return vkGetBufferDeviceAddress(mVkLogicalDeviceRef, &info);
 }
 
-void Buffer::fillFrom(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const Buffer& srcBuffer, VkDeviceSize size)
+void Buffer::fillFrom(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const Buffer& srcBuffer, VkDeviceSize size)
 {
     ImmediateSubmit::Execute(logicalDevice, commandPool,
                              [&](VkCommandBuffer commandBuffer)

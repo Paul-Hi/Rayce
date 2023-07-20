@@ -27,7 +27,7 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<Device>& logicalDevice,
 
     // vertex input state - will be provided by assets
     VkVertexInputBindingDescription bindingDescription                    = Vertex::getVertexInputBindingDescription();
-    std::array<VkVertexInputAttributeDescription, 1> attributeDescription = Vertex::getVertexInputAttributeDescription();
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescription = Vertex::getVertexInputAttributeDescription();
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;

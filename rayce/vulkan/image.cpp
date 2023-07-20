@@ -126,6 +126,28 @@ void Image::adaptImageLayout(const std::unique_ptr<Device>& logicalDevice, const
     mVkImageLayout = newLayout;
 }
 
+void Image::fillFromBuffer(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const std::unique_ptr<Buffer>& buffer, VkExtent3D extent)
+{
+    ImmediateSubmit::Execute(logicalDevice, commandPool,
+                             [&](VkCommandBuffer commandBuffer)
+                             {
+                                 VkBufferImageCopy copyRegion = {};
+                                 copyRegion.bufferOffset      = 0;
+                                 copyRegion.bufferRowLength   = 0;
+                                 copyRegion.bufferImageHeight = 0;
+
+                                 copyRegion.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                                 copyRegion.imageSubresource.mipLevel       = 0;
+                                 copyRegion.imageSubresource.baseArrayLayer = 0;
+                                 copyRegion.imageSubresource.layerCount     = 1;
+
+                                 copyRegion.imageOffset = { 0, 0, 0 };
+                                 copyRegion.imageExtent = extent;
+
+                                 vkCmdCopyBufferToImage(commandBuffer, buffer->getVkBuffer(), mVkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+                             });
+}
+
 Image::~Image()
 {
     if (mOwned && mVkImage)

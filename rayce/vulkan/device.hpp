@@ -59,6 +59,11 @@ namespace rayce
             return mPresentFamilyIndex;
         }
 
+        VkPhysicalDeviceProperties getProperties() const
+        {
+            return mProperties;
+        }
+
     private:
         VkDevice mVkDevice;
         VkQueue mVkGraphicsQueue;
@@ -69,6 +74,8 @@ namespace rayce
         uint32 mGraphicsFamilyIndex;
         uint32 mComputeFamilyIndex;
         uint32 mPresentFamilyIndex;
+
+        VkPhysicalDeviceProperties mProperties;
 
         VkDeviceQueueCreateInfo createVkQueue(uint32 queueFamilyIndex);
     };

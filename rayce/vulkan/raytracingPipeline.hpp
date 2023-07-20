@@ -57,6 +57,8 @@ namespace rayce
             return mAlignedHandleSize;
         }
 
+        void updateImageView(const std::unique_ptr<class ImageView>& image);
+
     private:
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
@@ -64,10 +66,12 @@ namespace rayce
 
         std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutRT;
         std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutCamera;
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutModel;
 
         uint32 mFramesInFlight;
         std::unique_ptr<class DescriptorSets> pDescriptorSetsRT;
         std::unique_ptr<class DescriptorSets> pDescriptorSetsCamera;
+        std::unique_ptr<class DescriptorSets> pDescriptorSetsModel;
         std::vector<std::unique_ptr<class Buffer>> mCameraBuffers;
         std::vector<void*> mCameraBuffersMapped;
 
@@ -82,6 +86,8 @@ namespace rayce
         uint32 mMissOffset;
 
         std::unique_ptr<class DescriptorPool> pDescriptorPool;
+
+        std::unique_ptr<class Sampler> pTextureSampler;
 
         std::unique_ptr<class RTFunctions> pRTF;
 

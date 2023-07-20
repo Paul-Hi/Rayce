@@ -9,6 +9,8 @@
 #ifndef RAYCE_SCENE_HPP
 #define RAYCE_SCENE_HPP
 
+#include <unordered_map>
+
 namespace rayce
 {
     /// @brief Stores reflection information for a @a RayceScene.
@@ -44,6 +46,14 @@ namespace rayce
             return pGeometry;
         }
 
+        /// @brief Retrieves the @a ImageView for a given material index.
+        /// @param materialID The material id to receive the texture @a ImageView for.
+        /// @return The @a ImageView for a given material index.
+        const std::unique_ptr<class ImageView>& getTextureView(uint32 materialID)
+        {
+            return mImageViews[materialID];
+        }
+
         /// @brief Returns the maximum vertex index.
         /// @return The maximum vertex index.
         uint32 maxVertex()
@@ -75,6 +85,15 @@ namespace rayce
 
         /// @brief The @a SceneReflectionInfo.
         SceneReflectionInfo mReflectionInfo;
+
+        /// @brief Image cache to remember already loaded textures.
+        std::unordered_map<str, byte*> mImageCache;
+
+        /// @brief List of \a Images representing textures of the loaded @a Geometry.
+        std::vector<std::unique_ptr<class Image>> mImages;
+
+        /// @brief List of \a ImageViews for the images.
+        std::vector<std::unique_ptr<class ImageView>> mImageViews;
     };
 
 } // namespace rayce

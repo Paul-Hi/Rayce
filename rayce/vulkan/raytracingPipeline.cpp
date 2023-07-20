@@ -14,6 +14,7 @@
 #include <vulkan/imageView.hpp>
 #include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/rtFunctions.hpp>
+#include <vulkan/sampler.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
 
@@ -52,13 +53,32 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     pDescriptorSetLayoutCamera = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorDiffuseTexture{};
+    layoutBindingDescriptorDiffuseTexture.binding         = 0;
+    layoutBindingDescriptorDiffuseTexture.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindingDescriptorDiffuseTexture.descriptorCount = 1;
+    layoutBindingDescriptorDiffuseTexture.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    bindings = { layoutBindingDescriptorDiffuseTexture };
+
+    pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
+
     VkDescriptorSetLayout descriptorSetLayoutRT     = pDescriptorSetLayoutRT->getVkDescriptorLayout();
     VkDescriptorSetLayout descriptorSetLayoutCamera = pDescriptorSetLayoutCamera->getVkDescriptorLayout();
-    VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutRT, descriptorSetLayoutCamera };
+    VkDescriptorSetLayout descriptorSetLayoutModel  = pDescriptorSetLayoutModel->getVkDescriptorLayout();
+    VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutRT, descriptorSetLayoutCamera, descriptorSetLayoutModel };
+
+    VkPushConstantRange bufferReferencePushConstantRange{};
+    bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    bufferReferencePushConstantRange.offset     = 0;
+    bufferReferencePushConstantRange.size       = sizeof(uint64) * 2;
+
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-    pipelineLayoutCreateInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 2;
-    pipelineLayoutCreateInfo.pSetLayouts    = setLayouts;
+    pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.setLayoutCount         = 3;
+    pipelineLayoutCreateInfo.pSetLayouts            = setLayouts;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges    = &bufferReferencePushConstantRange;
 
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
@@ -140,12 +160,17 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     std::memcpy(mappedMemory, shaderHandleTempStorage.data() + 2 * mAlignedHandleSize, mAlignedHandleSize);
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 
+    // sampler
+    pTextureSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
+
     // descriptor sets
-    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight } });
-    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // max sets correct?
+    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, framesInFlight } });
+    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // max sets is weird
 
     pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
     pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);
+    pDescriptorSetsModel  = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutModel, framesInFlight);
 
     // buffers
     mCameraBuffers.resize(framesInFlight);
@@ -201,9 +226,9 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     // uniform buffer update
     VkExtent2D extent = swapchain->getSwapExtent();
-    float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
     CameraBufferRT cb;
-    cb.inverseView       = lookAt(vec3(3.0f, 2.0f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
+    cb.inverseView       = lookAt(vec3(2.0f, 1.0f, 2.0f), vec3(0.0f, 0.25f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
     cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f).inverse();
 
     for (ptr_size i = 0; i < framesInFlight; ++i)
@@ -225,17 +250,42 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
+void RaytracingPipeline::updateImageView(const std::unique_ptr<ImageView>& image)
+{
+
+    VkDescriptorImageInfo diffuseTextureInfo{};
+    diffuseTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet diffuseTextureWrite{};
+    diffuseTextureWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    diffuseTextureWrite.dstBinding      = 0;
+    diffuseTextureWrite.descriptorCount = 1;
+    diffuseTextureWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+    for (ptr_size i = 0; i < mFramesInFlight; ++i)
+    {
+        diffuseTextureInfo.imageView                          = image->getVkImageView();
+        diffuseTextureInfo.sampler                            = pTextureSampler->getVkSampler();
+        diffuseTextureWrite.pImageInfo                        = &diffuseTextureInfo;
+        diffuseTextureWrite.dstSet                            = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { diffuseTextureWrite };
+        pDescriptorSetsModel->update(writeDescriptorSets);
+    }
+}
+
 std::vector<VkDescriptorSet> RaytracingPipeline::getVkDescriptorSets(uint32 idx) const
 {
-    return { pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx) };
+    return { pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx), pDescriptorSetsModel->operator[](idx) };
 }
 
 RaytracingPipeline::~RaytracingPipeline()
 {
     pDescriptorSetsRT.reset();
     pDescriptorSetsCamera.reset();
+    pDescriptorSetsModel.reset();
     pDescriptorSetLayoutRT.reset();
     pDescriptorSetLayoutCamera.reset();
+    pDescriptorSetLayoutModel.reset();
     pDescriptorPool.reset();
     if (mVkPipeline)
     {

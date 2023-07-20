@@ -630,7 +630,7 @@ namespace loguru
         void operator=(LogScopeRAII&&)               = delete;
 
         Verbosity _verbosity;
-        const char* _file; // Set to null if we are disabled due to verbosity
+        const char* _file;   // Set to null if we are disabled due to verbosity
         unsigned _line;
         bool _indent_stderr; // Did we?
         long long _start_time_ns;

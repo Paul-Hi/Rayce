@@ -17,7 +17,7 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(Fence)
 
-        /// @brief COnstructs a new @a Fence.
+        /// @brief Constructs a new @a Fence.
         /// @param[in] logicalDevice The logical @a Device.
         /// @param[in] createSignaled Create the @a Fence signaled (saves one call).
         Fence(const std::unique_ptr<class Device>& logicalDevice, bool createSignaled);
