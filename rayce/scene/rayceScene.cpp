@@ -178,25 +178,26 @@ void RayceScene::loadFromObj(const str& filename, const std::unique_ptr<Device>&
 
 void RayceScene::onImGuiRender()
 {
-    ImGuiWindowFlags window_flags = 0;
-
-    if (!ImGui::Begin("Scene Reflection", &mReflectionOpen, window_flags))
+    if (!ImGui::Begin("Scene Reflection", nullptr, 0))
     {
         ImGui::End();
         return;
     }
 
     ImGui::Spacing();
-    ImGui::Text("Scene File: %s", mReflectionInfo.filename.c_str());
-    ImGui::Separator();
-    ImGui::Separator();
-    for (ptr_size i = 0; i < mReflectionInfo.shapeNames.size(); ++i)
+    static ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+    if (ImGui::TreeNodeEx(mReflectionInfo.filename.c_str(), treeNodeFlags, "%s  %s", ICON_FA_FOLDER, mReflectionInfo.filename.c_str()))
     {
-        ImGui::Text("Shape: %s with %d triangles", mReflectionInfo.shapeNames[i].c_str(), mReflectionInfo.shapeTriCounts[i]);
-        if (i < mReflectionInfo.shapeNames.size() - 1)
+        for (ptr_size i = 0; i < mReflectionInfo.shapeNames.size(); ++i)
         {
-            ImGui::Separator();
+            ImGui::Indent();
+            ImGui::Text("%s %s: %d Triangles", ICON_FA_SHAPES, mReflectionInfo.shapeNames[i].c_str(), mReflectionInfo.shapeTriCounts[i]);
+            if (i < mReflectionInfo.shapeNames.size() - 1)
+            {
+                ImGui::Separator();
+            }
         }
+        ImGui::TreePop();
     }
 
     ImGui::End();

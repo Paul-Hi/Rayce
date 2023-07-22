@@ -122,7 +122,7 @@ void RayceApp::onFrameDraw()
 
     onRender(commandBuffer, imageIndex);
 
-    pImguiInterface->begin();
+    pImguiInterface->begin(pWindow);
     onImGuiRender(commandBuffer, imageIndex);
     std::vector<VkClearValue> clearValues; //{ { { 0.1f, 0.1f, 0.1f, 1.0f } } };
     pImguiInterface->end(commandBuffer, mSwapchainFramebuffers[imageIndex], clearValues);

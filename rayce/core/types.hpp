@@ -13,6 +13,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Eigen>
+#include <core/iconsFA6.hpp>
 #include <core/export.hpp>
 #include <core/macro.hpp>
 #include <stdint.h>

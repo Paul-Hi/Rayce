@@ -4,11 +4,9 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <app/icons_font_awesome_5.hpp>
 #include <app/imguiInterface.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
-#include <imgui.h>
 #include <imstb_truetype.h>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
@@ -17,6 +15,7 @@
 #include <vulkan/instance.hpp>
 #include <vulkan/renderPass.hpp>
 #include <vulkan/swapchain.hpp>
+#include <vulkan/window.hpp>
 
 using namespace rayce;
 
@@ -93,15 +92,51 @@ ImguiInterface::~ImguiInterface()
     }
 }
 
-void ImguiInterface::begin()
+void ImguiInterface::begin(const std::unique_ptr<Window>& window)
 {
     ImGui_ImplGlfw_NewFrame();
     ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
+
+    // Dockspace
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    static ImGuiDockNodeFlags dockNodeFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+
+    static ImGuiWindowFlags dockingWindowFlags;
+    dockingWindowFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    dockingWindowFlags |= ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("DockSpace", nullptr, dockingWindowFlags);
+    ImGui::PopStyleVar(3);
+
+    // Real Dockspace
+    ImGuiID dockspaceId = ImGui::GetID("RayceDockSpace");
+    ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockNodeFlags);
+
+    // Menu bar
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Exit"))
+                glfwSetWindowShouldClose(window->getNativeWindowHandle(), GLFW_TRUE);
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
 }
 
 void ImguiInterface::end(VkCommandBuffer commandBuffer, const std::unique_ptr<Framebuffer>& framebuffer, const std::vector<VkClearValue>& clearValues)
 {
+    ImGui::End(); // Dockspace End
+
     ImGui::Render();
 
     VkRenderPassBeginInfo renderPassInfo{};
@@ -118,169 +153,91 @@ void ImguiInterface::end(VkCommandBuffer commandBuffer, const std::unique_ptr<Fr
     vkCmdEndRenderPass(commandBuffer);
 }
 
-static float convertHueToRGB(float p, float q, float t)
-{
-
-    if (t < 0)
-        t += 1;
-    if (t > 1)
-        t -= 1;
-    if (t < 1. / 6)
-        return p + (q - p) * 6 * t;
-    if (t < 1. / 2)
-        return q;
-    if (t < 2. / 3)
-        return p + (q - p) * (2. / 3 - t) * 6;
-
-    return p;
-}
-
-static ImVec4 convertHSLToRGBA(float h, float s, float l, float a = 255.0f)
-{
-    ImVec4 result;
-
-    float hZO = h / 360.0f;
-    float sZO = s / 100.0f;
-    float lZO = l / 100.0f;
-    float aZO = a / 100.0f;
-
-    result.w = aZO;
-    if (0 == sZO)
-    {
-        result.x = result.y = result.z = lZO; // achromatic
-    }
-    else
-    {
-        float q  = lZO < 0.5 ? lZO * (1 + sZO) : lZO + sZO - lZO * sZO;
-        float p  = 2 * lZO - q;
-        result.x = convertHueToRGB(p, q, hZO + 1. / 3);
-        result.y = convertHueToRGB(p, q, hZO);
-        result.z = convertHueToRGB(p, q, hZO - 1. / 3);
-    }
-
-    return result;
-}
-
 void ImguiInterface::setupImGuiStyle()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/JetBrainsMono-Medium.ttf", 18.0);
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-VariableFont_slnt,wght.ttf", 18.0);
 
     static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     ImFontConfig iconsConfig;
     iconsConfig.MergeMode  = true;
     iconsConfig.PixelSnapH = true;
+    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAR, 16.0f, &iconsConfig, iconsRanges);
     io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, 16.0f, &iconsConfig, iconsRanges);
 
     io.ConfigWindowsMoveFromTitleBarOnly = true; // Only move from title bar
 
-    // TODO: Expose settings.
-    struct ImGuiStyleSetup
-    {
-        // Colors in HSL
+    // Colors
+    ImVec4* colors = ImGui::GetStyle().Colors;
 
-        float textHue = 225.0f;
-        float textSat = 40.0f;
-        float textLum = 98.0f;
+    colors[ImGuiCol_Text]                  = theme::text;
+    colors[ImGuiCol_TextDisabled]          = theme::brighten;
+    colors[ImGuiCol_WindowBg]              = theme::titlebar;        // Background of normal windows
+    colors[ImGuiCol_ChildBg]               = theme::background;      // Background of child windows
+    colors[ImGuiCol_PopupBg]               = theme::backgroundPopup; // Background of popups, menus, tooltips windows
+    colors[ImGuiCol_Border]                = theme::backgroundDark;
+    colors[ImGuiCol_BorderShadow]          = theme::black;
+    colors[ImGuiCol_FrameBg]               = theme::backgroundProperty; // Background of checkbox, radio button, plot, slider, text input
+    colors[ImGuiCol_FrameBgHovered]        = theme::backgroundProperty;
+    colors[ImGuiCol_FrameBgActive]         = theme::backgroundProperty;
+    colors[ImGuiCol_TitleBg]               = theme::titlebar;
+    colors[ImGuiCol_TitleBgActive]         = theme::titlebar;
+    colors[ImGuiCol_TitleBgCollapsed]      = theme::titlebarCollapsed;
+    colors[ImGuiCol_MenuBarBg]             = theme::black;
+    colors[ImGuiCol_ScrollbarBg]           = theme::black;
+    colors[ImGuiCol_ScrollbarGrab]         = theme::backgroundGrab;
+    colors[ImGuiCol_ScrollbarGrabHovered]  = theme::backgroundDark;
+    colors[ImGuiCol_ScrollbarGrabActive]   = theme::activeGrab;
+    colors[ImGuiCol_CheckMark]             = theme::highlight;
+    colors[ImGuiCol_SliderGrab]            = theme::backgroundGrab;
+    colors[ImGuiCol_SliderGrabActive]      = theme::activeGrab;
+    colors[ImGuiCol_Button]                = theme::backgroundGrab;
+    colors[ImGuiCol_ButtonHovered]         = theme::backgroundPopup;
+    colors[ImGuiCol_ButtonActive]          = theme::accentClick;
+    colors[ImGuiCol_Header]                = theme::header; // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+    colors[ImGuiCol_HeaderHovered]         = theme::header;
+    colors[ImGuiCol_HeaderActive]          = theme::header;
+    colors[ImGuiCol_Separator]             = theme::backgroundPopup;
+    colors[ImGuiCol_SeparatorHovered]      = theme::backgroundDark;
+    colors[ImGuiCol_SeparatorActive]       = theme::highlight;
+    colors[ImGuiCol_ResizeGrip]            = theme::backgroundGrab; // Resize grip in lower-right and lower-left corners of windows.
+    colors[ImGuiCol_ResizeGripHovered]     = theme::backgroundDark;
+    colors[ImGuiCol_ResizeGripActive]      = theme::activeGrab;
+    colors[ImGuiCol_Tab]                   = theme::titlebar; // TabItem in a TabBar
+    colors[ImGuiCol_TabHovered]            = theme::titlebar;
+    colors[ImGuiCol_TabActive]             = theme::titlebar;
+    colors[ImGuiCol_TabUnfocused]          = theme::titlebarCollapsed;
+    colors[ImGuiCol_TabUnfocusedActive]    = theme::titlebar;
+    colors[ImGuiCol_DockingPreview]        = theme::brighten;   // Preview overlay color when about to docking something
+    colors[ImGuiCol_DockingEmptyBg]        = theme::background; // Background color for empty node (e.g. CentralNode with no window docked into it)
+    colors[ImGuiCol_PlotLines]             = theme::text;
+    colors[ImGuiCol_PlotLinesHovered]      = theme::text;
+    colors[ImGuiCol_PlotHistogram]         = theme::text;
+    colors[ImGuiCol_PlotHistogramHovered]  = theme::text;
+    colors[ImGuiCol_TableHeaderBg]         = theme::header;         // Table header background
+    colors[ImGuiCol_TableBorderStrong]     = theme::backgroundDark; // Table outer and header borders (prefer using Alpha=1.0 here)
+    colors[ImGuiCol_TableBorderLight]      = theme::backgroundDark; // Table inner borders (prefer using Alpha=1.0 here)
+    colors[ImGuiCol_TableRowBg]            = theme::backgroundDark; // Table row background (even rows)
+    colors[ImGuiCol_TableRowBgAlt]         = theme::background;     // Table row background (odd rows)
+    colors[ImGuiCol_TextSelectedBg]        = theme::brighten;
+    colors[ImGuiCol_DragDropTarget]        = theme::highlight;      // Rectangle highlighting a drop target
+    colors[ImGuiCol_NavHighlight]          = theme::highlight;      // Gamepad/keyboard: current highlighted item
+    colors[ImGuiCol_NavWindowingHighlight] = theme::highlight;      // Highlight window when using CTRL+TAB
+    colors[ImGuiCol_NavWindowingDimBg]     = theme::darken;         // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+    colors[ImGuiCol_ModalWindowDimBg]      = theme::darken;         // Darken/colorize entire screen behind a modal window, when one is active
 
-        float backHue = 220.0f;
-        float backSat = 10.0f;
-        float backLum = 18.0f;
-
-        float primaryHue = 221.0f;
-        float primarySat = 32.0f;
-        float primaryLum = 53.0f;
-
-        float secundaryHue = 220.0f;
-        float secundarySat = 31.0f;
-        float secundaryLum = 13.0f;
-
-        float accentHue = 221.0f;
-        float accentSat = 98.0f;
-        float accentLum = 67.0f;
-
-        float rounding       = 0.75f;
-        float alphaThreshold = 1.0f;
-    } setup;
-
-    ImVec4 text      = convertHSLToRGBA(setup.textHue, setup.textSat, setup.textLum);
-    ImVec4 back      = convertHSLToRGBA(setup.backHue, setup.backSat, setup.backLum);
-    ImVec4 primary   = convertHSLToRGBA(setup.primaryHue, setup.primarySat, setup.primaryLum);
-    ImVec4 secundary = convertHSLToRGBA(setup.secundaryHue, setup.secundarySat, setup.secundaryLum);
-    ImVec4 accent    = convertHSLToRGBA(setup.accentHue, setup.accentSat, setup.accentLum);
-
-    // Setup Dear ImGui style
-    ImVec4* colors                         = ImGui::GetStyle().Colors;
-    colors[ImGuiCol_Text]                  = ImVec4(text.x, text.y, text.z, 1.00f);
-    colors[ImGuiCol_TextDisabled]          = ImVec4(text.x, text.y, text.z, 0.58f);
-    colors[ImGuiCol_WindowBg]              = ImVec4(back.x, back.y, back.z, 1.00f);
-    colors[ImGuiCol_ChildBg]               = ImVec4(back.x, back.y, back.z, 1.00f);
-    colors[ImGuiCol_PopupBg]               = ImVec4(back.x * 0.8f, back.y * 0.8f, back.z * 0.8f, 1.00f);
-    colors[ImGuiCol_Border]                = ImVec4(text.x, text.y, text.z, 0.30f);
-    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_FrameBg]               = ImVec4(back.x, back.y, back.z, 0.31f);
-    colors[ImGuiCol_FrameBgHovered]        = ImVec4(back.x, back.y, back.z, 0.68f);
-    colors[ImGuiCol_FrameBgActive]         = ImVec4(back.x, back.y, back.z, 1.00f);
-    colors[ImGuiCol_TitleBg]               = ImVec4(back.x, back.y, back.z, 1.0f);
-    colors[ImGuiCol_TitleBgActive]         = ImVec4(primary.x, primary.y, primary.z, 1.0f);
-    colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(secundary.x, secundary.y, secundary.z, 1.0f);
-    colors[ImGuiCol_MenuBarBg]             = ImVec4(back.x, back.y, back.z, 1.0f);
-    colors[ImGuiCol_ScrollbarBg]           = ImVec4(back.x, back.y, back.z, 1.00f);
-    colors[ImGuiCol_ScrollbarGrab]         = ImVec4(secundary.x, secundary.y, secundary.z, 0.31f);
-    colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(primary.x, primary.y, primary.z, 0.78f);
-    colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(accent.x, accent.y, accent.z, 1.00f);
-    colors[ImGuiCol_CheckMark]             = ImVec4(text.x, text.y, text.z, 0.80f);
-    colors[ImGuiCol_SliderGrab]            = ImVec4(secundary.x, secundary.y, secundary.z, 0.54f);
-    colors[ImGuiCol_SliderGrabActive]      = ImVec4(accent.x, accent.y, accent.z, 1.00f);
-    colors[ImGuiCol_Button]                = ImVec4(secundary.x, secundary.y, secundary.z, 0.44f);
-    colors[ImGuiCol_ButtonHovered]         = ImVec4(primary.x, primary.y, primary.z, 0.86f);
-    colors[ImGuiCol_ButtonActive]          = ImVec4(accent.x, accent.y, accent.z, 1.00f);
-    colors[ImGuiCol_Header]                = ImVec4(secundary.x, secundary.y, secundary.z, 0.46f);
-    colors[ImGuiCol_HeaderHovered]         = ImVec4(primary.x, primary.y, primary.z, 1.00f);
-    colors[ImGuiCol_HeaderActive]          = ImVec4(accent.x, accent.y, accent.z, 0.86f);
-    colors[ImGuiCol_Separator]             = ImVec4(primary.x, primary.y, primary.z, 0.44f);
-    colors[ImGuiCol_SeparatorHovered]      = ImVec4(primary.x, primary.y, primary.z, 0.86f);
-    colors[ImGuiCol_SeparatorActive]       = ImVec4(accent.x, accent.y, accent.z, 1.00f);
-    colors[ImGuiCol_ResizeGrip]            = ImVec4(secundary.x, secundary.y, secundary.z, 0.20f);
-    colors[ImGuiCol_ResizeGripHovered]     = ImVec4(primary.x, primary.y, primary.z, 0.78f);
-    colors[ImGuiCol_ResizeGripActive]      = ImVec4(accent.x, accent.y, accent.z, 1.00f);
-    colors[ImGuiCol_Tab]                   = colors[ImGuiCol_Header];
-    colors[ImGuiCol_TabHovered]            = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_TabActive]             = colors[ImGuiCol_HeaderActive];
-    colors[ImGuiCol_TabUnfocused]          = colors[ImGuiCol_Tab];
-    colors[ImGuiCol_TabUnfocusedActive]    = colors[ImGuiCol_TabActive];
-    colors[ImGuiCol_DockingPreview]        = colors[ImGuiCol_Header];
-    colors[ImGuiCol_DockingEmptyBg]        = ImVec4(back.x * 0.4f, back.y * 0.4f, back.z * 0.4f, 1.00f);
-    colors[ImGuiCol_PlotLines]             = ImVec4(text.x, text.y, text.z, 0.63f);
-    colors[ImGuiCol_PlotLinesHovered]      = ImVec4(primary.x, primary.y, primary.z, 1.00f);
-    colors[ImGuiCol_PlotHistogram]         = ImVec4(text.x, text.y, text.z, 0.63f);
-    colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(primary.x, primary.y, primary.z, 1.00f);
-    colors[ImGuiCol_TextSelectedBg]        = ImVec4(accent.x, accent.y, accent.z, 0.43f);
-    colors[ImGuiCol_DragDropTarget]        = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_NavHighlight]          = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_NavWindowingHighlight] = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_NavWindowingDimBg]     = colors[ImGuiCol_Header];
-    colors[ImGuiCol_ModalWindowDimBg]      = colors[ImGuiCol_Header];
-
+    // Style
     ImGuiStyle& style      = ImGui::GetStyle();
-    style.FrameRounding    = setup.rounding;
-    style.WindowRounding   = setup.rounding;
+    style.FrameRounding    = 3.5f;
+    style.WindowRounding   = 0.0f;
     style.ChildBorderSize  = 1.0f;
-    style.FrameBorderSize  = 0.0f;
+    style.FrameBorderSize  = 1.0f;
     style.PopupBorderSize  = 1.0f;
     style.WindowBorderSize = 0.0f;
+    style.IndentSpacing    = 11.0f;
     style.Alpha            = 1.0f;
-
-    for (int i = 0; i < ImGuiCol_COUNT; i++)
-    {
-        const auto colorId = static_cast<ImGuiCol>(i);
-        auto& color        = style.Colors[i];
-        if (color.w < setup.alphaThreshold || colorId == ImGuiCol_FrameBg || colorId == ImGuiCol_WindowBg || colorId == ImGuiCol_ChildBg)
-        {
-            color.w *= setup.alphaThreshold;
-        }
-    }
+    style.DisabledAlpha    = 0.5f;
 }
 
 void ImguiInterface::platformWindows()

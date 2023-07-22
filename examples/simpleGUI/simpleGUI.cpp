@@ -155,16 +155,14 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     window_flags |= ImGuiWindowFlags_NoCollapse;
     window_flags |= ImGuiWindowFlags_NoDocking;
 
-    if (!ImGui::Begin("Rayce", nullptr, window_flags))
+    ImGui::SetNextWindowBgAlpha(0.75f);
+    if (ImGui::Begin("Frametime Overlay", nullptr, window_flags))
     {
+        ImGui::Spacing();
+        double fr = static_cast<double>(ImGui::GetIO().Framerate); // cast since text implicitely casts as well -> Warning.
+        ImGui::Text("Average %.3f ms/frame", 1000.0 / fr);
         ImGui::End();
-        return;
     }
-
-    ImGui::Spacing();
-    double fr = static_cast<double>(ImGui::GetIO().Framerate); // cast since text implicitely casts as well -> Warning.
-    ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0 / fr, fr);
-    ImGui::End();
 }
 
 void SimpleGUI::recreateSwapchain()
@@ -192,7 +190,7 @@ int main(int argc, char** argv)
     RayceOptions options;
     options.windowWidth  = 1920;
     options.windowHeight = 1080;
-    options.name         = "SimpleGUI";
+    options.name         = "Rayce GUI";
 #ifdef RAYCE_DEBUG
     options.enableValidationLayers = true;
 #else

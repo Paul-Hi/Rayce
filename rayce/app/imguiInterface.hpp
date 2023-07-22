@@ -6,8 +6,33 @@
 
 #ifndef IMGUI_INTERFACE_HPP
 #define IMGUI_INTERFACE_HPP
+
+#include <imgui.h>
+
 namespace rayce
 {
+    namespace theme
+    {
+        const ImColor black(0, 0, 0, 255);
+        const ImColor white(255, 255, 255, 255);
+        const ImColor brighten(255, 255, 255, 127);
+        const ImColor darken(0, 0, 0, 127);
+        const ImColor header(47, 47, 47, 255);
+        const ImColor text(192, 192, 192, 255);
+        const ImColor titlebar(21, 21, 21, 255);
+        const ImColor titlebarCollapsed(9, 9, 9, 255);
+        const ImColor background(36, 36, 36, 255);
+        const ImColor backgroundDark(26, 26, 26, 255);
+        const ImColor backgroundProperty(15, 15, 15, 255);
+        const ImColor backgroundGrab(32, 32, 32, 255);
+        const ImColor backgroundPopup(50, 50, 50, 255);
+        const ImColor accentClick(104, 104, 104, 255);
+
+        const ImColor textError(236, 50, 50, 255);
+        const ImColor highlight(36, 180, 241, 255);
+        const ImColor activeGrab(42, 125, 157, 255);
+    }
+
     /// @brief Responsible beginning and ending an ImGui frame.
     class RAYCE_API_EXPORT ImguiInterface
     {
@@ -24,7 +49,8 @@ namespace rayce
         ~ImguiInterface();
 
         /// @brief Begins the new ImGui frame.
-        void begin();
+        /// @param[in] window The application window.
+        void begin(const std::unique_ptr<class Window>& window);
 
         /// @brief Ends the created ImGui frame.
         /// @param[in] commandBuffer The @a CommandBuffer to put all draw commands into.
