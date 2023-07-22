@@ -73,11 +73,6 @@ namespace rayce
             return pSwapchain;
         }
 
-        const std::unique_ptr<class GraphicsPipeline>& getGraphicsPipeline() const
-        {
-            return pGraphicsPipeline;
-        }
-
         const std::unique_ptr<class CommandPool>& getCommandPool() const
         {
             return pCommandPool;
@@ -146,7 +141,9 @@ namespace rayce
         std::unique_ptr<class CommandBuffers> pCommandBuffers;
         std::unique_ptr<class ImguiInterface> pImguiInterface;
 
-        std::unique_ptr<class GraphicsPipeline> pGraphicsPipeline; // used to create swapchain framebuffers
+        /// @brief A @a RenderPass to create swapchain framebuffers without the need for an entire pipeline.
+        /// @details We do not need a traditional pipeline since we raytrace everything.
+        std::unique_ptr<class RenderPass> pRenderPass;
 
         std::vector<std::unique_ptr<class Semaphore>> mImageAvailableSemaphores;
         std::vector<std::unique_ptr<class Semaphore>> mRenderFinishedSemaphores;

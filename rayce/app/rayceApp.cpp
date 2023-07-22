@@ -11,7 +11,6 @@
 #include <vulkan/device.hpp>
 #include <vulkan/fence.hpp>
 #include <vulkan/framebuffer.hpp>
-#include <vulkan/graphicsPipeline.hpp>
 #include <vulkan/instance.hpp>
 #include <vulkan/renderPass.hpp>
 #include <vulkan/rtFunctions.hpp>
@@ -108,7 +107,7 @@ void RayceApp::onFrameDraw()
 
     uint32 imageIndex;
     VkResult acquisitionResult = vkAcquireNextImageKHR(logicalDevice, swapchain, noTimeout, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-    if (acquisitionResult == VK_ERROR_OUT_OF_DATE_KHR || acquisitionResult == VK_SUBOPTIMAL_KHR) // || mWireframe != pGraphicsPipeline->Iswireframe())
+    if (acquisitionResult == VK_ERROR_OUT_OF_DATE_KHR || acquisitionResult == VK_SUBOPTIMAL_KHR)
     {
         recreateSwapchain();
         return;
@@ -176,31 +175,6 @@ void RayceApp::onFrameDraw()
 void RayceApp::onRender(VkCommandBuffer, const uint32)
 {
     // UI rasterization is done later as overlay
-
-    // std::array<VkClearValue, 1> clearValues = {};
-    // clearValues[0].color                    = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
-    // VkRenderPassBeginInfo renderPassBeginInfo{};
-    // renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    // renderPassBeginInfo.renderPass        = pGraphicsPipeline->getRenderPass()->getVkRenderPass();
-    // renderPassBeginInfo.framebuffer       = mSwapchainFramebuffers[imageIndex]->getVkFramebuffer();
-    // renderPassBeginInfo.renderArea.offset = { 0, 0 };
-    // renderPassBeginInfo.renderArea.extent = pSwapchain->getSwapExtent();
-    // renderPassBeginInfo.clearValueCount   = static_cast<uint32>(clearValues.size());
-    // renderPassBeginInfo.pClearValues      = clearValues.data();
-
-    // vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    //{
-    //     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pGraphicsPipeline->getVkPipeline());
-    //
-    //    //    VkBuffer vertexBuffers[] = { pGeometry->getVertexBuffer()->getVkBuffer() };
-    //    VkDeviceSize offsets[]   = { 0 };
-    //    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    //    vkCmdBindIndexBuffer(commandBuffer, pGeometry->getIndexBuffer()->getVkBuffer(), 0, VK_INDEX_TYPE_UINT32);
-    //
-    //    //    vkCmdDrawIndexed(commandBuffer, pGeometry->getIndexCount(), 1, 0, 0, 0);
-    //}
-    // vkCmdEndRenderPass(commandBuffer);
 }
 
 void RayceApp::onImGuiRender(VkCommandBuffer, const uint32) {}
@@ -319,7 +293,7 @@ void RayceApp::recreateSwapchain()
     pCommandBuffers.reset();
     pImguiInterface.reset();
     mSwapchainFramebuffers.clear();
-    pGraphicsPipeline.reset();
+    pRenderPass.reset();
     mInFlightFences.clear();
     mRenderFinishedSemaphores.clear();
     mImageAvailableSemaphores.clear();
@@ -327,13 +301,11 @@ void RayceApp::recreateSwapchain()
 
     pSwapchain.reset(new Swapchain(pDevice, pSurface->getVkSurface(), pWindow->getNativeWindowHandle()));
 
-    pGraphicsPipeline.reset(new GraphicsPipeline(pDevice, pSwapchain, false));
+    pRenderPass.reset(new RenderPass(pDevice, pSwapchain, VK_ATTACHMENT_LOAD_OP_CLEAR));
 
-    uint32 swapchainImageCount = 0;
     for (const std::unique_ptr<ImageView>& imageView : pSwapchain->getImageViews())
     {
-        swapchainImageCount++;
-        mSwapchainFramebuffers.push_back(std::make_unique<Framebuffer>(pDevice, pSwapchain, pGraphicsPipeline->getRenderPass(), imageView));
+        mSwapchainFramebuffers.push_back(std::make_unique<Framebuffer>(pDevice, pSwapchain, pRenderPass, imageView));
 
         mImageAvailableSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
         mRenderFinishedSemaphores.push_back(std::make_unique<Semaphore>(pDevice));
@@ -341,6 +313,7 @@ void RayceApp::recreateSwapchain()
     }
 
     // one command buffer per swapchain image
-    pCommandBuffers.reset(new CommandBuffers(pDevice, pCommandPool, swapchainImageCount));
+    int32 framesInFlight = pSwapchain->getImageCount();
+    pCommandBuffers.reset(new CommandBuffers(pDevice, pCommandPool, framesInFlight));
     pImguiInterface.reset(new ImguiInterface(pInstance, pDevice, pCommandPool, pSwapchain, pWindow->getNativeWindowHandle()));
 }

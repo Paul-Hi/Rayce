@@ -6,18 +6,8 @@
 
 #include "simpleGUI.hpp"
 #include <imgui.h>
-#include <scene/rayceScene.hpp>
-#include <vulkan/accelerationStructure.hpp>
-#include <vulkan/buffer.hpp>
-#include <vulkan/commandPool.hpp>
-#include <vulkan/device.hpp>
-#include <vulkan/geometry.hpp>
-#include <vulkan/image.hpp>
-#include <vulkan/imageMemoryBarrier.hpp>
-#include <vulkan/imageView.hpp>
-#include <vulkan/raytracingPipeline.hpp>
-#include <vulkan/rtFunctions.hpp>
-#include <vulkan/swapchain.hpp>
+#include <scene.hpp>
+#include <vulkan.hpp>
 
 using namespace rayce;
 
@@ -189,10 +179,9 @@ void SimpleGUI::recreateSwapchain()
     pRaytracingTargetImage->allocateMemory(device, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
-    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, pRaytracingTargetView, static_cast<uint32>(swapchain->getImageViews().size())));
+    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateImageView(pScene->getTextureView(0));
-
 }
 
 int main(int argc, char** argv)

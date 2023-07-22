@@ -9,6 +9,6 @@
 #ifndef SCENE_HPP
 #define SCENE_HPP
 
-#include "scene/scene.hpp"
+#include "scene/rayceScene.hpp"
 
 #endif // SCENE_HPP

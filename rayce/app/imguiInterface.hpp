@@ -6,7 +6,6 @@
 
 #ifndef IMGUI_INTERFACE_HPP
 #define IMGUI_INTERFACE_HPP
-
 namespace rayce
 {
     /// @brief Responsible beginning and ending an ImGui frame.
@@ -46,6 +45,9 @@ namespace rayce
 
         /// @brief The @a RenderPass the ImGui should utilize.
         std::unique_ptr<class RenderPass> pRenderPass;
+
+        /// @brief Sets the Imgui style - default setup done in code, settings could be exposed.
+        void setupImGuiStyle();
     };
 } // namespace rayce
 

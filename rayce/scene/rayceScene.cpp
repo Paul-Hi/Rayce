@@ -193,9 +193,11 @@ void RayceScene::onImGuiRender()
     for (ptr_size i = 0; i < mReflectionInfo.shapeNames.size(); ++i)
     {
         ImGui::Text("Shape: %s with %d triangles", mReflectionInfo.shapeNames[i].c_str(), mReflectionInfo.shapeTriCounts[i]);
-        ImGui::Separator();
+        if (i < mReflectionInfo.shapeNames.size() - 1)
+        {
+            ImGui::Separator();
+        }
     }
 
-    ImGui::Separator();
     ImGui::End();
 }

@@ -44,6 +44,11 @@ namespace rayce
             return mSwapchainImageViews;
         }
 
+        uint32 getImageCount() const
+        {
+            return static_cast<uint32>(mSwapchainImageViews.size());
+        }
+
     private:
         VkSwapchainKHR mVkSwapchain;
         VkDevice mVkLogicalDeviceRef;
