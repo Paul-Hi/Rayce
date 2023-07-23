@@ -13,8 +13,9 @@
 
 #include <Eigen/Core>
 #include <Eigen/Eigen>
-#include <core/iconsFA6.hpp>
+#include <Eigen/Geometry>
 #include <core/export.hpp>
+#include <core/iconsFA6.hpp>
 #include <core/macro.hpp>
 #include <stdint.h>
 #include <string.h>
@@ -59,6 +60,8 @@ namespace rayce
     using vec2 = Eigen::Vector2<float>;
     /// @brief Typedef for a 2x2 matrix.
     using mat2 = Eigen::Matrix2<float>;
+    //! @brief Type alias for a Eigen::Quaternionf.
+    using quat = Eigen::Quaternionf;
 
     /// @brief Typedef for string.
     using str = std::string;
@@ -396,6 +399,16 @@ namespace rayce
         tr(1, 3) = translation.y();
         tr(2, 3) = translation.z();
         return tr.matrix();
+    }
+
+    //! @brief Create a @a vec3 from one value.
+    //! @param[in] value The value to fill the @a vec3 with.
+    //! @return The created @a vec3.
+    inline vec3 makeVec3(const float& value)
+    {
+        vec3 v;
+        v << value, value, value;
+        return v;
     }
 
     /*

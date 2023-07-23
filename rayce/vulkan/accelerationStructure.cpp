@@ -31,7 +31,6 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureGeometry.geometry.triangles.vertexStride = Vertex::getSize();
         accelerationStructureGeometry.geometry.triangles.indexType    = VK_INDEX_TYPE_UINT32;
         accelerationStructureGeometry.geometry.triangles.indexData    = { initData.indexDataDeviceAddress };
-        // acceleration_structure_geometry.geometry.triangles.transformData = ;
 
         VkAccelerationStructureBuildGeometryInfoKHR accelerationStructureBuildGeometryInfo{};
         accelerationStructureBuildGeometryInfo.sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
@@ -80,6 +79,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildRangeInfo.transformOffset                                         = 0;
         std::vector<VkAccelerationStructureBuildRangeInfoKHR*> accelerationStructureBuildRangeInfos = { &accelerationStructureBuildRangeInfo };
 
+        // FIXME Next: We get a VK_ERROR_DEVICE_LOST in here...
         ImmediateSubmit::Execute(logicalDevice, commandPool,
                                  [&](VkCommandBuffer commandBuffer)
                                  { pRTF->vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos.data()); });
@@ -88,15 +88,13 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
     }
     else if (initData.type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
     {
-        VkTransformMatrixKHR transformMatrix{};
-        transformMatrix.matrix[0][0] = transformMatrix.matrix[1][1] = transformMatrix.matrix[2][2] = 1.0f; // identity
-
         std::vector<VkAccelerationStructureInstanceKHR> accelerationStructureInstances;
+        uint32 instance = 0; // gl_InstanceCustomIndexEXT
         for (const VkDeviceAddress& blasAddress : initData.blasDeviceAddresses)
         {
             VkAccelerationStructureInstanceKHR accelerationStructureInstance{};
-            accelerationStructureInstance.transform                              = transformMatrix;
-            accelerationStructureInstance.instanceCustomIndex                    = 0;
+            accelerationStructureInstance.transform                              = initData.transformMatrices[instance];
+            accelerationStructureInstance.instanceCustomIndex                    = instance++;
             accelerationStructureInstance.mask                                   = 0xFF;
             accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;
             accelerationStructureInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;

@@ -32,11 +32,11 @@ namespace rayce
             commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-            vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
+            RAYCE_CHECK_VK(vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo), "vkBeginCommandBuffer");
 
             immediateFunction(commandBuffers[0]);
 
-            vkEndCommandBuffer(commandBuffers[0]);
+            RAYCE_CHECK_VK(vkEndCommandBuffer(commandBuffers[0]), "vkEndCommandBuffer");
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -44,8 +44,8 @@ namespace rayce
             submitInfo.pCommandBuffers    = &commandBuffers[0];
 
             VkQueue graphicsQueue = logicalDevice->getVkGraphicsQueue();
-            vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr);
-            vkQueueWaitIdle(graphicsQueue);
+            RAYCE_CHECK_VK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr), "vkQueueSubmit");
+            RAYCE_CHECK_VK(vkQueueWaitIdle(graphicsQueue), "vkQueueWaitIdle");
         }
     };
 

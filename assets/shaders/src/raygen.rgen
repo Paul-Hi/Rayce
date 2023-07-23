@@ -2,6 +2,9 @@
 
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 #include "globals.glsl"
 
@@ -10,13 +13,14 @@ layout(set = 0, binding = 1, rgba8) uniform image2D outImage;
 
 layout(location = 0) rayPayloadEXT RayPayload pld;
 
-layout(set = 1, binding = 0) uniform CameraBufferRT
+layout(set = 1, binding = 0, scalar) uniform CameraBufferRT
 {
     mat4 inverseView;
     mat4 inverseProjection;
 } camera;
 
-layout(set = 2, binding = 0) uniform sampler2D diffuse;
+layout(set = 2, binding = 0) uniform sampler2D textures[];
+layout(set = 2, binding = 2, scalar) buffer _MaterialInfo { Material materials[]; };
 
 const float GAMMA     = 2.2;
 const float INV_GAMMA = 1.0 / GAMMA;
@@ -68,7 +72,10 @@ void main()
 
     if(pld.hitT != INFINITY)
     {
-        color = texture(diffuse, pld.triangle.interpolatedUV).rgb;
+        Material material = materials[pld.triangle.materialId];
+        color = material.baseColor.rgb;
+        if (material.baseColorTextureId >= 0)
+            color *= textureLod(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV, 0).rgb;
     }
 
     imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(toneMapACES(color), 1.0));

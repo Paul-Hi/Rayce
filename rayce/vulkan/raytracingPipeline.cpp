@@ -4,6 +4,8 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <core/instanceData.hpp>
+#include <core/material.hpp>
 #include <core/utils.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
@@ -20,7 +22,7 @@
 
 using namespace rayce;
 
-RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, const std::unique_ptr<ImageView>& outputImage,
+RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
                                        uint32 framesInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
@@ -56,10 +58,22 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkDescriptorSetLayoutBinding layoutBindingDescriptorDiffuseTexture{};
     layoutBindingDescriptorDiffuseTexture.binding         = 0;
     layoutBindingDescriptorDiffuseTexture.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    layoutBindingDescriptorDiffuseTexture.descriptorCount = 1;
+    layoutBindingDescriptorDiffuseTexture.descriptorCount = requiredImageDescriptors;
     layoutBindingDescriptorDiffuseTexture.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    bindings = { layoutBindingDescriptorDiffuseTexture };
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorInstanceDataBuffer{};
+    layoutBindingDescriptorInstanceDataBuffer.binding         = 1;
+    layoutBindingDescriptorInstanceDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingDescriptorInstanceDataBuffer.descriptorCount = 1;
+    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorMaterialDataBuffer{};
+    layoutBindingDescriptorMaterialDataBuffer.binding         = 2;
+    layoutBindingDescriptorMaterialDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingDescriptorMaterialDataBuffer.descriptorCount = 1;
+    layoutBindingDescriptorMaterialDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    bindings = { layoutBindingDescriptorDiffuseTexture, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer };
 
     pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -68,17 +82,17 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkDescriptorSetLayout descriptorSetLayoutModel  = pDescriptorSetLayoutModel->getVkDescriptorLayout();
     VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutRT, descriptorSetLayoutCamera, descriptorSetLayoutModel };
 
-    VkPushConstantRange bufferReferencePushConstantRange{};
-    bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-    bufferReferencePushConstantRange.offset     = 0;
-    bufferReferencePushConstantRange.size       = sizeof(uint64) * 2;
+    // VkPushConstantRange bufferReferencePushConstantRange{};
+    // bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    // bufferReferencePushConstantRange.offset     = 0;
+    // bufferReferencePushConstantRange.size       = sizeof(uint64) * 2;
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount         = 3;
     pipelineLayoutCreateInfo.pSetLayouts            = setLayouts;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-    pipelineLayoutCreateInfo.pPushConstantRanges    = &bufferReferencePushConstantRange;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
 
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
@@ -176,7 +190,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     mCameraBuffers.resize(framesInFlight);
     mCameraBuffersMapped.resize(framesInFlight);
 
-    uint32 bufferSize = sizeof(CameraBufferRT);
+    uint32 bufferSize = sizeof(CameraDataRT);
 
     for (ptr_size i = 0; i < framesInFlight; ++i)
     {
@@ -216,7 +230,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkDescriptorBufferInfo cameraBufferInfo{};
     cameraBufferInfo.offset = 0;
-    cameraBufferInfo.range  = sizeof(CameraBufferRT);
+    cameraBufferInfo.range  = sizeof(CameraDataRT);
 
     VkWriteDescriptorSet cameraBufferWrite{};
     cameraBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -227,7 +241,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     // uniform buffer update
     VkExtent2D extent = swapchain->getSwapExtent();
     float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-    CameraBufferRT cb;
+    CameraDataRT cb;
     cb.inverseView       = lookAt(vec3(2.0f, 1.0f, 2.0f), vec3(0.0f, 0.25f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
     cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f).inverse();
 
@@ -250,26 +264,86 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
-void RaytracingPipeline::updateImageView(const std::unique_ptr<ImageView>& image)
+void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<ImageView>>& images)
 {
+    // FIXME: If we want to update that some time in the future we should not create the buffers each time :D
+    // buffers
+    mInstanceBuffers.resize(mFramesInFlight);
+    mInstanceBuffersMapped.resize(mFramesInFlight);
+    mMaterialBuffers.resize(mFramesInFlight);
+    mMaterialBuffersMapped.resize(mFramesInFlight);
 
-    VkDescriptorImageInfo diffuseTextureInfo{};
-    diffuseTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkWriteDescriptorSet diffuseTextureWrite{};
-    diffuseTextureWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    diffuseTextureWrite.dstBinding      = 0;
-    diffuseTextureWrite.descriptorCount = 1;
-    diffuseTextureWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    uint32 bufferSizeI = sizeof(InstanceData);
+    uint32 bufferSizeM = sizeof(Material);
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
-        diffuseTextureInfo.imageView                          = image->getVkImageView();
-        diffuseTextureInfo.sampler                            = pTextureSampler->getVkSampler();
-        diffuseTextureWrite.pImageInfo                        = &diffuseTextureInfo;
-        diffuseTextureWrite.dstSet                            = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { diffuseTextureWrite };
+        mInstanceBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeI, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        mInstanceBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        mMaterialBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeM, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        mMaterialBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        const std::unique_ptr<DeviceMemory>& deviceMemoryI = mInstanceBuffers[i]->getDeviceMemory();
+        const std::unique_ptr<DeviceMemory>& deviceMemoryM = mMaterialBuffers[i]->getDeviceMemory();
+
+        mInstanceBuffersMapped[i] = deviceMemoryI->map(0, bufferSizeI); // persistent mapping
+        mMaterialBuffersMapped[i] = deviceMemoryM->map(0, bufferSizeM); // persistent mapping
+    }
+
+    VkDescriptorImageInfo textureInfo{};
+    textureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    textureInfo.sampler     = pTextureSampler->getVkSampler();
+
+    VkWriteDescriptorSet textureWrite{};
+    textureWrite.sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    textureWrite.dstBinding     = 0;
+    textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+    VkDescriptorBufferInfo instanceBufferInfo{};
+    instanceBufferInfo.offset = 0;
+    instanceBufferInfo.range  = sizeof(InstanceData);
+
+    VkWriteDescriptorSet instanceBufferWrite{};
+    instanceBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    instanceBufferWrite.dstBinding      = 1;
+    instanceBufferWrite.descriptorCount = 1;
+    instanceBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    VkDescriptorBufferInfo materialBufferInfo{};
+    materialBufferInfo.offset = 0;
+    materialBufferInfo.range  = sizeof(Material);
+
+    VkWriteDescriptorSet materialBufferWrite{};
+    materialBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    materialBufferWrite.dstBinding      = 2;
+    materialBufferWrite.descriptorCount = 1;
+    materialBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    for (ptr_size i = 0; i < mFramesInFlight; ++i)
+    {
+        std::vector<VkDescriptorImageInfo> textureInfos;
+        for (auto& image : images)
+        {
+            textureInfo.imageView = image->getVkImageView();
+            textureInfos.push_back(textureInfo);
+        }
+        textureWrite.descriptorCount = textureInfos.size();
+        textureWrite.pImageInfo      = textureInfos.data();
+        textureWrite.dstSet          = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        instanceBufferInfo.buffer       = mInstanceBuffers[i]->getVkBuffer();
+        instanceBufferWrite.pBufferInfo = &instanceBufferInfo;
+        instanceBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        materialBufferInfo.buffer       = mMaterialBuffers[i]->getVkBuffer();
+        materialBufferWrite.pBufferInfo = &materialBufferInfo;
+        materialBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite };
         pDescriptorSetsModel->update(writeDescriptorSets);
+
+        memcpy(mInstanceBuffersMapped[i], instances.data(), sizeof(InstanceData) * instances.size());
+        memcpy(mMaterialBuffersMapped[i], materials.data(), sizeof(Material) * materials.size());
     }
 }
 

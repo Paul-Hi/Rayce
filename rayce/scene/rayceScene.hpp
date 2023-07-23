@@ -18,10 +18,10 @@ namespace rayce
     {
         /// @brief The file name the scene was loaded from (currently obj).
         str filename;
-        /// @brief The names of all shapes (meshes).
-        std::vector<str> shapeNames;
-        /// @brief The triangle count of all shapes (meshes).
-        std::vector<uint32> shapeTriCounts;
+        /// @brief The names of all meshes.
+        std::vector<str> meshNames;
+        /// @brief The triangle count of all meshes.
+        std::vector<uint32> meshTriCounts;
     };
 
     /// @brief The scene storage of the pathtracer.
@@ -31,13 +31,14 @@ namespace rayce
         /// @brief Constructs a new @a RaceScene.
         RayceScene();
         /// @brief Destructor.
-        ~RayceScene() = default;
+        ~RayceScene();
 
         /// @brief Loads a model from an obj file and preprocesses it for @a Rayces use case.
         /// @param[in] filename The obj filename.
         /// @param[in] logicalDevice The logical @a Device used to create necessary GPU structures.
         /// @param[in] commandPool @a CommandPool to get command buffers.
-        void loadFromObj(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool);
+        /// @param[in] scale A scaling for the positions.
+        void loadFromGltf(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, float scale);
 
         /// @brief Returns the created @a Geometry of the @a RayceScene.
         /// @return The created @a Geometry of the @a RayceScene.
@@ -46,26 +47,18 @@ namespace rayce
             return pGeometry;
         }
 
-        /// @brief Retrieves the @a ImageView for a given material index.
-        /// @param materialID The material id to receive the texture @a ImageView for.
-        /// @return The @a ImageView for a given material index.
-        const std::unique_ptr<class ImageView>& getTextureView(uint32 materialID)
+        /// @brief Retrieves the @a Materials.
+        /// @return The @a Materials in the @a RayceScene.
+        const std::vector<std::unique_ptr<struct Material>>& getMaterials()
         {
-            return mImageViews[materialID];
+            return mMaterials;
         }
 
-        /// @brief Returns the maximum vertex index.
-        /// @return The maximum vertex index.
-        uint32 maxVertex()
+        /// @brief Retrieves the @a ImageViews.
+        /// @return The @a ImageViews for all materials in the @a RayceScene.
+        const std::vector<std::unique_ptr<class ImageView>>& getTextureViews()
         {
-            return mMaxVertex;
-        }
-
-        /// @brief Returns the number of triangles in the @a RayceScene.
-        /// @return The number of triangles in the @a RayceScene.
-        uint32 primitiveCount()
-        {
-            return mPrimitiveCount;
+            return mImageViews;
         }
 
         /// @brief Renders the @a SceneReflectionInfo in an ImGui window.
@@ -75,16 +68,14 @@ namespace rayce
         /// @brief The @a Geometry of the @a RayceScene.
         std::unique_ptr<class Geometry> pGeometry;
 
-        /// @brief The maximum vertex index.
-        uint32 mMaxVertex;
-        /// @brief The number of triangles.
-        uint32 mPrimitiveCount;
-
         /// @brief True if the reflection info window is open, else False.
         bool mReflectionOpen;
 
         /// @brief The @a SceneReflectionInfo.
         SceneReflectionInfo mReflectionInfo;
+
+        /// @brief The list of @a Materials of the loaded @a Geometry.
+        std::vector<std::unique_ptr<struct Material>> mMaterials;
 
         /// @brief Image cache to remember already loaded textures.
         std::unordered_map<str, byte*> mImageCache;

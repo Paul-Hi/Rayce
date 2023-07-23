@@ -14,35 +14,47 @@ namespace rayce
     class RAYCE_API_EXPORT Geometry
     {
     public:
-        Geometry(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 vertexCount, std::unique_ptr<class Buffer>&& indexBuffer, uint32 indexCount);
-        ~Geometry();
+        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const mat4& transformationMatrix);
 
-        const std::unique_ptr<class Buffer>& getVertexBuffer() const
+        const std::vector<std::unique_ptr<class Buffer>>& getVertexBuffers() const
         {
-            return pVertexBuffer;
+            return mVertexBuffers;
         }
 
-        const std::unique_ptr<class Buffer>& getIndexBuffer() const
+        const std::vector<std::unique_ptr<class Buffer>>& getIndexBuffers() const
         {
-            return pIndexBuffer;
+            return mIndexBuffers;
         }
 
-        uint32 getVertexCount() const
+        const std::vector<uint32>& getMaxVertices() const
         {
-            return mVertexCount;
+            return mMaxVertices;
         }
 
-        uint32 getIndexCount() const
+        const std::vector<uint32>& getPrimitiveCounts() const
         {
-            return mIndexCount;
+            return mPrimitiveCounts;
+        }
+
+        const std::vector<uint32>& getMaterialIds() const
+        {
+            return mMaterialIds;
+        }
+
+        const std::vector<mat4>& getTransformationMatrices() const
+        {
+            return mTransformationMatrices;
         }
 
     private:
-        std::unique_ptr<class Buffer> pVertexBuffer;
-        std::unique_ptr<class Buffer> pIndexBuffer;
+        std::vector<std::unique_ptr<class Buffer>> mVertexBuffers;
+        std::vector<std::unique_ptr<class Buffer>> mIndexBuffers;
 
-        uint32 mVertexCount;
-        uint32 mIndexCount;
+        std::vector<uint32> mMaxVertices;
+        std::vector<uint32> mPrimitiveCounts;
+        std::vector<uint32> mMaterialIds;
+
+        std::vector<mat4> mTransformationMatrices;
     };
 } // namespace rayce
 

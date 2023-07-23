@@ -16,7 +16,7 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
-        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, const std::unique_ptr<class ImageView>& outputImage,
+        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
                            uint32 framesInFlight);
         ~RaytracingPipeline();
 
@@ -57,7 +57,8 @@ namespace rayce
             return mAlignedHandleSize;
         }
 
-        void updateImageView(const std::unique_ptr<class ImageView>& image);
+        void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances
+                            , const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<class ImageView>>& images);
 
     private:
         VkPipelineLayout mVkPipelineLayout;
@@ -74,6 +75,10 @@ namespace rayce
         std::unique_ptr<class DescriptorSets> pDescriptorSetsModel;
         std::vector<std::unique_ptr<class Buffer>> mCameraBuffers;
         std::vector<void*> mCameraBuffersMapped;
+        std::vector<std::unique_ptr<class Buffer>> mInstanceBuffers;
+        std::vector<void*> mInstanceBuffersMapped;
+        std::vector<std::unique_ptr<class Buffer>> mMaterialBuffers;
+        std::vector<void*> mMaterialBuffersMapped;
 
         std::unique_ptr<class ShaderModule> pRayGenShader;
         std::unique_ptr<class ShaderModule> pClosestHitShader;
@@ -91,7 +96,7 @@ namespace rayce
 
         std::unique_ptr<class RTFunctions> pRTF;
 
-        struct CameraBufferRT
+        struct CameraDataRT
         {
             mat4 inverseView;
             mat4 inverseProjection;

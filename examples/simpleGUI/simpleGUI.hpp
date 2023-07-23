@@ -30,6 +30,8 @@ namespace rayce
         std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
         std::unique_ptr<class AccelerationStructure> pTLAS;
 
+        std::vector<std::unique_ptr<struct InstanceData>> mInstances;
+
         std::unique_ptr<class Image> pRaytracingTargetImage;
         std::unique_ptr<class ImageView> pRaytracingTargetView;
     };

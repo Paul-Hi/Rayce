@@ -5,6 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include "simpleGUI.hpp"
+#include <core.hpp>
 #include <imgui.h>
 #include <scene.hpp>
 #include <vulkan.hpp>
@@ -28,24 +29,49 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str cVikingRoomObj = ".\\assets\\obj\\viking_room.obj";
+    const str cWaterBottle = ".\\assets\\gltf\\WaterBottle\\WaterBottle.glb";
 
-    pScene->loadFromObj(cVikingRoomObj, device, commandPool);
+    pScene->loadFromGltf(cWaterBottle, device, commandPool, 1.0f);
 
     auto& geometry = pScene->getGeometry();
 
     AccelerationStructureInitData accelerationStructureInitData{};
-    accelerationStructureInitData.type                    = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    accelerationStructureInitData.vertexDataDeviceAddress = geometry->getVertexBuffer()->getDeviceAddress();
-    accelerationStructureInitData.indexDataDeviceAddress  = geometry->getIndexBuffer()->getDeviceAddress();
-    accelerationStructureInitData.maxVertex               = pScene->maxVertex();
-    accelerationStructureInitData.primitiveCount          = pScene->primitiveCount();
-    mBLAS.push_back(std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData));
+    accelerationStructureInitData.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
+    auto& vertexBuffers          = geometry->getVertexBuffers();
+    auto& indexBuffers           = geometry->getIndexBuffers();
+    auto& maxVertices            = geometry->getMaxVertices();
+    auto& primitiveCounts        = geometry->getPrimitiveCounts();
+    auto& transformationMatrices = geometry->getTransformationMatrices();
+    auto& materialIds            = geometry->getMaterialIds();
+
+    for (ptr_size i = 0; i < vertexBuffers.size(); ++i)
+    {
+        accelerationStructureInitData.vertexDataDeviceAddress = vertexBuffers[i]->getDeviceAddress();
+        accelerationStructureInitData.indexDataDeviceAddress  = indexBuffers[i]->getDeviceAddress();
+        accelerationStructureInitData.maxVertex               = maxVertices[i];
+        accelerationStructureInitData.primitiveCount          = primitiveCounts[i];
+        mBLAS.push_back(std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData));
+
+        auto instance             = std::make_unique<InstanceData>();
+        instance->materialId      = materialIds[i];
+        instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
+        instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
+        mInstances.push_back(std::move(instance));
+    }
 
     accelerationStructureInitData.type           = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     accelerationStructureInitData.primitiveCount = 1;
+    uint32 i                                     = 0;
     for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
     {
+        const mat4& tr                       = transformationMatrices[i++];
+        VkTransformMatrixKHR transformMatrix = {
+            tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
+            tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
+            tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
+        };
+        accelerationStructureInitData.transformMatrices.push_back(transformMatrix);
         accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());
     }
     pTLAS = std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData);
@@ -109,19 +135,6 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     std::vector<VkDescriptorSet> rtDescriptorSets = pRaytracingPipeline->getVkDescriptorSets(imageIndex);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, rtDescriptorSets.size(), rtDescriptorSets.data(), 0, nullptr);
 
-    struct BufferReferences
-    {
-        uint64 vertices;
-        uint64 indices;
-    } bufferReferences;
-
-    auto& geometry = pScene->getGeometry();
-
-    bufferReferences.vertices = geometry->getVertexBuffer()->getDeviceAddress();
-    bufferReferences.indices  = geometry->getIndexBuffer()->getDeviceAddress();
-
-    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(uint64) * 2, &bufferReferences);
-
     VkExtent2D extent = getSwapchain()->getSwapExtent();
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
 
@@ -177,9 +190,10 @@ void SimpleGUI::recreateSwapchain()
     pRaytracingTargetImage->allocateMemory(device, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
-    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, pRaytracingTargetView, swapchain->getImageCount()));
+    auto& textureViews    = pScene->getTextureViews();
+    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
-    pRaytracingPipeline->updateImageView(pScene->getTextureView(0));
+    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews);
 }
 
 int main(int argc, char** argv)

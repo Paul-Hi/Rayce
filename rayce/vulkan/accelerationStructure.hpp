@@ -22,6 +22,8 @@ namespace rayce
         VkDeviceAddress indexDataDeviceAddress;
         /// @brief List of device addresses of bottom level acceleration structures (Only TLAS).
         std::vector<VkDeviceAddress> blasDeviceAddresses;
+        /// @brief List of transform matrices of bottom level acceleration structures (Only TLAS).
+        std::vector<VkTransformMatrixKHR> transformMatrices;
         /// @brief Maximum index of any vertex (Only BLAS).
         uint32 maxVertex;
         /// @brief Number of primitives.
