@@ -61,7 +61,7 @@ bool SimpleGUI::onInitialize()
     }
 
     accelerationStructureInitData.type           = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    accelerationStructureInitData.primitiveCount = 1;
+    accelerationStructureInitData.primitiveCount = static_cast<uint32>(mBLAS.size());
     uint32 i                                     = 0;
     for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
     {

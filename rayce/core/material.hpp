@@ -26,6 +26,7 @@ namespace rayce
         int32 normalTextureId{ -1 };
         // int32 occlusionTextureId{-1};
         int32 emissiveTextureId{ -1 };
+        int32 pad[3]{ 0, 0, 0 };
     };
 } // namespace rayce
 

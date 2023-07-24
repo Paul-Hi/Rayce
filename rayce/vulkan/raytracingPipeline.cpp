@@ -273,14 +273,14 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     mMaterialBuffers.resize(mFramesInFlight);
     mMaterialBuffersMapped.resize(mFramesInFlight);
 
-    uint32 bufferSizeI = sizeof(InstanceData);
-    uint32 bufferSizeM = sizeof(Material);
+    uint32 bufferSizeI = sizeof(InstanceData) * instances.size();
+    uint32 bufferSizeM = sizeof(Material) * materials.size();
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
-        mInstanceBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeI, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        mInstanceBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeI, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
         mInstanceBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        mMaterialBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeM, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        mMaterialBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeM, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
         mMaterialBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         const std::unique_ptr<DeviceMemory>& deviceMemoryI = mInstanceBuffers[i]->getDeviceMemory();
@@ -342,8 +342,8 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite };
         pDescriptorSetsModel->update(writeDescriptorSets);
 
-        memcpy(mInstanceBuffersMapped[i], instances.data(), sizeof(InstanceData) * instances.size());
-        memcpy(mMaterialBuffersMapped[i], materials.data(), sizeof(Material) * materials.size());
+        memcpy(mInstanceBuffersMapped[i], instances.data(), bufferSizeI);
+        memcpy(mMaterialBuffersMapped[i], materials.data(), bufferSizeM);
     }
 }
 

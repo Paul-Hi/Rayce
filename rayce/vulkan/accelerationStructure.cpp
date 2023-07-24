@@ -79,7 +79,6 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         accelerationStructureBuildRangeInfo.transformOffset                                         = 0;
         std::vector<VkAccelerationStructureBuildRangeInfoKHR*> accelerationStructureBuildRangeInfos = { &accelerationStructureBuildRangeInfo };
 
-        // FIXME Next: We get a VK_ERROR_DEVICE_LOST in here...
         ImmediateSubmit::Execute(logicalDevice, commandPool,
                                  [&](VkCommandBuffer commandBuffer)
                                  { pRTF->vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos.data()); });

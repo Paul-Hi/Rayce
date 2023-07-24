@@ -28,6 +28,8 @@ struct Material
     int metallicRoughnessTextureId;
     int normalTextureId;
     int emissiveTextureId;
+
+    int pad[3];
 };
 
 struct Tri

@@ -75,7 +75,9 @@ void main()
         Material material = materials[pld.triangle.materialId];
         color = material.baseColor.rgb;
         if (material.baseColorTextureId >= 0)
+        {
             color *= textureLod(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV, 0).rgb;
+        }
     }
 
     imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(toneMapACES(color), 1.0));

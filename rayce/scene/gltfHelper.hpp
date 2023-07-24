@@ -22,19 +22,14 @@ namespace rayce
 
         auto current = adress;
 
-        uint32 toTypeCount = count / componentCount;
-
-        for (ptr_size i = 0; i < toTypeCount; ++i)
+        for (ptr_size i = 0; i < count; ++i)
         {
             vec3 p;
-            for (ptr_size c = 0; c < componentCount; ++c)
-            {
-                p.x() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 0 * sizeof(ComponentType))));
-                p.y() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 1 * sizeof(ComponentType))));
-                p.z() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 2 * sizeof(ComponentType))));
+            p.x() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 0 * sizeof(ComponentType))));
+            p.y() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 1 * sizeof(ComponentType))));
+            p.z() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 2 * sizeof(ComponentType))));
 
-                current += byteStride;
-            }
+            current += byteStride;
 
             result.push_back(p);
         }
@@ -53,18 +48,13 @@ namespace rayce
 
         auto current = adress;
 
-        uint32 toTypeCount = count / componentCount;
-
-        for (ptr_size i = 0; i < toTypeCount; ++i)
+        for (ptr_size i = 0; i < count; ++i)
         {
             vec2 p;
-            for (ptr_size c = 0; c < componentCount; ++c)
-            {
-                p.x() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 0 * sizeof(ComponentType))));
-                p.y() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 1 * sizeof(ComponentType))));
+            p.x() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 0 * sizeof(ComponentType))));
+            p.y() = static_cast<float>(apply(*reinterpret_cast<const ComponentType*>(current + 1 * sizeof(ComponentType))));
 
-                current += byteStride;
-            }
+            current += byteStride;
 
             result.push_back(p);
         }
@@ -83,9 +73,7 @@ namespace rayce
 
         auto current = adress;
 
-        uint32 toTypeCount = count;
-
-        for (ptr_size i = 0; i < toTypeCount; ++i)
+        for (ptr_size i = 0; i < count; ++i)
         {
             uint32 p = static_cast<uint32>(apply(*reinterpret_cast<const ComponentType*>(current)));
 
