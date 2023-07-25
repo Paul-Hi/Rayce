@@ -15,6 +15,8 @@ struct InstanceData
     uint64_t indexReference;
     uint64_t vertexReference;
     uint materialId;
+
+    int pad[3];
 };
 
 struct Material

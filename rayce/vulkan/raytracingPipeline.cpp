@@ -179,8 +179,8 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
                                                 VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
 
     // descriptor sets
-    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, framesInFlight } });
-    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // max sets is weird
+    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, framesInFlight } }); // FIMXE Next : More?
+    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // FIXME: max sets is weird
 
     pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
     pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);
@@ -301,7 +301,7 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkDescriptorBufferInfo instanceBufferInfo{};
     instanceBufferInfo.offset = 0;
-    instanceBufferInfo.range  = sizeof(InstanceData);
+    instanceBufferInfo.range  = bufferSizeI;
 
     VkWriteDescriptorSet instanceBufferWrite{};
     instanceBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -311,7 +311,7 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkDescriptorBufferInfo materialBufferInfo{};
     materialBufferInfo.offset = 0;
-    materialBufferInfo.range  = sizeof(Material);
+    materialBufferInfo.range  = bufferSizeM;
 
     VkWriteDescriptorSet materialBufferWrite{};
     materialBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -16,6 +16,8 @@ namespace rayce
         uint64 indexReference;
         uint64 vertexReference;
         uint32 materialId;
+
+        int32 pad[3];
     };
 } // namespace rayce
 
