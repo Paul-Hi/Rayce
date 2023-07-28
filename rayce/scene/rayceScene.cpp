@@ -150,7 +150,6 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             // 1 meshPrimitive = 1 BLAS later -> buffers per meshPrimitive
             std::vector<Vertex> vertices;
             std::vector<uint32> indices;
-            std::vector<uint32> faces;
             // indices
             {
                 const auto& iAccessor   = model.accessors[primitive.indices];
@@ -191,13 +190,8 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                 }
             }
 
-            // faces and attributes
+            // attributes
             {
-                for (ptr_size i = 0; i < indices.size(); ++i)
-                {
-                    faces.push_back(indices[i]);
-                }
-
                 // convert to triangle list
                 bool converted = (primitive.mode == TINYGLTF_MODE_TRIANGLES);
                 switch (primitive.mode)
@@ -205,26 +199,26 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                 case TINYGLTF_MODE_TRIANGLE_FAN:
                     if (!converted)
                     {
-                        std::vector<uint32> triangleFan = std::move(faces);
-                        faces.clear();
+                        std::vector<uint32> triangleFan = std::move(indices);
+                        indices.clear();
                         for (ptr_size i = 2; i < triangleFan.size(); ++i)
                         {
-                            faces.push_back(triangleFan[0]);
-                            faces.push_back(triangleFan[i - 1]);
-                            faces.push_back(triangleFan[i]);
+                            indices.push_back(triangleFan[0]);
+                            indices.push_back(triangleFan[i - 1]);
+                            indices.push_back(triangleFan[i]);
                         }
                         converted = true;
                     }
                 case TINYGLTF_MODE_TRIANGLE_STRIP:
                     if (!converted)
                     {
-                        std::vector<uint32> triangleStrip = std::move(faces);
-                        faces.clear();
+                        std::vector<uint32> triangleStrip = std::move(indices);
+                        indices.clear();
                         for (ptr_size i = 2; i < triangleStrip.size(); ++i)
                         {
-                            faces.push_back(triangleStrip[i - 2]);
-                            faces.push_back(triangleStrip[i - 1]);
-                            faces.push_back(triangleStrip[i]);
+                            indices.push_back(triangleStrip[i - 2]);
+                            indices.push_back(triangleStrip[i - 1]);
+                            indices.push_back(triangleStrip[i]);
                         }
                         converted = true;
                     }
@@ -336,6 +330,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                         }
                     }
 
+                    vertices.resize(positions.size());
                     for (ptr_size v = 0; v < positions.size(); ++v)
                     {
                         Vertex vertex;
@@ -344,7 +339,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                         vertex.normal   = normals[v];
                         vertex.uv       = uvs[v];
 
-                        vertices.push_back(vertex);
+                        vertices[v] = vertex;
                     }
 
                     std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(logicalDevice, sizeof(Vertex) * vertices.size(),
@@ -422,16 +417,24 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             mMaterials.push_back(std::make_unique<Material>(mat));
         }
 
+        uint32 modelTexCount = 0;
         for (ptr_size i = 0; i < model.textures.size(); ++i)
         {
             const auto& texture = model.textures[i];
 
-            if (mImageCache[texture.name])
+            str name = texture.name;
+
+            if (name.empty())
+            {
+                name = filename + "_tex" + std::to_string(modelTexCount++);
+            }
+
+            if (mImageCache[name])
             {
                 continue;
             }
 
-            RAYCE_LOG_INFO("Loading texture %s.", texture.name.c_str());
+            RAYCE_LOG_INFO("Loading texture %s.", name.c_str());
 
             const auto& image = model.images[texture.source];
 
@@ -440,8 +443,8 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             uint32 components = static_cast<uint32>(image.component);
             uint32 imageSize  = width * height * components;
 
-            mImageCache[texture.name] = new byte[imageSize];
-            memcpy(mImageCache[texture.name], image.image.data(), imageSize);
+            mImageCache[name] = new byte[imageSize];
+            memcpy(mImageCache[name], image.image.data(), imageSize);
 
             VkFormat format = getImageFormat(components, mSrgb[i]);
 
@@ -451,7 +454,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
             addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
             VkExtent3D extent3D{ width, height, 1 };
-            Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[texture.name], imageSize, extent3D);
+            Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
             addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
         }

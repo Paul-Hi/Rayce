@@ -55,11 +55,11 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     pDescriptorSetLayoutCamera = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
-    VkDescriptorSetLayoutBinding layoutBindingDescriptorDiffuseTexture{};
-    layoutBindingDescriptorDiffuseTexture.binding         = 0;
-    layoutBindingDescriptorDiffuseTexture.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    layoutBindingDescriptorDiffuseTexture.descriptorCount = requiredImageDescriptors;
-    layoutBindingDescriptorDiffuseTexture.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorTextures{};
+    layoutBindingDescriptorTextures.binding         = 0;
+    layoutBindingDescriptorTextures.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindingDescriptorTextures.descriptorCount = requiredImageDescriptors;
+    layoutBindingDescriptorTextures.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorInstanceDataBuffer{};
     layoutBindingDescriptorInstanceDataBuffer.binding         = 1;
@@ -73,7 +73,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorMaterialDataBuffer.descriptorCount = 1;
     layoutBindingDescriptorMaterialDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    bindings = { layoutBindingDescriptorDiffuseTexture, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer };
+    bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer };
 
     pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -179,8 +179,8 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
                                                 VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
 
     // descriptor sets
-    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, framesInFlight }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, framesInFlight }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, framesInFlight } }); // FIMXE Next : More?
-    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, framesInFlight * 3, 0); // FIXME: max sets is weird
+    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1000 }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 } });
+    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, 1000 * poolSizes.size(), 0);
 
     pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
     pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);
@@ -252,13 +252,12 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
+        memcpy(mCameraBuffersMapped[i], &cb, sizeof(cb));
         cameraBufferInfo.buffer       = mCameraBuffers[i]->getVkBuffer();
         cameraBufferWrite.pBufferInfo = &cameraBufferInfo;
         cameraBufferWrite.dstSet      = pDescriptorSetsCamera->operator[](static_cast<uint32>(i));
         writeDescriptorSets           = { cameraBufferWrite };
         pDescriptorSetsCamera->update(writeDescriptorSets);
-
-        memcpy(mCameraBuffersMapped[i], &cb, sizeof(cb));
     }
 
     RAYCE_LOG_INFO("Created raytracing pipeline!");
@@ -299,6 +298,15 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     textureWrite.dstBinding     = 0;
     textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
+    std::vector<VkDescriptorImageInfo> textureInfos;
+    for (auto& image : images)
+    {
+        textureInfo.imageView = image->getVkImageView();
+        textureInfos.push_back(textureInfo);
+    }
+    textureWrite.descriptorCount = textureInfos.size();
+    textureWrite.pImageInfo      = textureInfos.data();
+
     VkDescriptorBufferInfo instanceBufferInfo{};
     instanceBufferInfo.offset = 0;
     instanceBufferInfo.range  = bufferSizeI;
@@ -321,15 +329,10 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
-        std::vector<VkDescriptorImageInfo> textureInfos;
-        for (auto& image : images)
-        {
-            textureInfo.imageView = image->getVkImageView();
-            textureInfos.push_back(textureInfo);
-        }
-        textureWrite.descriptorCount = textureInfos.size();
-        textureWrite.pImageInfo      = textureInfos.data();
-        textureWrite.dstSet          = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+        textureWrite.dstSet = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        memcpy(mInstanceBuffersMapped[i], instances.data(), bufferSizeI);
+        memcpy(mMaterialBuffersMapped[i], materials.data(), bufferSizeM);
 
         instanceBufferInfo.buffer       = mInstanceBuffers[i]->getVkBuffer();
         instanceBufferWrite.pBufferInfo = &instanceBufferInfo;
@@ -341,9 +344,6 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite };
         pDescriptorSetsModel->update(writeDescriptorSets);
-
-        memcpy(mInstanceBuffersMapped[i], instances.data(), bufferSizeI);
-        memcpy(mMaterialBuffersMapped[i], materials.data(), bufferSizeM);
     }
 }
 
