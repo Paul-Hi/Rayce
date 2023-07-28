@@ -16,7 +16,6 @@ layout(set = 2, binding = 1, scalar) buffer _InstanceInfo { InstanceData ref[]; 
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 
-
 Tri getTriangle(uint primitiveIndex)
 {
     Tri tri;
@@ -31,8 +30,9 @@ Tri getTriangle(uint primitiveIndex)
         tri.vertices[i] = vertices.v[idx];
     }
 
-    tri.barycentrics = vec3(1.0f - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
+    tri.barycentrics = vec3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
     tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
+    tri.interpolatedNormal = normalize(tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z);
     tri.materialId = ref[gl_InstanceCustomIndexEXT].materialId;
 
     return tri;

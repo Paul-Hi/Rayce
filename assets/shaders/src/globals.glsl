@@ -39,6 +39,7 @@ struct Tri
     Vertex vertices[3];
     vec3 barycentrics;
     vec2 interpolatedUV;
+    vec3 interpolatedNormal;
     uint materialId;
 };
 

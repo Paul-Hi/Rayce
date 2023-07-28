@@ -27,9 +27,9 @@ ImageView::ImageView(const std::unique_ptr<Device>& logicalDevice, Image& image,
 
     createInfo.subresourceRange.aspectMask     = aspectMask;
     createInfo.subresourceRange.baseMipLevel   = 0;
-    createInfo.subresourceRange.levelCount     = 1;
+    createInfo.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
     createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount     = 1;
+    createInfo.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
     RAYCE_CHECK_VK(vkCreateImageView(mVkLogicalDeviceRef, &createInfo, nullptr, &mVkImageView), "Creating image view failed!");
 }

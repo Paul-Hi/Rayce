@@ -230,7 +230,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkDescriptorBufferInfo cameraBufferInfo{};
     cameraBufferInfo.offset = 0;
-    cameraBufferInfo.range  = sizeof(CameraDataRT);
+    cameraBufferInfo.range  = bufferSize;
 
     VkWriteDescriptorSet cameraBufferWrite{};
     cameraBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -252,7 +252,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
-        memcpy(mCameraBuffersMapped[i], &cb, sizeof(cb));
+        memcpy(mCameraBuffersMapped[i], &cb, bufferSize);
         cameraBufferInfo.buffer       = mCameraBuffers[i]->getVkBuffer();
         cameraBufferWrite.pBufferInfo = &cameraBufferInfo;
         cameraBufferWrite.dstSet      = pDescriptorSetsCamera->operator[](static_cast<uint32>(i));
@@ -331,8 +331,17 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     {
         textureWrite.dstSet = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
 
-        memcpy(mInstanceBuffersMapped[i], instances.data(), bufferSizeI);
-        memcpy(mMaterialBuffersMapped[i], materials.data(), bufferSizeM);
+        for (ptr_size j = 0; j < instances.size(); ++j)
+        {
+            InstanceData& deviceInstance = *(reinterpret_cast<InstanceData*>(mInstanceBuffersMapped[i]) + j);
+            deviceInstance               = *instances[j].get();
+        }
+
+        for (ptr_size j = 0; j < materials.size(); ++j)
+        {
+            Material& deviceMaterial = *(reinterpret_cast<Material*>(mMaterialBuffersMapped[i]) + j);
+            deviceMaterial           = *materials[j].get();
+        }
 
         instanceBufferInfo.buffer       = mInstanceBuffers[i]->getVkBuffer();
         instanceBufferWrite.pBufferInfo = &instanceBufferInfo;

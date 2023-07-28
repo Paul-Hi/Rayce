@@ -31,7 +31,8 @@ bool SimpleGUI::onInitialize()
 
     const str cWaterBottle = ".\\assets\\gltf\\WaterBottle\\WaterBottle.glb";
 
-    pScene->loadFromGltf(cWaterBottle, device, commandPool, 1.0f);
+    // FIXME Next: Scale is not correct and some primitives are not rendered? (both buggy)
+    pScene->loadFromGltf(cWaterBottle, device, commandPool, 6.0f);
 
     auto& geometry = pScene->getGeometry();
 
@@ -102,9 +103,9 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     VkImageSubresourceRange subresourceRange{};
     subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     subresourceRange.baseMipLevel   = 0;
-    subresourceRange.levelCount     = 1;
+    subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
     subresourceRange.baseArrayLayer = 0;
-    subresourceRange.layerCount     = 1;
+    subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
     const std::vector<std::unique_ptr<ImageView>>& swapchainImageViews = getSwapchain()->getImageViews();
     const VkImage swapchainImage                                       = swapchainImageViews[imageIndex]->getVkImage();

@@ -331,13 +331,15 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                     }
 
                     vertices.resize(positions.size());
+                    bool hasNormals   = !normals.empty();
+                    bool hasTexCoords = !uvs.empty();
                     for (ptr_size v = 0; v < positions.size(); ++v)
                     {
                         Vertex vertex;
 
                         vertex.position = positions[v];
-                        vertex.normal   = normals[v];
-                        vertex.uv       = uvs[v];
+                        vertex.normal   = hasNormals ? normals[v] : vec3(1.0, 1.0, 1.0).normalized();
+                        vertex.uv       = hasTexCoords ? uvs[v] : vec2(1.0, 1.0);
 
                         vertices[v] = vertex;
                     }
@@ -458,6 +460,28 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
         }
+        str name = "Default";
+        RAYCE_LOG_INFO("Loading texture %s.", name.c_str());
+
+        uint32 width      = 1;
+        uint32 height     = 1;
+        uint32 components = 1;
+        uint32 imageSize  = width * height * components;
+
+        mImageCache[name]    = new byte[imageSize];
+        mImageCache[name][0] = 0;
+
+        VkFormat format = getImageFormat(components, false);
+
+        VkExtent2D extent{ width, height };
+        mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+        auto& addedImage = mImages.back();
+        addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        VkExtent3D extent3D{ width, height, 1 };
+        Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+        addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
     }
 }
 
