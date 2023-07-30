@@ -29,10 +29,10 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str cWaterBottle = ".\\assets\\gltf\\WaterBottle\\WaterBottle.glb";
+    const str cWaterBottle = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
 
-    // FIXME Next: Scale is not correct and some primitives are not rendered? (both buggy)
-    pScene->loadFromGltf(cWaterBottle, device, commandPool, 6.0f);
+    // FIXME Next: Scale is not correct and some primitives are not rendered?
+    pScene->loadFromGltf(cWaterBottle, device, commandPool, 2.0f);
 
     auto& geometry = pScene->getGeometry();
 

@@ -16,6 +16,7 @@
 #include <vulkan/geometry.hpp>
 #include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
+#include <vulkan/sampler.hpp>
 #include <vulkan/vertex.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
@@ -423,6 +424,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
         for (ptr_size i = 0; i < model.textures.size(); ++i)
         {
             const auto& texture = model.textures[i];
+            const auto& smpler = model.samplers[i];
 
             str name = texture.name;
 
@@ -458,7 +460,11 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             VkExtent3D extent3D{ width, height, 1 };
             Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
             addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+
+// FIXME Here!
+            std::unique_ptr<Sampler> sampler = std::make_unique<Sampler>(logicalDevice, smpler.magFilter, VK_FILTER_LINEAR,
+                                                                         VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
+            mImageAccessData.push_back({ std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT), std::move(sampler) });
         }
         str name = "Default";
         RAYCE_LOG_INFO("Loading texture %s.", name.c_str());
@@ -481,7 +487,10 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
         VkExtent3D extent3D{ width, height, 1 };
         Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
         addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+
+        std::unique_ptr<Sampler> defaultSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                            VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
+        mImageAccessData.push_back({ std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT), std::move(defaultSampler) });
     }
 }
 

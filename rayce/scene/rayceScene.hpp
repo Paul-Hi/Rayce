@@ -83,8 +83,8 @@ namespace rayce
         /// @brief List of \a Images representing textures of the loaded @a Geometry.
         std::vector<std::unique_ptr<class Image>> mImages;
 
-        /// @brief List of \a ImageViews for the images.
-        std::vector<std::unique_ptr<class ImageView>> mImageViews;
+        /// @brief List of \a ImageViews and \a Samplers for the images.
+        std::vector<std::pair<std::unique_ptr<class ImageView>, std::unique_ptr<class Sampler>>> mImageAccessData;
     };
 
 } // namespace rayce
