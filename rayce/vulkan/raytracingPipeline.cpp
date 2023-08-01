@@ -174,10 +174,6 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     std::memcpy(mappedMemory, shaderHandleTempStorage.data() + 2 * mAlignedHandleSize, mAlignedHandleSize);
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 
-    // sampler
-    pTextureSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
-
     // descriptor sets
     std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1000 }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 } });
     pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, 1000 * poolSizes.size(), 0);
@@ -242,7 +238,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkExtent2D extent = swapchain->getSwapExtent();
     float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
     CameraDataRT cb;
-    cb.inverseView       = lookAt(vec3(2.0f, 1.0f, 2.0f), vec3(0.0f, 0.25f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
+    cb.inverseView       = lookAt(vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
     cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f).inverse();
 
     for (ptr_size i = 0; i < framesInFlight; ++i)
@@ -263,7 +259,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
-void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<ImageView>>& images)
+void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<ImageView>>& images, const std::vector<std::unique_ptr<Sampler>>& samplers)
 {
     // FIXME: If we want to update that some time in the future we should not create the buffers each time :D
     // buffers
@@ -291,7 +287,6 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkDescriptorImageInfo textureInfo{};
     textureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    textureInfo.sampler     = pTextureSampler->getVkSampler();
 
     VkWriteDescriptorSet textureWrite{};
     textureWrite.sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -299,9 +294,10 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     std::vector<VkDescriptorImageInfo> textureInfos;
-    for (auto& image : images)
+    for (ptr_size i = 0; i < images.size(); ++i)
     {
-        textureInfo.imageView = image->getVkImageView();
+        textureInfo.imageView = images[i]->getVkImageView();
+        textureInfo.sampler   = samplers[i]->getVkSampler();
         textureInfos.push_back(textureInfo);
     }
     textureWrite.descriptorCount = textureInfos.size();

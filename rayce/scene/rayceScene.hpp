@@ -61,6 +61,13 @@ namespace rayce
             return mImageViews;
         }
 
+        /// @brief Retrieves the @a Samplers.
+        /// @return The @a Samplers for all materials in the @a RayceScene.
+        const std::vector<std::unique_ptr<class Sampler>>& getSamplers()
+        {
+            return mImageSamplers;
+        }
+
         /// @brief Renders the @a SceneReflectionInfo in an ImGui window.
         void onImGuiRender();
 
@@ -83,8 +90,10 @@ namespace rayce
         /// @brief List of \a Images representing textures of the loaded @a Geometry.
         std::vector<std::unique_ptr<class Image>> mImages;
 
-        /// @brief List of \a ImageViews and \a Samplers for the images.
-        std::vector<std::pair<std::unique_ptr<class ImageView>, std::unique_ptr<class Sampler>>> mImageAccessData;
+        /// @brief List of \a ImageViews for the images.
+        std::vector<std::unique_ptr<class ImageView>> mImageViews;
+        /// @brief List of \a Samplers for the images.
+        std::vector<std::unique_ptr<Sampler>> mImageSamplers;
     };
 
 } // namespace rayce

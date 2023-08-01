@@ -29,10 +29,11 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str cWaterBottle = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
+    const str flightHelmet = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
 
     // FIXME Next: Scale is not correct and some primitives are not rendered?
-    pScene->loadFromGltf(cWaterBottle, device, commandPool, 2.0f);
+    // Afterwards: PBR shading, camera import, direct lighting with non hacky lights.
+    pScene->loadFromGltf(flightHelmet, device, commandPool, 2.0f);
 
     auto& geometry = pScene->getGeometry();
 
@@ -192,9 +193,10 @@ void SimpleGUI::recreateSwapchain()
 
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
     auto& textureViews    = pScene->getTextureViews();
+    auto& samplers        = pScene->getSamplers();
     pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
-    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews);
+    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews, samplers);
 }
 
 int main(int argc, char** argv)

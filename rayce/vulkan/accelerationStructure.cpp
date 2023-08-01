@@ -102,7 +102,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
         }
 
         std::unique_ptr<Buffer> instanceBuffer =
-            std::make_unique<Buffer>(logicalDevice, sizeof(VkAccelerationStructureInstanceKHR),
+            std::make_unique<Buffer>(logicalDevice, sizeof(VkAccelerationStructureInstanceKHR) * accelerationStructureInstances.size(),
                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         instanceBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *instanceBuffer, accelerationStructureInstances);

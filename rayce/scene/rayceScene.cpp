@@ -424,7 +424,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
         for (ptr_size i = 0; i < model.textures.size(); ++i)
         {
             const auto& texture = model.textures[i];
-            const auto& smpler = model.samplers[i];
+            const auto& smpler  = model.samplers[texture.sampler];
 
             str name = texture.name;
 
@@ -461,10 +461,31 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
             addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-// FIXME Here!
-            std::unique_ptr<Sampler> sampler = std::make_unique<Sampler>(logicalDevice, smpler.magFilter, VK_FILTER_LINEAR,
-                                                                         VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
-            mImageAccessData.push_back({ std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT), std::move(sampler) });
+            // FIXME: To function?
+            VkFilter magFilter = smpler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+            VkFilter minFilter = (smpler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST || smpler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST ||
+                                  smpler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR)
+                                     ? VK_FILTER_NEAREST
+                                     : VK_FILTER_LINEAR;
+            VkSamplerMipmapMode mipmapMode =
+                (smpler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR ||
+                 smpler.minFilter == TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR)
+                    ? VK_SAMPLER_MIPMAP_MODE_LINEAR
+                    : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+            VkSamplerAddressMode addressU =
+                (smpler.wrapS == TINYGLTF_TEXTURE_WRAP_REPEAT) ? VK_SAMPLER_ADDRESS_MODE_REPEAT
+                                                               : (smpler.wrapS == TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE ? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+                                                                                                                      : VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
+
+            VkSamplerAddressMode addressV =
+                (smpler.wrapT == TINYGLTF_TEXTURE_WRAP_REPEAT) ? VK_SAMPLER_ADDRESS_MODE_REPEAT
+                                                               : (smpler.wrapS == TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE ? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+                                                                                                                      : VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
+
+            std::unique_ptr<Sampler> sampler = std::make_unique<Sampler>(logicalDevice, magFilter, minFilter, addressU, addressV, VK_SAMPLER_ADDRESS_MODE_REPEAT, mipmapMode, true, false, VK_COMPARE_OP_ALWAYS);
+            mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+            mImageSamplers.push_back(std::move(sampler));
         }
         str name = "Default";
         RAYCE_LOG_INFO("Loading texture %s.", name.c_str());
@@ -490,7 +511,8 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
 
         std::unique_ptr<Sampler> defaultSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                             VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
-        mImageAccessData.push_back({ std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT), std::move(defaultSampler) });
+        mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+        mImageSamplers.push_back(std::move(defaultSampler));
     }
 }
 

@@ -79,7 +79,7 @@ void main()
             color *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
         }
 
-        vec3 lightDir = normalize(vec3(0.1, 0.4, -0.4));
+        vec3 lightDir = normalize(vec3(0.1, 0.4, 0.4));
         color *= max(dot(pld.triangle.interpolatedNormal, lightDir), 0);
 
         if (material.emissiveTextureId >= 0)

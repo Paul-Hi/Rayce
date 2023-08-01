@@ -57,8 +57,9 @@ namespace rayce
             return mAlignedHandleSize;
         }
 
-        void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances
-                            , const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<class ImageView>>& images);
+        void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances,
+                             const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<class ImageView>>& images,
+                             const std::vector<std::unique_ptr<class Sampler>>& samplers);
 
     private:
         VkPipelineLayout mVkPipelineLayout;
@@ -91,8 +92,6 @@ namespace rayce
         uint32 mMissOffset;
 
         std::unique_ptr<class DescriptorPool> pDescriptorPool;
-
-        std::unique_ptr<class Sampler> pTextureSampler;
 
         std::unique_ptr<class RTFunctions> pRTF;
 
