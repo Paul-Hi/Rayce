@@ -80,7 +80,7 @@ void main()
         }
 
         vec3 lightDir = normalize(vec3(0.1, 0.4, 0.4));
-        color *= max(dot(pld.triangle.interpolatedNormal, lightDir), 0);
+        color *= max(dot(pld.triangle.interpolatedNormal, lightDir), 0.0) + 0.03;
 
         if (material.emissiveTextureId >= 0)
         {

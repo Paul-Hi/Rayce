@@ -130,12 +130,16 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
     // first get transformation matrices for the meshes
     std::unordered_map<int32, mat4> transformationMatrices;
 
+    mat4 tr  = mat4::Identity();
+    tr(0, 0) = scale;
+    tr(1, 1) = scale;
+    tr(2, 2) = scale;
     for (const tinygltf::Scene& scene : model.scenes)
     {
         for (int32 i = 0; i < static_cast<int32>(scene.nodes.size()); ++i)
         {
             tinygltf::Node node = model.nodes.at(scene.nodes[i]);
-            loadModelMatrix(node, model, mat4::Identity(), transformationMatrices);
+            loadModelMatrix(node, model, tr, transformationMatrices);
         }
     }
 
@@ -257,14 +261,12 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                                 {
                                 case TINYGLTF_COMPONENT_TYPE_FLOAT:
                                 {
-                                    extendVector(positions, convertGltfDataVec3<float, 3>(dataStart, count, byteStride, [scale](const float& entry)
-                                                                                          { return entry * scale; }));
+                                    extendVector(positions, convertGltfDataVec3<float, 3>(dataStart, count, byteStride));
                                     break;
                                 }
                                 case TINYGLTF_COMPONENT_TYPE_DOUBLE:
                                 {
-                                    extendVector(positions, convertGltfDataVec3<double, 3>(dataStart, count, byteStride, [scale](const double& entry)
-                                                                                           { return entry * scale; }));
+                                    extendVector(positions, convertGltfDataVec3<double, 3>(dataStart, count, byteStride));
                                     break;
                                 }
                                 }
@@ -339,7 +341,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                         Vertex vertex;
 
                         vertex.position = positions[v];
-                        vertex.normal   = hasNormals ? normals[v] : vec3(1.0, 1.0, 1.0).normalized();
+                        vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
                         vertex.uv       = hasTexCoords ? uvs[v] : vec2(1.0, 1.0);
 
                         vertices[v] = vertex;
@@ -374,6 +376,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
         std::vector<bool> mSrgb(model.textures.size(), false);
         for (const auto& material : model.materials)
         {
+            // FIXME: duplicates are loaded multiple times.
             RAYCE_LOG_INFO("Loading material %s.", material.name.c_str());
 
             Material mat;
@@ -528,9 +531,9 @@ void RayceScene::onImGuiRender()
     static ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if (ImGui::TreeNodeEx(mReflectionInfo.filename.c_str(), treeNodeFlags, "%s  %s", ICON_FA_FOLDER, mReflectionInfo.filename.c_str()))
     {
+        ImGui::Indent();
         for (ptr_size i = 0; i < mReflectionInfo.meshNames.size(); ++i)
         {
-            ImGui::Indent();
             ImGui::Text("%s %s: %d Triangles", ICON_FA_SHAPES, mReflectionInfo.meshNames[i].c_str(), mReflectionInfo.meshTriCounts[i]);
             if (i < mReflectionInfo.meshNames.size() - 1)
             {

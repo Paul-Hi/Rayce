@@ -29,11 +29,11 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str flightHelmet = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
+    const str flightHelmet = ".\\assets\\gltf\\Buggy\\Buggy.glb";
 
-    // FIXME Next: Scale is not correct and some primitives are not rendered?
+    // FIXME Next: Some primitives are not rendered and normals are not correct?
     // Afterwards: PBR shading, camera import, direct lighting with non hacky lights.
-    pScene->loadFromGltf(flightHelmet, device, commandPool, 2.0f);
+    pScene->loadFromGltf(flightHelmet, device, commandPool, 0.0075f);
 
     auto& geometry = pScene->getGeometry();
 
