@@ -45,7 +45,7 @@ RayceScene::~RayceScene()
 
 static void loadModelMatrix(const tinygltf::Node& node, const tinygltf::Model& model, const mat4& parentTransformation, std::unordered_map<int32, mat4>& transformationMatrices)
 {
-    mat4 localTransformationMatrix;
+    mat4 localTransformationMatrix = mat4::Identity();
 
     if (node.matrix.size() == 16)
     {
@@ -69,14 +69,18 @@ static void loadModelMatrix(const tinygltf::Node& node, const tinygltf::Model& m
             scale = vec3(static_cast<float>(node.scale[0]), static_cast<float>(node.scale[1]), static_cast<float>(node.scale[2]));
         }
 
-        localTransformationMatrix = (Eigen::Translation3f(position) * rotation * Eigen::Scaling(scale)).matrix();
+        localTransformationMatrix.block<3, 3>(0, 0) = rotation.toRotationMatrix();
+        localTransformationMatrix(0, 3) = position.x();
+        localTransformationMatrix(1, 3) = position.y();
+        localTransformationMatrix(2, 3) = position.z();
     }
 
     mat4 globalTransformationMatrix = parentTransformation * localTransformationMatrix;
 
     if (node.mesh >= 0)
     {
-        transformationMatrices[node.mesh] = globalTransformationMatrix;
+        transformationMatrices[node.mesh] = globalTransformationMatrix;  // FIXME: This is not unique -> Mesh is used by multiple nodes and transforms - thats the problem!
+        RAYCE_LOG_INFO("MESH:%d",node.mesh);
     }
 
     for (ptr_size i = 0; i < node.children.size(); ++i)
@@ -130,10 +134,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
     // first get transformation matrices for the meshes
     std::unordered_map<int32, mat4> transformationMatrices;
 
-    mat4 tr  = mat4::Identity();
-    tr(0, 0) = scale;
-    tr(1, 1) = scale;
-    tr(2, 2) = scale;
+    mat4 tr  = mat4::Identity() * scale;
     for (const tinygltf::Scene& scene : model.scenes)
     {
         for (int32 i = 0; i < static_cast<int32>(scene.nodes.size()); ++i)
