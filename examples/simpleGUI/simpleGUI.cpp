@@ -29,11 +29,10 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str flightHelmet = ".\\assets\\gltf\\Buggy\\Buggy.glb";
+    const str flightHelmet = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
 
-    // FIXME Next: Some primitives are not rendered and normals are not correct?
-    // Afterwards: PBR shading, camera import, direct lighting with non hacky lights.
-    pScene->loadFromGltf(flightHelmet, device, commandPool, 0.0075f);
+    // FIXME Afterwards: PBR shading, camera import, direct lighting with non hacky lights.
+    pScene->loadFromGltf(flightHelmet, device, commandPool, 2.0f);
 
     auto& geometry = pScene->getGeometry();
 
@@ -55,26 +54,33 @@ bool SimpleGUI::onInitialize()
         accelerationStructureInitData.primitiveCount          = primitiveCounts[i];
         mBLAS.push_back(std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData));
 
-        auto instance             = std::make_unique<InstanceData>();
-        instance->materialId      = materialIds[i];
-        instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
-        instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
-        mInstances.push_back(std::move(instance));
+        for (ptr_size j = 0; j < transformationMatrices[i].size(); ++j)
+        {
+            auto instance             = std::make_unique<InstanceData>();
+            instance->materialId      = materialIds[i];
+            instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
+            instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
+            mInstances.push_back(std::move(instance));
+        }
     }
 
     accelerationStructureInitData.type           = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    accelerationStructureInitData.primitiveCount = static_cast<uint32>(mBLAS.size());
+    accelerationStructureInitData.primitiveCount = 0;
     uint32 i                                     = 0;
     for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
     {
-        const mat4& tr                       = transformationMatrices[i++];
-        VkTransformMatrixKHR transformMatrix = {
-            tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
-            tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
-            tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
-        };
-        accelerationStructureInitData.transformMatrices.push_back(transformMatrix);
-        accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());
+        for (const mat4& tr : transformationMatrices[i])
+        {
+            VkTransformMatrixKHR transformMatrix = {
+                tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
+                tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
+                tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
+            };
+            accelerationStructureInitData.transformMatrices.push_back(transformMatrix);
+            accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());
+            accelerationStructureInitData.primitiveCount++;
+        }
+        i++;
     }
     pTLAS = std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData);
 
