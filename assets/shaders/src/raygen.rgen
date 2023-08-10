@@ -38,6 +38,29 @@ vec3 shade(in const Material material)
         color *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
     }
 
+    vec3 normal = pld.triangle.interpolatedNormal;
+    if(material.normalTextureId >= 0)
+    {
+        vec3 tangent, bitangent;
+        createTBN(pld.triangle.interpolatedNormal,
+                    pld.triangle.dfd1, pld.triangle.dfd2,
+                    pld.triangle.uvd1, pld.triangle.uvd2,
+                    tangent, bitangent);
+
+        mat3 tbn = mat3(normalize(tangent), normalize(bitangent), normal);
+        normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
+        normal = normalize(tbn * normal.rgb);
+    }
+
+    float metallic = material.metallicFactor;
+    float roughness = material.roughnessFactor;
+    if (material.metallicRoughnessTextureId >= 0)
+    {
+        metallic = texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).g;
+        roughness = texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).b;
+    }
+    float alpha = (roughness * roughness);
+
     vec3 lightDir = normalize(vec3(0.1, 0.4, 0.4));
     color *= max(dot(pld.triangle.interpolatedNormal, lightDir), 0.0) + 0.03;
 
@@ -75,6 +98,10 @@ void main()
     {
         Material material = materials[pld.triangle.materialId];
         color = shade(material);
+    }
+    else
+    {
+        color = vec3(0.01, 0.01, 0.2);
     }
 
     imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(toneMapACES(color), 1.0));

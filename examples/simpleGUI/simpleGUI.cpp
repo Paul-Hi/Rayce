@@ -29,10 +29,10 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str flightHelmet = ".\\assets\\gltf\\FlightHelmet\\FlightHelmet.gltf";
+    const str flightHelmet = ".\\assets\\gltf\\ToyCar\\ToyCar.glb";
 
-    // FIXME Afterwards: PBR shading, camera import, direct lighting with non hacky lights.
-    pScene->loadFromGltf(flightHelmet, device, commandPool, 2.0f);
+    // FIXME Next: Camera import, direct lighting with non hacky lights.
+    pScene->loadFromGltf(flightHelmet, device, commandPool, 0.004f);
 
     auto& geometry = pScene->getGeometry();
 

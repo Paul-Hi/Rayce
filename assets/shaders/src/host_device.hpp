@@ -73,19 +73,19 @@ namespace rayce
 
     struct RAYCE_API_EXPORT Material
     {
-        vec4 baseColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        vec3 emissiveColor = vec3(0.0f, 0.0f, 0.0f);
+        vec4 baseColor;
+        vec3 emissiveColor;
         // alphaMode;
         // alphaCutoff;
         // doubleSided;
-        float metallicFactor = 0.5f;
-        float roughnessFactor = 0.5f;
+        float metallicFactor;
+        float roughnessFactor;
 
-        int baseColorTextureId = -1;
-        int metallicRoughnessTextureId = -1;
-        int normalTextureId = -1;
-        // int32 occlusionTextureId = -1;
-        int emissiveTextureId = -1;
+        int baseColorTextureId;
+        int metallicRoughnessTextureId;
+        int normalTextureId;
+        // int32 occlusionTextureId;
+        int emissiveTextureId;
 
         int pad[3];
     };

@@ -1,6 +1,16 @@
 #ifndef UTILS_GLSL
 #define UTILS_GLSL
 
+void createTBN(in vec3 normal,
+                in vec3 dfd1, in vec3 dfd2,
+                in vec2 uvd1, in vec2 uvd2,
+                out vec3 tangent, out vec3 bitangent)
+{
+    vec3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
+    tangent    = normalize(t_ - normal * dot(normal, t_));
+    bitangent  = cross(normal, tangent);
+}
+
 const float GAMMA     = 2.2;
 const float INV_GAMMA = 1.0 / GAMMA;
 vec3 linearTosRGB(vec3 color)

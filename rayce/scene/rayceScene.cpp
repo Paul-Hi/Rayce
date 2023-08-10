@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <host_device.hpp>
 #include <imgui.h>
 #include <scene/gltfHelper.hpp>
 #include <scene/rayceScene.hpp>
@@ -16,7 +17,6 @@
 #include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
 #include <vulkan/sampler.hpp>
-#include <host_device.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -69,9 +69,9 @@ static void loadModelMatrix(const tinygltf::Node& node, const tinygltf::Model& m
         }
 
         localTransformationMatrix.block<3, 3>(0, 0) = rotation.toRotationMatrix();
-        localTransformationMatrix(0, 3) = position.x();
-        localTransformationMatrix(1, 3) = position.y();
-        localTransformationMatrix(2, 3) = position.z();
+        localTransformationMatrix(0, 3)             = position.x();
+        localTransformationMatrix(1, 3)             = position.y();
+        localTransformationMatrix(2, 3)             = position.z();
     }
 
     mat4 globalTransformationMatrix = parentTransformation * localTransformationMatrix;
@@ -132,7 +132,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
     // first get transformation matrices for the meshes
     std::unordered_map<int32, std::vector<mat4>> transformationMatrices;
 
-    mat4 tr  = mat4::Identity() * scale;
+    mat4 tr = mat4::Identity() * scale;
     for (const tinygltf::Scene& scene : model.scenes)
     {
         for (int32 i = 0; i < static_cast<int32>(scene.nodes.size()); ++i)
@@ -382,6 +382,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
 
             auto& pbr = material.pbrMetallicRoughness;
 
+            mat.baseColorTextureId = pbr.baseColorTexture.index;
             if (pbr.baseColorTexture.index < 0)
             {
                 auto& col     = pbr.baseColorFactor;
@@ -389,10 +390,11 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             }
             else
             {
-                mat.baseColorTextureId        = pbr.baseColorTexture.index;
                 mSrgb[mat.baseColorTextureId] = true;
+                mat.baseColor                 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
             }
 
+            mat.metallicRoughnessTextureId = pbr.metallicRoughnessTexture.index;
             if (pbr.metallicRoughnessTexture.index < 0)
             {
                 mat.metallicFactor  = static_cast<float>(pbr.metallicFactor);
@@ -400,9 +402,11 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             }
             else
             {
-                mat.metallicRoughnessTextureId = pbr.metallicRoughnessTexture.index;
+                mat.metallicFactor  = 0.5f;
+                mat.roughnessFactor = 0.5f;
             }
 
+            mat.emissiveTextureId = material.emissiveTexture.index;
             if (material.emissiveTexture.index < 0)
             {
                 auto& col         = material.emissiveFactor;
@@ -410,8 +414,8 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             }
             else
             {
-                mat.emissiveTextureId         = material.emissiveTexture.index;
                 mSrgb[mat.baseColorTextureId] = true;
+                mat.emissiveColor             = vec3(0.0f, 0.0f, 0.0f);
             }
 
             if (material.normalTexture.index > 0)

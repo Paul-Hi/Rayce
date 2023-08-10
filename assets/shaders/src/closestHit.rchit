@@ -34,6 +34,12 @@ Tri getTriangle(uint primitiveIndex)
     tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
     tri.interpolatedNormal = normalize(tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z);
     tri.interpolatedNormal = normalize(vec3(tri.interpolatedNormal * gl_WorldToObjectEXT));
+
+    tri.dfd1 = tri.vertices[1].position - tri.vertices[0].position;
+    tri.dfd2 = tri.vertices[2].position - tri.vertices[0].position;
+    tri.uvd1 = tri.vertices[1].uv - tri.vertices[0].uv;
+    tri.uvd2 = tri.vertices[2].uv - tri.vertices[0].uv;
+
     tri.materialId = ref[gl_InstanceCustomIndexEXT].materialId;
 
     return tri;

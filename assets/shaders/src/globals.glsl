@@ -11,6 +11,12 @@ struct Tri
     vec3 barycentrics;
     vec2 interpolatedUV;
     vec3 interpolatedNormal;
+
+    vec3 dfd1;
+    vec3 dfd2;
+    vec2 uvd1;
+    vec2 uvd2;
+
     uint materialId;
 };
 
