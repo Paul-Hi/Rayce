@@ -15,6 +15,7 @@ add_library(rayce::scene ALIAS scene)
 target_include_directories(scene
     PRIVATE
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
+    ../../assets/shaders/src/
 )
 
 set_target_properties(scene

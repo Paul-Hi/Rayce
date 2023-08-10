@@ -10,10 +10,9 @@
 #define CORE_HPP
 
 #include "core/export.hpp"
-#include "core/instanceData.hpp"
+#include "../assets/shaders/src/host_device.hpp"
 #include "core/log.hpp"
 #include "core/macro.hpp"
-#include "core/material.hpp"
 #include "core/types.hpp"
 #include "core/utils.hpp"
 

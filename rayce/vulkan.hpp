@@ -34,7 +34,6 @@
 #include "vulkan/shaderModule.hpp"
 #include "vulkan/surface.hpp"
 #include "vulkan/swapchain.hpp"
-#include "vulkan/vertex.hpp"
 #include "vulkan/window.hpp"
 
 #endif // VULKAN_HPP

@@ -9,7 +9,7 @@
 #include <vulkan/device.hpp>
 #include <vulkan/immediateSubmit.hpp>
 #include <vulkan/rtFunctions.hpp>
-#include <vulkan/vertex.hpp>
+#include <host_device.hpp>
 
 using namespace rayce;
 

@@ -4,7 +4,6 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <core/material.hpp>
 #include <filesystem>
 #include <functional>
 #include <imgui.h>
@@ -17,7 +16,7 @@
 #include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
 #include <vulkan/sampler.hpp>
-#include <vulkan/vertex.hpp>
+#include <host_device.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION

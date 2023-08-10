@@ -21,6 +21,7 @@ target_include_directories(rayceVulkan
     $<BUILD_INTERFACE:${glfw_INCLUDE_DIRS}>
     PRIVATE
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
+    ../../assets/shaders/src/
 )
 
 set_target_properties(rayceVulkan

@@ -1,22 +1,29 @@
-/// @file      vertex.hpp
-/// @author    Paul Himmler
-/// @version   0.01
-/// @date      2023
-/// @copyright Apache License 2.0
+#ifndef HOST_DEVICE_HPP
+#define HOST_DEVICE_HPP
 
-#pragma once
-
-#ifndef VERTEX_HPP
-#define VERTEX_HPP
-
+#ifdef __cplusplus
+#include <core/types.hpp>
+using uint     = rayce::uint32;
+using uint64_t = rayce::uint64;
+// clang-format off
+#define START_BINDING(a) enum a {
+#define END_BINDING() }
+// clang-format on
 namespace rayce
 {
+#else
+#define RAYCE_API_EXPORT
+#define START_BINDING(a) const uint
+#define END_BINDING()
+#endif
+
     struct RAYCE_API_EXPORT Vertex
     {
         vec3 position;
         vec3 normal;
         vec2 uv;
 
+#ifdef __cplusplus
         static VkVertexInputBindingDescription getVertexInputBindingDescription()
         {
             VkVertexInputBindingDescription vertexInputBindingDescription{};
@@ -52,7 +59,39 @@ namespace rayce
         {
             return sizeof(Vertex);
         }
+#endif
     };
-} // namespace rayce
 
-#endif // VERTEX_HPP
+    struct RAYCE_API_EXPORT InstanceData
+    {
+        uint64_t indexReference;
+        uint64_t vertexReference;
+        uint materialId;
+
+        int pad[3];
+    };
+
+    struct RAYCE_API_EXPORT Material
+    {
+        vec4 baseColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        vec3 emissiveColor = vec3(0.0f, 0.0f, 0.0f);
+        // alphaMode;
+        // alphaCutoff;
+        // doubleSided;
+        float metallicFactor = 0.5f;
+        float roughnessFactor = 0.5f;
+
+        int baseColorTextureId = -1;
+        int metallicRoughnessTextureId = -1;
+        int normalTextureId = -1;
+        // int32 occlusionTextureId = -1;
+        int emissiveTextureId = -1;
+
+        int pad[3];
+    };
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // HOST_DEVICE_HPP

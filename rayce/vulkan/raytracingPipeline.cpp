@@ -4,9 +4,8 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <core/instanceData.hpp>
-#include <core/material.hpp>
 #include <core/utils.hpp>
+#include <host_device.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/descriptorPool.hpp>

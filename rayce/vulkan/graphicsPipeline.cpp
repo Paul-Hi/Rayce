@@ -9,7 +9,7 @@
 #include <vulkan/renderPass.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
-#include <vulkan/vertex.hpp>
+#include <host_device.hpp>
 
 using namespace rayce;
 
