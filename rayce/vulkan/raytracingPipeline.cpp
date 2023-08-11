@@ -21,7 +21,7 @@
 
 using namespace rayce;
 
-RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
+RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
                                        uint32 framesInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
@@ -234,12 +234,6 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     cameraBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
     // uniform buffer update
-    VkExtent2D extent = swapchain->getSwapExtent();
-    float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-    CameraDataRT cb;
-    cb.inverseView       = lookAt(vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f), vec3(0.0f, 1.0f, 0.0f)).inverse();
-    cb.inverseProjection = perspective(deg_to_rad(45.0f), aspect, 0.01f, 100.0f).inverse();
-
     for (ptr_size i = 0; i < framesInFlight; ++i)
     {
         accelerationStructureWrite.dstSet                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
@@ -247,7 +241,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
-        memcpy(mCameraBuffersMapped[i], &cb, bufferSize);
+        memcpy(mCameraBuffersMapped[i], &cameraData, bufferSize);
         cameraBufferInfo.buffer       = mCameraBuffers[i]->getVkBuffer();
         cameraBufferWrite.pBufferInfo = &cameraBufferInfo;
         cameraBufferWrite.dstSet      = pDescriptorSetsCamera->operator[](static_cast<uint32>(i));

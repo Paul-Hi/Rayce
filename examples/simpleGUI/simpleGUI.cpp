@@ -25,13 +25,11 @@ bool SimpleGUI::onInitialize()
     auto& device      = getDevice();
     auto& commandPool = getCommandPool();
 
-    // Test geometry
-
     pScene = std::make_unique<RayceScene>();
 
     const str flightHelmet = ".\\assets\\gltf\\ToyCar\\ToyCar.glb";
 
-    // FIXME Next: Camera import, direct lighting with non hacky lights.
+    // FIXME Next: Camera movement, direct lighting with non hacky lights.
     pScene->loadFromGltf(flightHelmet, device, commandPool, 0.004f);
 
     auto& geometry = pScene->getGeometry();
@@ -83,6 +81,10 @@ bool SimpleGUI::onInitialize()
         i++;
     }
     pTLAS = std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData);
+
+    // camera
+    float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
+    pCamera      = std::make_unique<Camera>(aspect, deg_to_rad(45.0f), 0.01f, 100.0f, vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f));
 
     return true;
 }
@@ -200,7 +202,10 @@ void SimpleGUI::recreateSwapchain()
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
     auto& textureViews    = pScene->getTextureViews();
     auto& samplers        = pScene->getSamplers();
-    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
+    CameraDataRT cameraDataRT;
+    cameraDataRT.inverseView       = pCamera->getInverseView();
+    cameraDataRT.inverseProjection = pCamera->getInverseProjection();
+    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews, samplers);
 }

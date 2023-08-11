@@ -11,12 +11,18 @@
 
 namespace rayce
 {
+
+    struct RAYCE_API_EXPORT CameraDataRT
+    {
+        mat4 inverseView;
+        mat4 inverseProjection;
+    };
     class RAYCE_API_EXPORT RaytracingPipeline
     {
     public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
-        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
+        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
                            uint32 framesInFlight);
         ~RaytracingPipeline();
 
@@ -94,12 +100,6 @@ namespace rayce
         std::unique_ptr<class DescriptorPool> pDescriptorPool;
 
         std::unique_ptr<class RTFunctions> pRTF;
-
-        struct CameraDataRT
-        {
-            mat4 inverseView;
-            mat4 inverseProjection;
-        };
     };
 } // namespace rayce
 

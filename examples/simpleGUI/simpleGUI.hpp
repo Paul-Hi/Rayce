@@ -26,6 +26,7 @@ namespace rayce
       private:
         std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
         std::unique_ptr<class RayceScene> pScene;
+        std::unique_ptr<class Camera> pCamera;
 
         std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
         std::unique_ptr<class AccelerationStructure> pTLAS;

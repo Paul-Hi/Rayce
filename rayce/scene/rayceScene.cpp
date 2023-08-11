@@ -493,6 +493,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
             mImageSamplers.push_back(std::move(sampler));
         }
+
         str name = "Default";
         RAYCE_LOG_INFO("Loading texture %s.", name.c_str());
 

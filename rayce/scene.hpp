@@ -10,5 +10,6 @@
 #define SCENE_HPP
 
 #include "scene/rayceScene.hpp"
+#include "scene/camera.hpp"
 
 #endif // SCENE_HPP
