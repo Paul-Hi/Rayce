@@ -14,10 +14,12 @@ namespace rayce
     class RAYCE_API_EXPORT Camera
     {
     public:
-        Camera(float aspect, float fovy, float zNear, float zFar, const vec3& position, const vec3& target);
+        Camera(float aspect, float fovy, float zNear, float zFar, const vec3& position, const vec3& target, const std::shared_ptr<class Input> input);
         ~Camera();
 
         void updateAspect(float aspect);
+
+        bool update(float dt);
 
         mat4 getInverseView()
         {
@@ -39,6 +41,17 @@ namespace rayce
 
         mat4 mInverseView;
         mat4 mInverseProjection;
+
+        std::weak_ptr<class Input> pInput;
+
+        // FIXME: Might extract this into a camera controller
+
+        vec2 mRotation;
+        ivec4 mWASD;
+        vec2 mLastMousePostion;
+        float mSpeed;
+        bool mMoving;
+        bool mFirstClick;
     };
 
 } // namespace rayce

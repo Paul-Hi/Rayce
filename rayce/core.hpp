@@ -15,5 +15,8 @@
 #include "core/macro.hpp"
 #include "core/types.hpp"
 #include "core/utils.hpp"
+#include "core/inputCodes.hpp"
+#include "core/input.hpp"
+#include "core/timer.hpp"
 
 #endif // CORE_HPP

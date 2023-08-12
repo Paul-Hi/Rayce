@@ -27,10 +27,10 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str flightHelmet = ".\\assets\\gltf\\ToyCar\\ToyCar.glb";
+    const str flightHelmet = ".\\assets\\gltf\\customCornell\\customCornell.glb";
 
     // FIXME Next: Camera movement, direct lighting with non hacky lights.
-    pScene->loadFromGltf(flightHelmet, device, commandPool, 0.004f);
+    pScene->loadFromGltf(flightHelmet, device, commandPool, 1.0f);
 
     auto& geometry = pScene->getGeometry();
 
@@ -84,7 +84,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f));
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(8.0f, 0.5f, 0.0f), vec3(0.0f, 0.25f, 0.0f), getInput());
 
     return true;
 }
@@ -94,9 +94,20 @@ bool SimpleGUI::onShutdown()
     return RayceApp::onShutdown();
 }
 
-void SimpleGUI::onUpdate()
+void SimpleGUI::onUpdate(float dt)
 {
-    RayceApp::onUpdate();
+    RayceApp::onUpdate(dt);
+
+    bool cameraMoved = pCamera->update(dt);
+
+    if(cameraMoved)
+    {
+        CameraDataRT cameraDataRT;
+        cameraDataRT.inverseView       = pCamera->getInverseView();
+        cameraDataRT.inverseProjection = pCamera->getInverseProjection();
+
+        pRaytracingPipeline->updateCameraData(cameraDataRT);
+    }
 }
 
 void SimpleGUI::onFrameDraw()

@@ -67,6 +67,8 @@ namespace rayce
                              const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<class ImageView>>& images,
                              const std::vector<std::unique_ptr<class Sampler>>& samplers);
 
+        void updateCameraData(CameraDataRT& cameraData);
+
     private:
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;

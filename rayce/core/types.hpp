@@ -60,8 +60,13 @@ namespace rayce
     using vec2 = Eigen::Vector2<float>;
     /// @brief Typedef for a 2x2 matrix.
     using mat2 = Eigen::Matrix2<float>;
-    //! @brief Type alias for a Eigen::Quaternionf.
+    /// @brief Type alias for a Eigen::Quaternionf.
     using quat = Eigen::Quaternionf;
+
+    /// @brief Typedef for a 2 component double vector.
+    using dvec2 = Eigen::Vector2<double>;
+    /// @brief Typedef for a 4 component integer vector.
+    using ivec4 = Eigen::Vector4<int32>;
 
     /// @brief Typedef for string.
     using str = std::string;
@@ -75,7 +80,7 @@ namespace rayce
     };
 
 /// @brief Macro used to enable safe bitmask operations on enum classes.
-#define COMMON_ENABLE_BITMASK_OPERATIONS(e)  \
+#define ENABLE_BITMASK_OPERATIONS(e)         \
     template <>                              \
     struct bit_mask_operations<e>            \
     {                                        \
@@ -401,9 +406,9 @@ namespace rayce
         return tr.matrix();
     }
 
-    //! @brief Create a @a vec3 from one value.
-    //! @param[in] value The value to fill the @a vec3 with.
-    //! @return The created @a vec3.
+    /// @brief Create a @a vec3 from one value.
+    /// @param[in] value The value to fill the @a vec3 with.
+    /// @return The created @a vec3.
     inline vec3 makeVec3(const float& value)
     {
         vec3 v;

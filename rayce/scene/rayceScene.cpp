@@ -68,10 +68,7 @@ static void loadModelMatrix(const tinygltf::Node& node, const tinygltf::Model& m
             scale = vec3(static_cast<float>(node.scale[0]), static_cast<float>(node.scale[1]), static_cast<float>(node.scale[2]));
         }
 
-        localTransformationMatrix.block<3, 3>(0, 0) = rotation.toRotationMatrix();
-        localTransformationMatrix(0, 3)             = position.x();
-        localTransformationMatrix(1, 3)             = position.y();
-        localTransformationMatrix(2, 3)             = position.z();
+        localTransformationMatrix = (Eigen::Translation3f(position) * rotation * Eigen::Scaling(scale)).matrix();
     }
 
     mat4 globalTransformationMatrix = parentTransformation * localTransformationMatrix;
@@ -406,7 +403,13 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                 mat.roughnessFactor = 0.5f;
             }
 
-            mat.emissiveTextureId = material.emissiveTexture.index;
+            mat.emissiveTextureId           = material.emissiveTexture.index;
+            auto emissiveStrengthExtension = material.extensions.find("KHR_materials_emissive_strength");
+            if (emissiveStrengthExtension != material.extensions.end())
+            {
+                // FIXME: Handle type error...
+                mat.emissiveStrength = emissiveStrengthExtension->second.Get("emissiveStrength").GetNumberAsDouble();
+            }
             if (material.emissiveTexture.index < 0)
             {
                 auto& col         = material.emissiveFactor;

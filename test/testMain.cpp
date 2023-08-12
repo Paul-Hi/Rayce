@@ -1,6 +1,6 @@
 /// @file      testMain.cpp
 /// @author    Paul Himmler
-/// @version   1.0
+/// @version   0.01
 /// @date      2023
 /// @copyright Apache License 2.0
 /// @details  This is the main file for test running.

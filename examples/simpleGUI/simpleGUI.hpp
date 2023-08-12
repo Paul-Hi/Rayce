@@ -18,7 +18,7 @@ namespace rayce
         bool onInitialize() override;
         bool onShutdown() override;
         void onFrameDraw() override;
-        void onUpdate() override;
+        void onUpdate(float dt) override;
         void onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) override;
         void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) override;
         void recreateSwapchain() override;

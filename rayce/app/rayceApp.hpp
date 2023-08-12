@@ -48,6 +48,11 @@ namespace rayce
         /// @param[in] options Options to setup the application.
         RayceApp(const RayceOptions& options);
 
+        const std::shared_ptr<class Input>& getInput() const
+        {
+            return pInput;
+        }
+
         const std::unique_ptr<class Window>& getWindow() const
         {
             return pWindow;
@@ -117,7 +122,7 @@ namespace rayce
 
         virtual bool onInitialize();
         virtual bool onShutdown();
-        virtual void onUpdate();
+        virtual void onUpdate(float dt);
         virtual void onFrameDraw();
         virtual void onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
         virtual void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex);
@@ -131,6 +136,7 @@ namespace rayce
         bool mEnableValidationLayers;
         VkPhysicalDevice mPhysicalDevice;
 
+        std::shared_ptr<class Input> pInput;
         std::unique_ptr<class Window> pWindow;
         std::unique_ptr<class Instance> pInstance;
         std::unique_ptr<class Surface> pSurface;
@@ -151,6 +157,9 @@ namespace rayce
 
         uint32 mCurrentFrame;
         std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+
+        std::unique_ptr<class Timer> pFrameTimer;
+        float mFrametime;
     };
 } // namespace rayce
 

@@ -125,7 +125,7 @@ void ImguiInterface::begin(const std::unique_ptr<Window>& window)
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Exit"))
-                glfwSetWindowShouldClose(window->getNativeWindowHandle(), GLFW_TRUE);
+                window->close();
             ImGui::EndMenu();
         }
 

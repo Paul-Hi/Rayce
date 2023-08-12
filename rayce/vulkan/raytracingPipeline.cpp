@@ -345,6 +345,17 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     }
 }
 
+void RaytracingPipeline::updateCameraData(CameraDataRT& cameraData)
+{
+    uint32 bufferSize = sizeof(CameraDataRT);
+
+    // uniform buffer update
+    for (ptr_size i = 0; i < mFramesInFlight; ++i)
+    {
+        memcpy(mCameraBuffersMapped[i], &cameraData, bufferSize);
+    }
+}
+
 std::vector<VkDescriptorSet> RaytracingPipeline::getVkDescriptorSets(uint32 idx) const
 {
     return { pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx), pDescriptorSetsModel->operator[](idx) };

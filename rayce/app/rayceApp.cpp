@@ -6,6 +6,8 @@
 
 #include <app/imguiInterface.hpp>
 #include <app/rayceApp.hpp>
+#include <core/input.hpp>
+#include <core/timer.hpp>
 #include <vulkan/commandBuffers.hpp>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
@@ -29,7 +31,9 @@ RayceApp::RayceApp(const RayceOptions& options)
     mWindowHeight           = options.windowHeight;
     mEnableValidationLayers = options.enableValidationLayers;
 
-    pWindow = std::make_unique<Window>(mWindowWidth, mWindowHeight, options.name);
+    pInput = std::make_shared<Input>();
+
+    pWindow = std::make_unique<Window>(mWindowWidth, mWindowHeight, options.name, pInput);
 
     std::vector<const char*> windowExtensions = pWindow->getVulkanExtensions();
     pInstance                                 = std::make_unique<Instance>(mEnableValidationLayers, windowExtensions, mValidationLayers);
@@ -43,6 +47,9 @@ RayceApp::RayceApp(const RayceOptions& options)
     pRTF    = std::make_unique<RTFunctions>(pDevice);
 
     pCommandPool = std::make_unique<CommandPool>(pDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    pFrameTimer = std::make_unique<Timer>();
+    pFrameTimer->start();
 
     RAYCE_LOG_INFO("Created RayceApp!");
 }
@@ -66,7 +73,11 @@ bool RayceApp::run()
     {
         pWindow->pollEvents();
 
-        onUpdate();
+        mFrametime = static_cast<float>(pFrameTimer->elapsedMicroseconds().count()) * 0.000001f; // We need the resolution.
+        pFrameTimer->restart();
+
+        onUpdate(mFrametime);
+
         onFrameDraw();
     }
 
@@ -90,7 +101,7 @@ bool RayceApp::onShutdown()
     return true;
 }
 
-void RayceApp::onUpdate() {}
+void RayceApp::onUpdate(float dt) { RAYCE_UNUSED(dt); }
 
 void RayceApp::onFrameDraw()
 {

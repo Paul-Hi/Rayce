@@ -75,6 +75,7 @@ namespace rayce
     {
         vec4 baseColor;
         vec3 emissiveColor;
+        float emissiveStrength;
         // alphaMode;
         // alphaCutoff;
         // doubleSided;
@@ -87,7 +88,7 @@ namespace rayce
         // int32 occlusionTextureId;
         int emissiveTextureId;
 
-        int pad[3];
+        int pad[2];
     };
 
 #ifdef __cplusplus
