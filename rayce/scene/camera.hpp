@@ -17,6 +17,8 @@ namespace rayce
         Camera(float aspect, float fovy, float zNear, float zFar, const vec3& position, const vec3& target);
         ~Camera();
 
+        void updateAspect(float aspect);
+
         mat4 getInverseView()
         {
             return mInverseView;

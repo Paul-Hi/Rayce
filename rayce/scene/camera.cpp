@@ -18,9 +18,15 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
 {
     mInverseView       = lookAt(position, target, vec3(0.0f, 1.0f, 0.0f)).inverse();
     mInverseProjection = perspective(deg_to_rad(fovy), aspect, zNear, zFar).inverse();
-    RAYCE_LOG_INFO("Created camera!");
 }
 
 Camera::~Camera()
 {
+}
+
+void Camera::updateAspect(float aspect)
+{
+    mAspect            = aspect;
+    mInverseView       = lookAt(mPosition, mTarget, vec3(0.0f, 1.0f, 0.0f)).inverse();
+    mInverseProjection = perspective(deg_to_rad(mFovy), mAspect, mZNear, mZFar).inverse();
 }

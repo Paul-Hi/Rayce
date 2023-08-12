@@ -84,7 +84,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, deg_to_rad(45.0f), 0.01f, 100.0f, vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f));
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(2.0f, 1.5f, 2.0f), vec3(0.0f, 0.5f, 0.0f));
 
     return true;
 }
@@ -202,6 +202,10 @@ void SimpleGUI::recreateSwapchain()
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
     auto& textureViews    = pScene->getTextureViews();
     auto& samplers        = pScene->getSamplers();
+
+    VkExtent2D extent = swapchain->getSwapExtent();
+    float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    pCamera->updateAspect(aspect);
     CameraDataRT cameraDataRT;
     cameraDataRT.inverseView       = pCamera->getInverseView();
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
