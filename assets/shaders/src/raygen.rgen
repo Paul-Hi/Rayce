@@ -28,73 +28,13 @@ layout(push_constant) uniform PushConstants {
     int frame;
 };
 
+#include "surface_state.glsl"
+
 void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
 {
     origin = camera.inverseView * vec4(0.0, 0.0, 0.0, 1.0);
     vec4 target = camera.inverseProjection * vec4(screenUV.x, screenUV.y, 1.0, 1.0);
     direction = normalize(camera.inverseView * vec4(normalize(target.xyz), 0.0));
-}
-/*
-vec3 shade(in const Material material, in vec3 rayDirection)
-{
-    vec3 color = material.baseColor.rgb;
-    if (material.baseColorTextureId >= 0)
-    {
-        color *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
-    }
-
-    vec3 normal = pld.triangle.interpolatedNormal;
-    if(material.normalTextureId >= 0)
-    {
-        vec3 tangent, bitangent;
-        createTBN(pld.triangle.interpolatedNormal, true,
-                    pld.triangle.dfd1, pld.triangle.dfd2,
-                    pld.triangle.uvd1, pld.triangle.uvd2,
-                    tangent, bitangent);
-
-        mat3 tbn = mat3(tangent, bitangent, normal);
-        normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
-        normal = normalize(tbn * normal.rgb);
-    }
-
-    float metallic = material.metallicFactor;
-    float roughness = material.roughnessFactor;
-    if (material.metallicRoughnessTextureId >= 0)
-    {
-        metallic = texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).g;
-        roughness = texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).b;
-    }
-    float alpha = (roughness * roughness);
-
-#if 0
-    color *= max(dot(pld.triangle.interpolatedNormal, -rayDirection), 0.2);
-#endif
-
-    color += material.emissiveStrength * material.emissiveColor;
-    if (material.emissiveTextureId >= 0)
-    {
-        color += material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], pld.triangle.interpolatedUV).rgb;
-    }
-
-    return color;
-}
-*/
-vec3 getNormal(in Material material, out vec3 tangent, out vec3 bitangent)
-{
-    vec3 normal = pld.triangle.interpolatedNormal;
-    createTBN(pld.triangle.interpolatedNormal, material.hasUV,
-                pld.triangle.dfd1, pld.triangle.dfd2,
-                pld.triangle.uvd1, pld.triangle.uvd2,
-                tangent, bitangent);
-
-    if(material.normalTextureId >= 0)
-    {
-        mat3 tbn = mat3(tangent, bitangent, normal);
-        normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
-        normal = normalize(tbn * normal.rgb);
-    }
-
-    return normal;
 }
 
 vec3 randomCosineDirection()
@@ -112,35 +52,19 @@ vec3 randomCosineDirection()
     return vec3(x, y, z);
 }
 
-vec3 lambertCos(in Material material, out vec3 origin, out vec3 direction)
+vec3 lambertCos(out vec3 origin, out vec3 direction)
 {
     // lambertian brdf
-    vec3 diffuse = material.baseColor.rgb;
-    if (material.baseColorTextureId >= 0)
-    {
-        diffuse *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
-    }
 
-    vec3 tangent, bitangent;
-    vec3 normal = getNormal(material, tangent, bitangent);
+    vec3 diffuse = surfaceState.bsdf.baseColor;
 
-    origin = pld.hitPoint + normal * EPSILON;
+    origin = pld.hitPoint;// + surfaceState.normal * EPSILON;
     vec3 randomCosine = randomCosineDirection();
-    direction = fma(vec3(randomCosine.x), tangent, fma(vec3(randomCosine.y), bitangent, randomCosine.z * normal));
+    direction = fma(vec3(randomCosine.x), surfaceState.tangent, fma(vec3(randomCosine.y), surfaceState.bitangent, randomCosine.z * surfaceState.normal));
 
     // 1.0 / pdf = 1 / randomCosine.z = PI / dot(direction, normal);
     // -> everything cancels out -> return diffuse / PI * dot(direction, normal) * PI / dot(direction, normal)
     return diffuse;
-}
-
-vec3 emission(in Material material)
-{
-    vec3 e = material.emissiveStrength * material.emissiveColor;
-    if (material.emissiveTextureId >= 0)
-    {
-        e += material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], pld.triangle.interpolatedUV).rgb;
-    }
-    return e;
 }
 
 vec3 tracePaths(in vec2 uv)
@@ -172,11 +96,16 @@ vec3 tracePaths(in vec2 uv)
         if(pld.hit)
         {
             Material material = materials[pld.triangle.materialId];
+            populateSurfaceState(material);
 
-            color += throughput * emission(material);
-            vec3 brdf = lambertCos(material, origin.xyz, direction.xyz);
+            color += throughput * surfaceState.bsdf.emission;
+            vec3 brdf = lambertCos(origin.xyz, direction.xyz);
             throughput *= brdf;
             continue;
+        }
+        else
+        {
+            color += throughput * vec3(0.02, 0.04, 0.08);
         }
 
         break;

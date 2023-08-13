@@ -82,15 +82,17 @@ namespace rayce
         float metallicFactor;
         float roughnessFactor;
 
+        float ior;
+        float transmission;
+
         int baseColorTextureId;
         int metallicRoughnessTextureId;
         int normalTextureId;
-        // int32 occlusionTextureId;
         int emissiveTextureId;
 
-        bool hasUV;
+        uint hasUV;
 
-        int pad;
+        int pad[3];
     };
 
 #ifdef __cplusplus

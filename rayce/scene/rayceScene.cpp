@@ -379,32 +379,24 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
 
             auto& pbr = material.pbrMetallicRoughness;
 
-            mat.hasUV = false;
+            mat.hasUV = 0;
 
             mat.baseColorTextureId = pbr.baseColorTexture.index;
-            if (pbr.baseColorTexture.index < 0)
-            {
-                auto& col     = pbr.baseColorFactor;
-                mat.baseColor = vec4(static_cast<float>(col[0]), static_cast<float>(col[1]), static_cast<float>(col[2]), static_cast<float>(col[3]));
-            }
-            else
+
+            auto& col     = pbr.baseColorFactor;
+            mat.baseColor = vec4(static_cast<float>(col[0]), static_cast<float>(col[1]), static_cast<float>(col[2]), static_cast<float>(col[3]));
+            if (pbr.baseColorTexture.index >= 0)
             {
                 mSrgb[mat.baseColorTextureId] = true;
-                mat.baseColor                 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-                mat.hasUV                     = true;
+                mat.hasUV                     = 1;
             }
 
             mat.metallicRoughnessTextureId = pbr.metallicRoughnessTexture.index;
-            if (pbr.metallicRoughnessTexture.index < 0)
+            mat.metallicFactor             = static_cast<float>(pbr.metallicFactor);
+            mat.roughnessFactor            = static_cast<float>(pbr.roughnessFactor);
+            if (pbr.metallicRoughnessTexture.index >= 0)
             {
-                mat.metallicFactor  = static_cast<float>(pbr.metallicFactor);
-                mat.roughnessFactor = static_cast<float>(pbr.roughnessFactor);
-            }
-            else
-            {
-                mat.metallicFactor  = 0.5f;
-                mat.roughnessFactor = 0.5f;
-                mat.hasUV           = true;
+                mat.hasUV = 1;
             }
 
             mat.emissiveTextureId          = material.emissiveTexture.index;
@@ -416,22 +408,38 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
                 mat.emissiveStrength = emissiveStrengthExtension->second.Get("emissiveStrength").GetNumberAsDouble();
             }
 
-            if (material.emissiveTexture.index < 0)
-            {
-                auto& col         = material.emissiveFactor;
-                mat.emissiveColor = vec3(static_cast<float>(col[0]), static_cast<float>(col[1]), static_cast<float>(col[2]));
-            }
-            else
+            // emission
+            auto& emCol         = material.emissiveFactor;
+            mat.emissiveColor = vec3(static_cast<float>(emCol[0]), static_cast<float>(emCol[1]), static_cast<float>(emCol[2]));
+
+            if (material.emissiveTexture.index >= 0)
             {
                 mSrgb[mat.baseColorTextureId] = true;
-                mat.emissiveColor             = vec3(0.0f, 0.0f, 0.0f);
-                mat.hasUV                     = true;
+                mat.hasUV                     = 1;
             }
 
+            // normal texture
             mat.normalTextureId = material.normalTexture.index;
-            if (material.normalTexture.index > 0)
+            if (material.normalTexture.index >= 0)
             {
-                mat.hasUV = true;
+                mat.hasUV = 1;
+            }
+
+            // transmittance and ior
+            mat.transmission           = 0.0f;
+            mat.ior                    = 1.5f;
+            auto transmissionExtension = material.extensions.find("KHR_materials_transmission");
+            auto iorExtension          = material.extensions.find("KHR_materials_ior");
+            if (transmissionExtension != material.extensions.end())
+            {
+                // FIXME: Handle type error...
+                // FIXME: Transmission texture?
+                mat.transmission = transmissionExtension->second.Get("transmissionFactor").GetNumberAsDouble();
+            }
+            if (iorExtension != material.extensions.end())
+            {
+                // FIXME: Handle type error...
+                mat.ior = iorExtension->second.Get("ior").GetNumberAsDouble();
             }
 
             mMaterials.push_back(std::make_unique<Material>(mat));
