@@ -8,10 +8,12 @@
 #include <host_device.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
+#include <vulkan/commandPool.hpp>
 #include <vulkan/descriptorPool.hpp>
 #include <vulkan/descriptorSetLayout.hpp>
 #include <vulkan/descriptorSets.hpp>
 #include <vulkan/device.hpp>
+#include <vulkan/image.hpp>
 #include <vulkan/imageView.hpp>
 #include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/rtFunctions.hpp>
@@ -21,12 +23,18 @@
 
 using namespace rayce;
 
-RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
+RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
                                        uint32 framesInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
 {
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
+
+    // accumulation image
+    pAccumulationImage = std::make_unique<Image>(logicalDevice, swapchain->getSwapExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT);
+    pAccumulationImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    pAccumulationImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_GENERAL);
+    pAccumulationImageView = std::make_unique<ImageView>(logicalDevice, *pAccumulationImage, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT);
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorTLAS{};
     layoutBindingDescriptorTLAS.binding         = 0;
@@ -34,13 +42,19 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorTLAS.descriptorCount = 1;
     layoutBindingDescriptorTLAS.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    VkDescriptorSetLayoutBinding layoutBindingDescriptorTargetImage{};
-    layoutBindingDescriptorTargetImage.binding         = 1;
-    layoutBindingDescriptorTargetImage.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    layoutBindingDescriptorTargetImage.descriptorCount = 1;
-    layoutBindingDescriptorTargetImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorAccumulationImage{};
+    layoutBindingDescriptorAccumulationImage.binding         = 1;
+    layoutBindingDescriptorAccumulationImage.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    layoutBindingDescriptorAccumulationImage.descriptorCount = 1;
+    layoutBindingDescriptorAccumulationImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorTargetImage };
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorResultImage{};
+    layoutBindingDescriptorResultImage.binding         = 2;
+    layoutBindingDescriptorResultImage.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    layoutBindingDescriptorResultImage.descriptorCount = 1;
+    layoutBindingDescriptorResultImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorAccumulationImage, layoutBindingDescriptorResultImage };
 
     pDescriptorSetLayoutRT = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -81,17 +95,17 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkDescriptorSetLayout descriptorSetLayoutModel  = pDescriptorSetLayoutModel->getVkDescriptorLayout();
     VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutRT, descriptorSetLayoutCamera, descriptorSetLayoutModel };
 
-    // VkPushConstantRange bufferReferencePushConstantRange{};
-    // bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-    // bufferReferencePushConstantRange.offset     = 0;
-    // bufferReferencePushConstantRange.size       = sizeof(uint64) * 2;
+    VkPushConstantRange bufferReferencePushConstantRange{};
+    bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    bufferReferencePushConstantRange.offset     = 0;
+    bufferReferencePushConstantRange.size       = sizeof(int32);
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount         = 3;
     pipelineLayoutCreateInfo.pSetLayouts            = setLayouts;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges    = &bufferReferencePushConstantRange;
 
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
@@ -204,10 +218,6 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
     descriptorAccelerationStructureInfo.pAccelerationStructures    = &vkTLAS;
 
-    VkDescriptorImageInfo descriptorImageInfo{};
-    descriptorImageInfo.imageView   = outputImage->getVkImageView();
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
     VkWriteDescriptorSet accelerationStructureWrite{};
     accelerationStructureWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     accelerationStructureWrite.dstBinding      = 0;
@@ -216,12 +226,27 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     accelerationStructureWrite.pNext = &descriptorAccelerationStructureInfo;
 
-    VkWriteDescriptorSet imageWrite{};
-    imageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    imageWrite.dstBinding      = 1;
-    imageWrite.descriptorCount = 1;
-    imageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    imageWrite.pImageInfo      = &descriptorImageInfo;
+    VkDescriptorImageInfo descriptorAccumImageInfo{};
+    descriptorAccumImageInfo.imageView   = pAccumulationImageView->getVkImageView();
+    descriptorAccumImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkWriteDescriptorSet accumImageWrite{};
+    accumImageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    accumImageWrite.dstBinding      = 1;
+    accumImageWrite.descriptorCount = 1;
+    accumImageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    accumImageWrite.pImageInfo      = &descriptorAccumImageInfo;
+
+    VkDescriptorImageInfo descriptorResultImageInfo{};
+    descriptorResultImageInfo.imageView   = outputImage->getVkImageView();
+    descriptorResultImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkWriteDescriptorSet resultImageWrite{};
+    resultImageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    resultImageWrite.dstBinding      = 2;
+    resultImageWrite.descriptorCount = 1;
+    resultImageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    resultImageWrite.pImageInfo      = &descriptorResultImageInfo;
 
     VkDescriptorBufferInfo cameraBufferInfo{};
     cameraBufferInfo.offset = 0;
@@ -237,8 +262,9 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     for (ptr_size i = 0; i < framesInFlight; ++i)
     {
         accelerationStructureWrite.dstSet                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
-        imageWrite.dstSet                                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, imageWrite };
+        accumImageWrite.dstSet                                = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
+        resultImageWrite.dstSet                               = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, accumImageWrite, resultImageWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
         memcpy(mCameraBuffersMapped[i], &cameraData, bufferSize);

@@ -47,6 +47,7 @@ Tri getTriangle(uint primitiveIndex)
 
 void main()
 {
-    payload.hitT = gl_HitTEXT;
+    payload.hit = true;
+    payload.hitPoint = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     payload.triangle = getTriangle(gl_PrimitiveID);
 }

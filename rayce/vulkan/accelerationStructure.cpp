@@ -96,7 +96,7 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
             accelerationStructureInstance.instanceCustomIndex                    = instance++;
             accelerationStructureInstance.mask                                   = 0xFF;
             accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;
-            accelerationStructureInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            accelerationStructureInstance.flags                                  = 0;
             accelerationStructureInstance.accelerationStructureReference         = blasAddress;
             accelerationStructureInstances.push_back(accelerationStructureInstance);
         }

@@ -144,9 +144,9 @@ namespace rayce
 /// @brief Pi.
 #define PI 3.1415926535897932384626433832795
 /// @brief Pi times two.
-#define TWO_PI (2.0_d * PI)
+#define TWO_PI (2.0 * PI)
 /// @brief Pi divided by two.
-#define HALF_PI (0.5_d * PI)
+#define HALF_PI (0.5 * PI)
 
     // Utility functions
 

@@ -10,7 +10,8 @@
 #include "utils.glsl"
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT TLAS;
-layout(set = 0, binding = 1, rgba8) uniform image2D outImage;
+layout(set = 0, binding = 1, rgba32f) uniform image2D accumulationImage;
+layout(set = 0, binding = 2, rgba8) uniform image2D resultImage;
 
 layout(location = 0) rayPayloadEXT RayPayload pld;
 
@@ -23,13 +24,17 @@ layout(set = 1, binding = 0, scalar) uniform CameraBufferRT
 layout(set = 2, binding = 0) uniform sampler2D textures[];
 layout(set = 2, binding = 2, scalar) buffer _MaterialInfo { Material materials[]; };
 
+layout(push_constant) uniform PushConstants {
+    int frame;
+};
+
 void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
 {
     origin = camera.inverseView * vec4(0.0, 0.0, 0.0, 1.0);
     vec4 target = camera.inverseProjection * vec4(screenUV.x, screenUV.y, 1.0, 1.0);
     direction = normalize(camera.inverseView * vec4(normalize(target.xyz), 0.0));
 }
-
+/*
 vec3 shade(in const Material material, in vec3 rayDirection)
 {
     vec3 color = material.baseColor.rgb;
@@ -42,12 +47,12 @@ vec3 shade(in const Material material, in vec3 rayDirection)
     if(material.normalTextureId >= 0)
     {
         vec3 tangent, bitangent;
-        createTBN(pld.triangle.interpolatedNormal,
+        createTBN(pld.triangle.interpolatedNormal, true,
                     pld.triangle.dfd1, pld.triangle.dfd2,
                     pld.triangle.uvd1, pld.triangle.uvd2,
                     tangent, bitangent);
 
-        mat3 tbn = mat3(normalize(tangent), normalize(bitangent), normal);
+        mat3 tbn = mat3(tangent, bitangent, normal);
         normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
         normal = normalize(tbn * normal.rgb);
     }
@@ -60,7 +65,10 @@ vec3 shade(in const Material material, in vec3 rayDirection)
         roughness = texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).b;
     }
     float alpha = (roughness * roughness);
+
+#if 0
     color *= max(dot(pld.triangle.interpolatedNormal, -rayDirection), 0.2);
+#endif
 
     color += material.emissiveStrength * material.emissiveColor;
     if (material.emissiveTextureId >= 0)
@@ -70,40 +78,132 @@ vec3 shade(in const Material material, in vec3 rayDirection)
 
     return color;
 }
-
-void main()
+*/
+vec3 getNormal(in Material material, out vec3 tangent, out vec3 bitangent)
 {
-    vec3 color = vec3(0.0, 0.0, 0.0);
-    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 uv = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-    uv = uv * 2.0 - 1.0;
+    vec3 normal = pld.triangle.interpolatedNormal;
+    createTBN(pld.triangle.interpolatedNormal, material.hasUV,
+                pld.triangle.dfd1, pld.triangle.dfd2,
+                pld.triangle.uvd1, pld.triangle.uvd2,
+                tangent, bitangent);
+
+    if(material.normalTextureId >= 0)
+    {
+        mat3 tbn = mat3(tangent, bitangent, normal);
+        normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
+        normal = normalize(tbn * normal.rgb);
+    }
+
+    return normal;
+}
+
+vec3 randomCosineDirection()
+{
+    float u = rand();
+    float v = rand();
+
+    float phi = TWO_PI * u;
+    float cosTheta = sqrt(1.0 - v);
+    float sinTheta = sqrt(v);
+    float x = cos(phi) * sinTheta;
+    float y = sin(phi) * sinTheta;
+    float z = cosTheta;
+
+    return vec3(x, y, z);
+}
+
+vec3 lambertCos(in Material material, out vec3 origin, out vec3 direction)
+{
+    // lambertian brdf
+    vec3 diffuse = material.baseColor.rgb;
+    if (material.baseColorTextureId >= 0)
+    {
+        diffuse *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
+    }
+
+    vec3 tangent, bitangent;
+    vec3 normal = getNormal(material, tangent, bitangent);
+
+    origin = pld.hitPoint + normal * EPSILON;
+    vec3 randomCosine = randomCosineDirection();
+    direction = fma(vec3(randomCosine.x), tangent, fma(vec3(randomCosine.y), bitangent, randomCosine.z * normal));
+
+    // 1.0 / pdf = 1 / randomCosine.z = PI / dot(direction, normal);
+    // -> everything cancels out -> return diffuse / PI * dot(direction, normal) * PI / dot(direction, normal)
+    return diffuse;
+}
+
+vec3 emission(in Material material)
+{
+    vec3 e = material.emissiveStrength * material.emissiveColor;
+    if (material.emissiveTextureId >= 0)
+    {
+        e += material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], pld.triangle.interpolatedUV).rgb;
+    }
+    return e;
+}
+
+vec3 tracePaths(in vec2 uv)
+{
+    vec3 color = vec3(0.0);
+    vec3 throughput = vec3(1.0);
+    int maxDepth = 8;
 
     // create ray origin and direction from camera data.
     vec4 origin, direction;
     createRay(uv, origin, direction);
 
-    const uint rayFlags = gl_RayFlagsNoneEXT;
-    const uint cullMask = 0xff;
-    const uint sbtRecordOffset = 0;
-    const uint sbtRecordStride = 0;
-    const uint missIndex = 0;
-    const float tmin = 0.001;
-    const float tmax = 100.0;
-    const int payload = 0;
-
-    traceRayEXT(TLAS, rayFlags, cullMask, sbtRecordOffset, sbtRecordStride, missIndex, origin.xyz, tmin, direction.xyz, tmax, payload);
-
-    if(pld.hitT != INFINITY)
+    for(uint depth = 0; depth < maxDepth; ++depth)
     {
-        Material material = materials[pld.triangle.materialId];
-        color = shade(material, direction.xyz);
-    }
-    else
-    {
-        // simple gradient
-        float a = direction.y * 0.5 + 0.5;
-        color = (1.0 - a) * vec3(0.0, 0.2, 0.5) + a * vec3(0.5, 0.7, 1.0);
+        traceRayEXT(
+            TLAS,
+            gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+            0xff,   // cullMask
+            0,      // sbtRecordOffset
+            0,      // sbtRecordStride
+            0,      // missIndex
+            origin.xyz,
+            0.001,
+            direction.xyz,
+            1000.0,
+            0       // payloadLocation
+        );
+
+        if(pld.hit)
+        {
+            Material material = materials[pld.triangle.materialId];
+
+            color += throughput * emission(material);
+            vec3 brdf = lambertCos(material, origin.xyz, direction.xyz);
+            throughput *= brdf;
+            continue;
+        }
+
+        break;
     }
 
-    imageStore(outImage, ivec2(gl_LaunchIDEXT.xy), vec4(toneMapACES(color), 1.0));
+    return color;
+}
+
+void main()
+{
+    vec4 accumColor = frame > 0 ? imageLoad(accumulationImage, ivec2(gl_LaunchIDEXT.xy)) : vec4(0.0, 0.0, 0.0, 0.0);
+    accumColor.rgb *= accumColor.w;
+
+    vec3 color = vec3(0.0);
+    const vec2 pixelCorner = vec2(gl_LaunchIDEXT.xy);
+    rngState = 1 + wangHash(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x) + frame * 100;
+    vec2 uv;
+
+    uv = (pixelCorner + vec2(rand(), rand())) / vec2(gl_LaunchSizeEXT.xy);
+    uv = uv * 2.0 - 1.0;
+
+    color += tracePaths(uv);
+
+    accumColor.rgb += color;
+    accumColor.w += 1.0;
+    accumColor.rgb /= accumColor.w;
+    imageStore(accumulationImage, ivec2(gl_LaunchIDEXT.xy), accumColor);
+    vec4 resultColor = vec4(linearTosRGB(toneMapACES(accumColor.rgb)), 1.0);
+    imageStore(resultImage, ivec2(gl_LaunchIDEXT.xy), resultColor);
 }

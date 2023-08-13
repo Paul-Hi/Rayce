@@ -22,7 +22,7 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
-        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
+        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
                            uint32 framesInFlight);
         ~RaytracingPipeline();
 
@@ -88,6 +88,8 @@ namespace rayce
         std::vector<void*> mInstanceBuffersMapped;
         std::vector<std::unique_ptr<class Buffer>> mMaterialBuffers;
         std::vector<void*> mMaterialBuffersMapped;
+        std::unique_ptr<class Image> pAccumulationImage;
+        std::unique_ptr<class ImageView> pAccumulationImageView;
 
         std::unique_ptr<class ShaderModule> pRayGenShader;
         std::unique_ptr<class ShaderModule> pClosestHitShader;

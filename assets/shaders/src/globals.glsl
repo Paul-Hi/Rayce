@@ -4,6 +4,11 @@
 #include "host_device.hpp"
 
 #define INFINITY 1e32
+#define EPSILON 1e-9
+
+#define PI 3.1415926535897932384626433832795
+#define TWO_PI (2.0 * PI)
+#define HALF_PI (0.5 * PI)
 
 struct Tri
 {
@@ -22,7 +27,8 @@ struct Tri
 
 struct RayPayload
 {
-    float hitT;
+    bool hit;
+    vec3 hitPoint;
     Tri triangle;
 };
 

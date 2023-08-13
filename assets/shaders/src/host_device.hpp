@@ -88,7 +88,9 @@ namespace rayce
         // int32 occlusionTextureId;
         int emissiveTextureId;
 
-        int pad[2];
+        bool hasUV;
+
+        int pad;
     };
 
 #ifdef __cplusplus

@@ -379,6 +379,8 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
 
             auto& pbr = material.pbrMetallicRoughness;
 
+            mat.hasUV = false;
+
             mat.baseColorTextureId = pbr.baseColorTexture.index;
             if (pbr.baseColorTexture.index < 0)
             {
@@ -389,6 +391,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             {
                 mSrgb[mat.baseColorTextureId] = true;
                 mat.baseColor                 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+                mat.hasUV                     = true;
             }
 
             mat.metallicRoughnessTextureId = pbr.metallicRoughnessTexture.index;
@@ -401,15 +404,18 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             {
                 mat.metallicFactor  = 0.5f;
                 mat.roughnessFactor = 0.5f;
+                mat.hasUV           = true;
             }
 
-            mat.emissiveTextureId           = material.emissiveTexture.index;
+            mat.emissiveTextureId          = material.emissiveTexture.index;
+            mat.emissiveStrength           = 1.0f;
             auto emissiveStrengthExtension = material.extensions.find("KHR_materials_emissive_strength");
             if (emissiveStrengthExtension != material.extensions.end())
             {
                 // FIXME: Handle type error...
                 mat.emissiveStrength = emissiveStrengthExtension->second.Get("emissiveStrength").GetNumberAsDouble();
             }
+
             if (material.emissiveTexture.index < 0)
             {
                 auto& col         = material.emissiveFactor;
@@ -419,11 +425,13 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             {
                 mSrgb[mat.baseColorTextureId] = true;
                 mat.emissiveColor             = vec3(0.0f, 0.0f, 0.0f);
+                mat.hasUV                     = true;
             }
 
+            mat.normalTextureId = material.normalTexture.index;
             if (material.normalTexture.index > 0)
             {
-                mat.normalTextureId = material.normalTexture.index;
+                mat.hasUV = true;
             }
 
             mMaterials.push_back(std::make_unique<Material>(mat));

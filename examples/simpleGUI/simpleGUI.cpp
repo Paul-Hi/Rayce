@@ -29,7 +29,6 @@ bool SimpleGUI::onInitialize()
 
     const str flightHelmet = ".\\assets\\gltf\\customCornell\\customCornell.glb";
 
-    // FIXME Next: Camera movement, direct lighting with non hacky lights.
     pScene->loadFromGltf(flightHelmet, device, commandPool, 1.0f);
 
     auto& geometry = pScene->getGeometry();
@@ -86,6 +85,8 @@ bool SimpleGUI::onInitialize()
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
     pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(8.0f, 0.5f, 0.0f), vec3(0.0f, 0.25f, 0.0f), getInput());
 
+    mAccumulationFrame = 0;
+
     return true;
 }
 
@@ -100,13 +101,15 @@ void SimpleGUI::onUpdate(float dt)
 
     bool cameraMoved = pCamera->update(dt);
 
-    if(cameraMoved)
+    if (cameraMoved)
     {
         CameraDataRT cameraDataRT;
         cameraDataRT.inverseView       = pCamera->getInverseView();
         cameraDataRT.inverseProjection = pCamera->getInverseProjection();
 
         pRaytracingPipeline->updateCameraData(cameraDataRT);
+
+        mAccumulationFrame = 0;
     }
 }
 
@@ -156,6 +159,8 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     std::vector<VkDescriptorSet> rtDescriptorSets = pRaytracingPipeline->getVkDescriptorSets(imageIndex);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, rtDescriptorSets.size(), rtDescriptorSets.data(), 0, nullptr);
 
+    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(int32), static_cast<void*>(&mAccumulationFrame));
+
     VkExtent2D extent = getSwapchain()->getSwapExtent();
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
 
@@ -174,6 +179,8 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     vkCmdCopyImage(commandBuffer, rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
     ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    mAccumulationFrame++;
 }
 
 void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
@@ -203,8 +210,9 @@ void SimpleGUI::recreateSwapchain()
 {
     RayceApp::recreateSwapchain();
 
-    auto& swapchain = getSwapchain();
-    auto& device    = getDevice();
+    auto& swapchain   = getSwapchain();
+    auto& device      = getDevice();
+    auto& commandPool = getCommandPool();
 
     VkFormat format        = swapchain->getSurfaceFormat().format;
     pRaytracingTargetImage = std::make_unique<Image>(device, swapchain->getSwapExtent(), format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
@@ -220,7 +228,7 @@ void SimpleGUI::recreateSwapchain()
     CameraDataRT cameraDataRT;
     cameraDataRT.inverseView       = pCamera->getInverseView();
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
-    pRaytracingPipeline.reset(new RaytracingPipeline(device, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
+    pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews, samplers);
 }
