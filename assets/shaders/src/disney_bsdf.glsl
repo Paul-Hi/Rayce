@@ -26,6 +26,44 @@ vec3 getColorTint(in vec3 baseColor)
     return luminance > 0.0 ? baseColor / luminance : vec3(1.0);
 }
 
+
+float GTR1(in float absNDotH, in float alpha)
+{
+    if(alpha >= 1.0)
+    {
+        return INV_PI;
+    }
+
+    float a = alpha * alpha;
+    return (a - 1.0) / (PI * log2(a) * (1.0 + (a - 1.0) * absNDotH * absNDotH));
+}
+
+float GSmith(in float absNDotD, float alpha)
+{
+    // FIXME
+}
+
+
+float anisotropicGTR2(in float hDotX, in float hDotY, in float nDotH, in float ax, in float ay)
+{
+    float a = hDotX / ax;
+    float b = hDotY / ay;
+
+    float denom = a * a + b * b + nDotH * nDotH;
+    return 1.0 / (PI * ax * ay * denom * denom);
+}
+
+float GSmithGGXAnisotropic(in float hDotD, in float ax, in float ay)
+{
+    //float cosSqrd = hDotD * hDotD;
+    //float a = (1.0 - cosSqrd) / (cosSqrd) * (cosSqrd * ax * ax + (1.0 - cosSqrd) * ay * ay);
+    //return 2.0 / (1.0 + sqrt(1.0 + a));
+    // FIXME
+}
+
+// FIXME: Continue with specular brdf after fixing smith terms
+
+
 // sheen
 vec3 evaluateSheen()
 {
@@ -36,25 +74,6 @@ vec3 evaluateSheen()
 
     vec3 tint = getColorTint(surfaceState.bsdf.baseColor);
     return surfaceState.sheen * mix(vec3(1.0), tint, sheenTint) * Schlick(surfaceState.hDotL);
-}
-
-
-float GTR1(in float absNDotH, in float alpha)
-{
-    if(alpha >= 1.0)
-    {
-        return INV_PI;
-    }
-
-    float alphaSqrd = alpha * alpha;
-    return (alphaSqrd - 1.0) * INV_PI / (log2(alphaSqrd) * (1.0 + (alphaSqrd - 1.0) * absNDotH * absNDotH));
-}
-
-float GSmithGGX(in float absNDotV, float alpha)
-{
-    float alphaSqrd = alpha * alpha;
-
-    return 1.0 / (absNDotV + sqrt(alphaSqrd + (1.0 - alphaSqrd * absNDotV) * absNDotV));
 }
 
 // clearcoat
@@ -73,9 +92,9 @@ float evaluateClearcoat()
 
     float D = GTR1(absNDotH, surfaceState.clearcoatGloss);
     float F = Fresnel(F0, surfaceState.hDotL);
-    float G = GSmithGGX(absNDotL, 0.25) * GSmithGGX(absNDotV, 0.25);
+    float G = GSmith(absNDotL, 0.25) * GSmith(absNDotV, 0.25);
 
-    float pdf = 0.25 / (absNDotL * absNDotV); // FIXME: Is this required?
+    float pdf = 0.25 / (absNDotL * absNDotV);
 
     return surfaceState.clearcoat * D * F * G * pdf;
 }
