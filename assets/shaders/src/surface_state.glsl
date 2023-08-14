@@ -38,6 +38,13 @@ struct SurfaceState
     vec3 tangent;
     vec3 bitangent;
 
+    vec3 wi;
+    vec3 wo;
+    vec3 wm;
+
+    float hDotL;
+    float hDotV;
+    float vDotL;
 };
 
 SurfaceState surfaceState;
@@ -62,6 +69,19 @@ void populateSurfaceState(in Material material)
     surfaceState.bsdf.flatness = 0.0;
     surfaceState.bsdf.diffTrans = 0.0;
     surfaceState.bsdf.emission = vec3(0.0);
+
+    surfaceState.normal = vec3(0.0);
+    surfaceState.tangent = vec3(0.0);
+    surfaceState.bitangent = vec3(0.0);
+    surfaceState.wi = vec3(0.0);
+    surfaceState.wo = vec3(0.0);
+    surfaceState.wm = vec3(0.0);
+    surfaceState.hDotL = 0.0;
+    surfaceState.hDotV = 0.0;
+    surfaceState.vDotL = 0.0;
+    surfaceState.nDotL = 0.0;
+    surfaceState.nDotV = 0.0;
+    surfaceState.nDotH = 0.0;
 
     surfaceState.bsdf.baseColor = material.baseColor.rgb;
     if (material.baseColorTextureId >= 0)
