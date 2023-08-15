@@ -45,6 +45,10 @@ struct SurfaceState
     float hDotL;
     float hDotV;
     float vDotL;
+
+    float nDotL;
+    float nDotV;
+    float nDotH;
 };
 
 SurfaceState surfaceState;
