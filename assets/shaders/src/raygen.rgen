@@ -71,7 +71,8 @@ vec3 evaluateBxDF(out vec3 origin,in out vec3 direction)
     surfaceState.nDotH = dot(surfaceState.normal, surfaceState.wm);
 
     float pdf;
-    vec3 diffuse = evaluateDisneyDiffuse(pdf);
+    bool thin = false; // FIXME
+    vec3 diffuse = evaluateDisneyDiffuse(thin, pdf);
 
     return diffuse / pdf;
 }
