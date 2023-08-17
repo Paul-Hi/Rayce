@@ -41,39 +41,38 @@ float GTR1(in float hDotL, in float alpha)
 
 // Geometry Terms
 
-float SmithGGXSeparable(in float nDotS, in float alpha)
+// clearcoat specular G term -> Basic Smith GGX Separable with fixed roughness of 0.25
+// matching Heitz
+// https://jcgt.org/published/0003/02/03/paper.pdf
+float GSmithSeparableGGX(in vec3 w, in float alpha)
 {
-    // Smith for Trowbidge-Reitz imo
     float aSqrd = alpha * alpha;
-    float tanThetaSqrd = (1.0 - nDotS) / nDotS;
-    float lambda = (-1 + sqrt(1 + aSqrd * tanThetaSqrd)) / 2;
-    return 1.0 / (1.0 + lambda);
-
-    float a = aSqrd;
-    float b = nDotS * nDotS;
-    // version impl
-    return 2.0 / (1.0 + sqrt(a + (1 - a) * b));
-
-    // version brdf viewer
-    return 1 / (nDotS + sqrt(a + b - a*b));
+    float tanThetaSqrd = tan2Theta(w);
+    return 2.0 / (1.0 + sqrt(1.0 + aSqrd * tanThetaSqrd));
 }
 
-
-// sheen
-vec3 evaluateDisneySheen()
+// anisotropic specular G term -> Anisotropic Smith GGX Separable with fixed roughness of 0.25
+// should fit GTR2
+// https://jcgt.org/published/0003/02/03/paper.pdf
+float GSmithSeparableAnisotropicGGX(in vec3 w, in float ax, in float ay)
 {
-    if(surfaceState.bsdf.sheen <= 0.0)
-    {
-        return vec3(0.0);
-    }
-
-    vec3 colorTint = calculateColorTint(surfaceState.bsdf.baseColor);
-
-    return surfaceState.bsdf.sheen * mix(vec3(1.0), colorTint, surfaceState.bsdf.sheenTint) * Schlick(surfaceState.hDotL);
+    float aSqrd = cos2Phi(w) * ax * ax + sin2Phi(w) * ay * ay;
+    float tanThetaSqrd = tan2Theta(w);
+    return 2.0 / (1.0 + sqrt(1.0 + aSqrd * tanThetaSqrd));
 }
 
-// diffuse
-vec3 sampleDisneyDiffuse() // cosine weighted hemisphere
+// clearcoat specular G term -> Some seperable Smith term with fixed roughness of 0.25
+// This does not fit the GTR1 term...
+// https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf
+float GSmithSeparableBRDFViewer(in float nDotS, in float alpha)
+{
+    float aSqrd = alpha * alpha;
+    float nDotSSqrd = nDotS * nDotS;
+    return 1.0 / (nDotS + sqrt(aSqrd + nDotSSqrd - aSqrd * nDotSSqrd));
+}
+
+// bsdfSample helper
+vec3 sampleHemisphereCosine(inout float pdf)
 {
     float u = rand();
     float v = rand();
@@ -85,15 +84,58 @@ vec3 sampleDisneyDiffuse() // cosine weighted hemisphere
     float y = sin(phi) * sinTheta;
     float z = cosTheta;
 
+    pdf *= z * INV_PI;
+
     return vec3(x, y, z);
 }
 
-vec3 evaluateDisneyDiffuse(in bool thin, out float pdf)
-{
-    pdf = 1.0;
 
-    float FL = Schlick(surfaceState.nDotL);
-    float FV = Schlick(surfaceState.nDotV);
+// sheen
+vec3 evaluateDisneySheen()
+{
+    if(surfaceState.bsdf.sheen <= 0.0)
+    {
+        return vec3(0.0);
+    }
+
+    float hDotL = dot(surfaceState.wm, surfaceState.wi);
+
+    vec3 colorTint = calculateColorTint(surfaceState.bsdf.baseColor);
+
+    return surfaceState.bsdf.sheen * mix(vec3(1.0), colorTint, surfaceState.bsdf.sheenTint) * Schlick(hDotL);
+}
+
+// clearcoat
+float evaluateDisneyClearcoat(out float pdf)
+{
+    if(surfaceState.bsdf.clearcoat <= 0.0)
+    {
+        return 0.0;
+    }
+
+    float nDotL = cosTheta(surfaceState.wi);
+    float nDotV = cosTheta(surfaceState.wo);
+    float nDotH = cosTheta(surfaceState.wm);
+    float hDotL = dot(surfaceState.wm, surfaceState.wi);
+
+    float D = GTR1(nDotH, mix(0.1, 0.001, surfaceState.bsdf.clearcoatGloss));
+    float F = Fresnel(0.04, hDotL);
+    float G = GSmithSeparableGGX(surfaceState.wi, 0.25) * GSmithSeparableGGX(surfaceState.wo, 0.25);
+
+    pdf = 4.0 / (nDotL * nDotV);
+
+    return surfaceState.bsdf.clearcoat * D * F * G;
+}
+
+// diffuse
+float evaluateDisneyDiffuse(in bool thin)
+{
+    float nDotL = cosTheta(surfaceState.wi);
+    float nDotV = cosTheta(surfaceState.wo);
+    float hDotL = dot(surfaceState.wm, surfaceState.wi);
+
+    float FL = Schlick(nDotL);
+    float FV = Schlick(nDotV);
 
     // lambert
     float fLambert = 1.0;
@@ -103,15 +145,15 @@ vec3 evaluateDisneyDiffuse(in bool thin, out float pdf)
     float fSSApprox = 0.0;
     if(thin && surfaceState.bsdf.flatness > 0.0)
     {
-        float Fss90 = surfaceState.hDotL * surfaceState.hDotL * surfaceState.bsdf.roughness;
+        float Fss90 = hDotL * hDotL * surfaceState.bsdf.roughness;
         float Fss = mix(1.0, Fss90, FL) * mix(1.0, Fss90, FV);
-        float ss = 1.25 * (Fss * (1.0 / (surfaceState.nDotL + surfaceState.nDotL) - 0.5) + 0.5);
+        float ss = 1.25 * (Fss * (1.0 / (nDotL + nDotL) - 0.5) + 0.5);
         fSSApprox = ss;
     }
 
     // float energyBias = mix(0.0, 0.5, surfaceState.bsdf.roughness) ;
     // float energyFactor = mix(1.0, 1.0 / 1.51, surfaceState.bsdf.roughness) ;
-    float RR = /*energyBias + */2.0 * surfaceState.bsdf.roughness * surfaceState.hDotL * surfaceState.hDotL;
+    float RR = /*energyBias + */2.0 * surfaceState.bsdf.roughness * hDotL * hDotL;
 
     // retro
     float fRetro = RR * (FL + FV + FL * FV * (RR - 1.0))/* * energyFactor*/;
@@ -120,10 +162,60 @@ vec3 evaluateDisneyDiffuse(in bool thin, out float pdf)
 
     float fDisneyDiffuse = diffuseF * (1.0 - 0.5 * FL) * (1.0 - 0.5 * FV) + fRetro;
 
-    // 1 / pdf cancels out with  * INV_PI * surfaceState.nDotL
-    // pdf = surfaceState.nDotL * INV_PI;
-    return surfaceState.bsdf.baseColor * fDisneyDiffuse;
+    return fDisneyDiffuse * INV_PI;
 }
 
+bool sampleDisneyDiffuse(out BSDFSample bsdfSample)
+{
+    bsdfSample.pdf = 1.0;
+    bool thin = false; // FIXME
+    float sgn = sign(cosTheta(surfaceState.wo));
+
+    float u = rand();
+    float v = rand();
+
+    surfaceState.wi = sampleHemisphereCosine(bsdfSample.pdf);
+    surfaceState.wm = normalize(surfaceState.wi + surfaceState.wo);
+
+    float nDotL = cosTheta(surfaceState.wi);
+    if(nDotL == 0.0)
+    {
+        bsdfSample.pdf = 0.0;
+        bsdfSample.reflectance = vec3(0.0);
+        return false;
+    }
+
+    vec3 color = surfaceState.bsdf.baseColor;
+
+    float transPdf = 1.0;
+
+    /*
+    float p = rand();
+    if(p <= surfaceState.bsdf.diffTrans)
+    {
+        surfaceState.wi = -surfaceState.wi;
+        transPdf = surfaceState.bsdf.diffTrans;
+
+        if(thin)
+            color = sqrt(color);
+        else {
+            // FIXME
+        }
+    }
+    else
+    {
+        transPdf = (1.0 - surfaceState.bsdf.diffTrans);
+    }
+    */
+
+    vec3 sheen = evaluateDisneySheen();
+
+    float diffuse = evaluateDisneyDiffuse(thin);
+
+    bsdfSample.reflectance = sheen + color * diffuse / transPdf;
+    bsdfSample.pdf *= transPdf;
+
+    return true;
+}
 
 #endif // DISNEY_BSDF_GLSL

@@ -33,4 +33,10 @@ struct RayPayload
     Tri triangle;
 };
 
+struct BSDFSample
+{
+    vec3 reflectance;
+    float pdf;
+};
+
 #endif  // GLOBALS_GLSL

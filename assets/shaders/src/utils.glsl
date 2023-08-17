@@ -52,6 +52,28 @@ void createTBN(in vec3 normal, in bool hasUV,
     }
 }
 
+vec3 tangentToWorld(in vec3 p, in vec3 tangent, in vec3 bitangent, in vec3 normal)
+{
+    return fma(vec3(p.x), tangent, fma(vec3(p.y), bitangent, p.z * normal));
+}
+
+vec3 worldToTangentFrame(in vec3 p, in vec3 tangent, in vec3 bitangent, in vec3 normal)
+{
+    return vec3(dot(p, tangent), dot(p, bitangent), dot(p, normal));
+}
+
+// tangent space trigonometry
+float cosTheta(const vec3 w) {return w.z;}
+float cos2Theta(const vec3 w) {return w.z * w.z;}
+float sin2Theta(const vec3 w) {return max(0.0, 1.0 - cos2Theta(w));}
+float sinTheta(const vec3 w) {return sqrt(sin2Theta(w));}
+float tanTheta(const vec3 w) {return sinTheta(w) / cosTheta(w);}
+float tan2Theta(const vec3 w) {return sin2Theta(w) / cos2Theta(w);}
+float cosPhi(const vec3 w) {return (sinTheta(w) == 0.0) ? 1.0 : clamp(w.x / sinTheta(w), -1.0, 1.0);}
+float sinPhi(const vec3 w) {return (sinTheta(w) == 0.0) ? 0.0 : clamp(w.y / sinTheta(w), -1.0, 1.0);}
+float cos2Phi(const vec3 w) {return cosPhi(w) * cosPhi(w);}
+float sin2Phi(const vec3 w) {return sinPhi(w) * sinPhi(w);}
+
 const float GAMMA     = 2.2;
 const float INV_GAMMA = 1.0 / GAMMA;
 

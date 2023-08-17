@@ -34,21 +34,14 @@ struct SurfaceState
 {
     DisneyBSDFParameters bsdf;
 
+    vec3 gNormal;
     vec3 normal;
     vec3 tangent;
     vec3 bitangent;
 
-    vec3 wi;
-    vec3 wo;
-    vec3 wm;
-
-    float hDotL;
-    float hDotV;
-    float vDotL;
-
-    float nDotL;
-    float nDotV;
-    float nDotH;
+    vec3 wi; // in tangent space
+    vec3 wo; // in tangent space
+    vec3 wm; // in tangent space
 };
 
 SurfaceState surfaceState;
@@ -74,18 +67,13 @@ void populateSurfaceState(in Material material)
     surfaceState.bsdf.diffTrans = 0.0;
     surfaceState.bsdf.emission = vec3(0.0);
 
+    surfaceState.gNormal = vec3(0.0);
     surfaceState.normal = vec3(0.0);
     surfaceState.tangent = vec3(0.0);
     surfaceState.bitangent = vec3(0.0);
     surfaceState.wi = vec3(0.0);
     surfaceState.wo = vec3(0.0);
     surfaceState.wm = vec3(0.0);
-    surfaceState.hDotL = 0.0;
-    surfaceState.hDotV = 0.0;
-    surfaceState.vDotL = 0.0;
-    surfaceState.nDotL = 0.0;
-    surfaceState.nDotV = 0.0;
-    surfaceState.nDotH = 0.0;
 
     surfaceState.bsdf.baseColor = material.baseColor.rgb;
     if (material.baseColorTextureId >= 0)
@@ -93,18 +81,24 @@ void populateSurfaceState(in Material material)
         surfaceState.bsdf.baseColor *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
     }
 
+    surfaceState.gNormal = pld.triangle.interpolatedNormal;
     surfaceState.normal = pld.triangle.interpolatedNormal;
-    createTBN(pld.triangle.interpolatedNormal, material.hasUV == 1,
+    createTBN(surfaceState.gNormal, material.hasUV == 1,
                 pld.triangle.dfd1, pld.triangle.dfd2,
                 pld.triangle.uvd1, pld.triangle.uvd2,
                 surfaceState.tangent, surfaceState.bitangent);
 
     if(material.normalTextureId >= 0)
     {
-
-        mat3 tbn = mat3(surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
         surfaceState.normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
-        surfaceState.normal = normalize(tbn * surfaceState.normal.rgb);
+        surfaceState.normal = normalize(tangentToWorld(surfaceState.normal, surfaceState.tangent, surfaceState.bitangent, surfaceState.gNormal));
+
+        // FIXME
+        // recompute tangent frame - does this make sense?
+        createTBN(surfaceState.normal, material.hasUV == 1,
+                    pld.triangle.dfd1, pld.triangle.dfd2,
+                    pld.triangle.uvd1, pld.triangle.uvd2,
+                    surfaceState.tangent, surfaceState.bitangent);
     }
 
     surfaceState.bsdf.metallic = material.metallicFactor;
