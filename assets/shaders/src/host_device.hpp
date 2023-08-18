@@ -71,28 +71,103 @@ namespace rayce
         int pad[3];
     };
 
+// clang-format off
+#ifdef __cplusplus
+#define ENUM(a)                 \
+  enum class RAYCE_API_EXPORT a \
+  {
+#define ENUM_END() }
+#else
+#define ENUM(a) const uint
+#define ENUM_END()
+#endif
+
+    ENUM(ELightType)
+        area = 0,
+        point = 1,
+        constant = 2,
+        envmap = 3,
+        spot = 4,
+        projector = 5,
+        directional = 6,
+        directionalArea = 7,
+        count = 8
+    ENUM_END();
+
+    ENUM(EBSDFType)
+        diffuse = 0,
+        smoothDielectric = 1,
+        smoothDielectricThin = 2,
+        roughDielectric = 3,
+        smoothConductor = 4,
+        roughConductor = 5,
+        smoothPlastic = 6,
+        roughPlastic = 7,
+        count = 8
+    ENUM_END();
+
+    struct RAYCE_API_EXPORT Light
+    {
+        ELightType type;
+
+        //  area light
+        uint primitiveId;
+        vec3 radiance;
+        int radianceTexture;
+    };
+
     struct RAYCE_API_EXPORT Material
     {
-        vec4 baseColor;
-        vec3 emissiveColor;
-        float emissiveStrength;
-        // alphaMode;
-        // alphaCutoff;
-        // doubleSided;
-        float metallicFactor;
-        float roughnessFactor;
+        vec3 diffuseReflectance;
+        int diffuseReflectanceTexture;
 
+        uint twoSided;
+        EBSDFType bsdfType;
+
+        float interiorIor;
+        float exteriorIor;
+
+        vec3 specularReflectance; // for physical realism, do not touch - default 1
+        int specularReflectanceTexture;
+        vec3 specularTransmittance; // for physical realism, do not touch - default 1
+        int specularTransmittanceTexture;
+
+        vec2 alpha; // alpha u, alpha v;
+        int alphTexture;
+
+        // for complex conducting materials
+        vec2 complexIor; // eta, k
+        int complexIorTexture;
+
+        uint nonlinear;
+
+        uint canUseUv;
+
+        /*
+        // Disney (later)
+        vec3 baseColor;
+        float metallic;       // 0.0 - 1.0
+        float subsurface;     // 0.0 - 1.0
+        float specular;       // 0.0 - 1.0
+        float roughness;      // 0.0 - 1.0
+        float specularTint;   // 0.0 - 1.0
+        float anisotropic;    // 0.0 - 1.0
+        float sheen;          // 0.0 - 1.0
+        float sheenTint;      // 0.0 - 1.0
+        float clearcoat;      // 0.0 - 1.0
+        float clearcoatGloss; // 0.0 - 1.0
+
+        // bsdf
+        float specTrans; // 0.0 - 1.0
         float ior;
-        float transmission;
+        vec3 scatrDist;
 
-        int baseColorTextureId;
-        int metallicRoughnessTextureId;
-        int normalTextureId;
-        int emissiveTextureId;
+        float flatness;  // 0.0 - 1.0
+        float diffTrans; // 0.0 - 1.0
 
-        uint hasUV;
-
-        int pad[3];
+        // not official?
+        vec3 emission;
+        */
     };
 
 #ifdef __cplusplus

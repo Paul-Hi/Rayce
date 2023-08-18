@@ -33,12 +33,12 @@ namespace rayce
         /// @brief Destructor.
         ~RayceScene();
 
-        /// @brief Loads a model from an obj file and preprocesses it for @a Rayces use case.
-        /// @param[in] filename The obj filename.
+        /// @brief Loads a model from a mitsuba file and preprocesses it for @a Rayces use case.
+        /// @param[in] filename The mitsuba file filename.
         /// @param[in] logicalDevice The logical @a Device used to create necessary GPU structures.
         /// @param[in] commandPool @a CommandPool to get command buffers.
         /// @param[in] scale A scaling for the positions.
-        void loadFromGltf(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, float scale);
+        void loadFromMitsubaFile(const str& filename, const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, float scale);
 
         /// @brief Returns the created @a Geometry of the @a RayceScene.
         /// @return The created @a Geometry of the @a RayceScene.

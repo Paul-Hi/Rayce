@@ -15,7 +15,6 @@ namespace rayce
     {
         return (value + alignment - 1) & ~(alignment - 1);
     }
-
 } // namespace rayce
 
 #endif // UTILS_HPP

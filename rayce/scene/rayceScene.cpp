@@ -8,7 +8,7 @@
 #include <functional>
 #include <host_device.hpp>
 #include <imgui.h>
-#include <scene/gltfHelper.hpp>
+#include <scene/loadHelper.hpp>
 #include <scene/rayceScene.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandPool.hpp>
@@ -18,15 +18,33 @@
 #include <vulkan/imageView.hpp>
 #include <vulkan/sampler.hpp>
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define TINYGLTF_NOEXCEPTION
-#define TINYGLTF_USE_CPP14
-#include <scene/tiny_gltf.h>
+#include <scene/tinyparser-mitsuba.h>
 
 using namespace rayce;
 namespace fs = std::filesystem;
+namespace mp = TPM_NAMESPACE;
+
+using MitsubaRef = str;
+struct MitsubaBSDF
+{
+    EBSDFType type;
+    MitsubaRef id;
+    Material possibleData;
+};
+
+struct MitsubaEmitter
+{
+    ELightType type;
+    Light possibleData;
+};
+
+struct MitsubaShape
+{
+    str filename;
+    mat4 transformationMatrix;
+    MitsubaRef bsdf;
+    int32 emitter{-1};
+};
 
 RayceScene::RayceScene()
     : mReflectionOpen(true)
@@ -42,93 +60,308 @@ RayceScene::~RayceScene()
     mImageCache.clear();
 }
 
-static void loadModelMatrix(const tinygltf::Node& node, const tinygltf::Model& model, const mat4& parentTransformation, std::unordered_map<int32, std::vector<mat4>>& transformationMatrices)
+static EBSDFType bsdfFromPluginType(const str& pluginType)
 {
-    mat4 localTransformationMatrix = mat4::Identity();
-
-    if (node.matrix.size() == 16)
+    if (pluginType == "diffuse")
     {
-        localTransformationMatrix = Eigen::Map<const Eigen::Matrix4d>(node.matrix.data()).cast<float>();
+        return EBSDFType::diffuse;
     }
-    else
+    else if (pluginType == "dielectric")
     {
-        vec3 position = makeVec3(0.0f);
-        quat rotation = quat(1.0f, 0.0f, 0.0f, 0.0f);
-        vec3 scale    = makeVec3(1.0f);
-        if (node.translation.size() == 3)
-        {
-            position = vec3(static_cast<float>(node.translation[0]), static_cast<float>(node.translation[1]), static_cast<float>(node.translation[2]));
-        }
-        if (node.rotation.size() == 4)
-        {
-            rotation = quat(static_cast<float>(node.rotation[3]), static_cast<float>(node.rotation[0]), static_cast<float>(node.rotation[1]), static_cast<float>(node.rotation[2]));
-        }
-        if (node.scale.size() == 3)
-        {
-            scale = vec3(static_cast<float>(node.scale[0]), static_cast<float>(node.scale[1]), static_cast<float>(node.scale[2]));
-        }
+        return EBSDFType::smoothDielectric;
+    }
+    else if (pluginType == "thindielectric")
+    {
+        return EBSDFType::smoothDielectricThin;
+    }
+    else if (pluginType == "roughdielectric")
+    {
+        return EBSDFType::roughDielectric;
+    }
+    else if (pluginType == "conductor")
+    {
+        return EBSDFType::smoothConductor;
+    }
+    else if (pluginType == "roughconductor")
+    {
+        return EBSDFType::roughConductor;
+    }
+    else if (pluginType == "plastic")
+    {
+        return EBSDFType::smoothPlastic;
+    }
+    else if (pluginType == "roughplastic")
+    {
+        return EBSDFType::roughPlastic;
+    }
+    else if (pluginType == "twosided")
+    {
+        return EBSDFType::count;
+    }
+    RAYCE_ASSERT(false, "Unknown BSDF Type");
+}
 
-        localTransformationMatrix = (Eigen::Translation3f(position) * rotation * Eigen::Scaling(scale)).matrix();
+static ELightType lightFromPluginType(const str& pluginType)
+{
+    if (pluginType == "area")
+    {
+        return ELightType::area;
+    }
+    else if (pluginType == "point")
+    {
+        return ELightType::point;
+    }
+    else if (pluginType == "constant")
+    {
+        return ELightType::constant;
+    }
+    else if (pluginType == "envmap")
+    {
+        return ELightType::envmap;
+    }
+    else if (pluginType == "spot")
+    {
+        return ELightType::spot;
+    }
+    else if (pluginType == "projector")
+    {
+        return ELightType::projector;
+    }
+    else if (pluginType == "directional")
+    {
+        return ELightType::directional;
+    }
+    else if (pluginType == "directionalarea")
+    {
+        return ELightType::directionalArea;
+    }
+    RAYCE_ASSERT(false, "Unknown BSDF Type");
+}
+
+static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad)
+{
+    MitsubaBSDF bsdf;
+    bsdf.id   = bsdfObject->id();
+    bsdf.type = bsdfFromPluginType(bsdfObject->pluginType());
+
+    auto& props = bsdfObject->properties();
+    switch (bsdf.type)
+    {
+    case EBSDFType::count: // twosided adapter
+    {
+        for (const auto& bsdfChild : bsdfObject->anonymousChildren())
+        {
+            if (bsdfChild->type() != mp::OT_BSDF)
+            {
+                continue;
+            }
+
+            return loadMitsubaBSDF(bsdfChild, imagesToLoad);
+        }
+        break;
+    }
+    case EBSDFType::diffuse:
+    {
+        if (props.contains("reflectance"))
+        {
+            auto reflectance = props.at("reflectance");
+
+            if (reflectance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                              = reflectance.getColor();
+                bsdf.possibleData.diffuseReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (reflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        break;
+    }
+    default:
+        RAYCE_LOG_WARN("Unsupported bsdf!");
+        break;
     }
 
-    mat4 globalTransformationMatrix = parentTransformation * localTransformationMatrix;
+    return bsdf;
+}
 
-    if (node.mesh >= 0)
+static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<tinyparser_mitsuba::Object>& emitterObject, std::vector<str>& imagesToLoad)
+{
+    MitsubaEmitter emitter;
+    emitter.type = lightFromPluginType(emitterObject->pluginType());
+
+    auto& props = emitterObject->properties();
+    switch (emitter.type)
     {
-        transformationMatrices[node.mesh].push_back(globalTransformationMatrix);
+    case ELightType::area:
+    {
+
+        if (props.contains("radiance"))
+        {
+            auto radiance = props.at("radiance");
+
+            if (radiance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                              = radiance.getColor();
+                emitter.possibleData.radiance = vec3(c.r, c.g, c.b);
+            }
+            if (radiance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : emitterObject->namedChildren())
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        emitter.possibleData.radianceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        break;
     }
-
-    for (ptr_size i = 0; i < node.children.size(); ++i)
-    {
-        RAYCE_ASSERT(node.children[i] < static_cast<int32>(model.nodes.size()), "Invalid gltf node!");
-
-        loadModelMatrix(model.nodes[node.children[i]], model, globalTransformationMatrix, transformationMatrices);
+    default:
+        RAYCE_LOG_WARN("Unsupported bsdf!");
+        break;
     }
 }
 
-void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, float scale)
+void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, float scale)
 {
     str ext = filename.substr(filename.find_last_of(".") + 1);
 
-    tinygltf::Model model;
-    tinygltf::TinyGLTF loader;
-    str err;
-    str warn;
-    bool ret = false;
-    if (ext.compare("glb") == 0)
-    {
-        ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename.c_str());
-    }
-    else
-    {
-        ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename.c_str());
-    }
+    mp::SceneLoader sceneLoader;
 
-    if (!warn.empty())
-    {
-        RAYCE_LOG_ERROR("TinyGLTF warning: %s", warn.c_str());
-    }
+    mp::Scene scene = sceneLoader.loadFromFile(filename.c_str());
 
-    if (!err.empty())
-    {
-        RAYCE_LOG_ERROR("TinyGLTF error: %s", err.c_str());
-    }
-
-    if (!ret)
-    {
-        RAYCE_LOG_ERROR("Can not load: %s", filename.c_str());
-        return;
-    }
-
-    RAYCE_LOG_INFO("Loading GLTF model %s.", filename.c_str());
+    RAYCE_LOG_INFO("Loading Mitsuba file %s.", filename.c_str());
+    // FIXME: Implement more features - sensor, instances, shapegroups, primitives not loaded from files etc.
 
     mReflectionInfo.filename = filename;
 
+    std::vector<MitsubaShape> mitsubaShapes;
+    std::vector<MitsubaEmitter> mitsubaEmitters;
+    std::unordered_map<str, MitsubaBSDF> mitsubaBSDFs;
+    std::vector<str> imagesToLoad;
+    uint32 inlineBSDFId = 0;
+
+    for (const auto& object : scene.anonymousChildren())
+    {
+        switch (object->type())
+        {
+        case mp::OT_SHAPE:
+        {
+            MitsubaShape shape;
+            auto pluginType = object->pluginType();
+            if (pluginType == "rectangle")
+            {
+                shape.filename = "rectangle.ply";
+            }
+            if (pluginType == "sphere")
+            {
+                shape.filename = "sphere.ply";
+            }
+            for (const auto& prop : object->properties())
+            {
+                if (prop.first == "filename")
+                {
+                    shape.filename = prop.second.getString();
+                }
+                else if (prop.first == "to_world")
+                {
+                    const auto& transform      = prop.second.getTransform();
+                    shape.transformationMatrix = mat4::Identity();
+                    for (int i = 0; i < 4; i++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            shape.transformationMatrix(i, j) = transform(i, j);
+                        }
+                    }
+                }
+            }
+
+            for (const auto& child : object->anonymousChildren())
+            {
+                if (child->type() == mp::OT_BSDF)
+                {
+                    MitsubaBSDF mbsdf = loadMitsubaBSDF(child, imagesToLoad);
+
+                    if (mbsdf.id.empty())
+                    {
+                        mbsdf.id = "inline_bsdf_" + inlineBSDFId++; // FIXME: potential collisions
+                    }
+
+                    shape.bsdf               = mbsdf.id;
+                    mitsubaBSDFs[shape.bsdf] = mbsdf;
+                    continue;
+                }
+
+                if (child->type() == mp::OT_EMITTER)
+                {
+                    MitsubaEmitter memitter = loadMitsubaEmitter(child, imagesToLoad);
+                    shape.emitter = mitsubaEmitters.size(); // TODO: We have to connect that vi primitiveId later on!
+                    mitsubaEmitters.push_back(memitter);
+                    continue;
+                }
+            }
+            mitsubaShapes.push_back(shape);
+            break;
+        }
+        case mp::OT_BSDF:
+        {
+
+            MitsubaBSDF mbsdf = loadMitsubaBSDF(object, imagesToLoad);
+
+            if (mbsdf.id.empty())
+            {
+                mbsdf.id = "inline_bsdf_" + inlineBSDFId++; // FIXME: potential collisions
+            }
+
+            mitsubaBSDFs[mbsdf.id] = mbsdf;
+
+            break;
+        }
+        case mp::OT_EMITTER:
+        {
+            RAYCE_LOG_WARN("Only area lights are supported at the moment!");
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
     pGeometry = std::make_unique<Geometry>();
 
-    // first get transformation matrices for the meshes
-    std::unordered_map<int32, std::vector<mat4>> transformationMatrices;
-
+    // TODO: NEXT: Add tinyply (+ tinyobj) and load geometry + load textures + connect everything (mesh, material, light)
     mat4 tr = mat4::Identity() * scale;
     for (const tinygltf::Scene& scene : model.scenes)
     {
@@ -139,7 +372,6 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
         }
     }
 
-    uint32 meshId = 0;
     for (const auto& mesh : model.meshes)
     {
         mReflectionInfo.meshNames.push_back(mesh.name);
@@ -409,7 +641,7 @@ void RayceScene::loadFromGltf(const str& filename, const std::unique_ptr<Device>
             }
 
             // emission
-            auto& emCol         = material.emissiveFactor;
+            auto& emCol       = material.emissiveFactor;
             mat.emissiveColor = vec3(static_cast<float>(emCol[0]), static_cast<float>(emCol[1]), static_cast<float>(emCol[2]));
 
             if (material.emissiveTexture.index >= 0)
