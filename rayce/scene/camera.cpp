@@ -23,9 +23,9 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
     pInput              = input;
     vec3 rotationVector = (mTarget - mPosition).normalized();
     mRotation.y()       = acosf(-rotationVector.y());
-    mRotation.x()       = acosf(rotationVector.x() / sinf(mRotation.y()));
+    mRotation.x()       = asinf(rotationVector.z() / sinf(mRotation.y()));
     mWASD               = ivec4(0, 0, 0, 0);
-    mLastMousePostion   = vec2(0.0, 0.0);
+    mLastMousePosition   = vec2(0.0, 0.0);
     mMoving             = false;
     mFirstClick         = true;
     input->registerCursorPositionCallback(
@@ -37,12 +37,13 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
                 return;
             }
             bool noRotation       = pInput.lock()->getMouseButton(EMouseButton::mouseButtonLeft) == EInputAction::release;
-            vec2 diff             = vec2(xPosition, yPosition) - mLastMousePostion;
+            vec2 diff             = vec2(xPosition, yPosition) - mLastMousePosition;
             bool offsetIrrelevant = diff.norm() < 1.0f; // In pixels.
+            bool tmp = noRotation;
             noRotation |= mFirstClick;
-            mFirstClick = false;
+            mFirstClick = tmp;
 
-            mLastMousePostion = vec2(xPosition, yPosition);
+            mLastMousePosition = vec2(xPosition, yPosition);
 
             if (noRotation || offsetIrrelevant)
                 return;

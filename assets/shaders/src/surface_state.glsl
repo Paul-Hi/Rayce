@@ -1,43 +1,29 @@
 #ifndef SURFACE_STATE_GLSL
 #define SURFACE_STATE_GLSL
 
-// Helpful: https://schuttejoe.github.io/post/disneybsdf/
-
-struct DisneyBSDFParameters
+struct BSDFParameters
 {
-    // brdf
-    vec3 baseColor;
-    float metallic; // 0.0 - 1.0
-    float subsurface; // 0.0 - 1.0
-    float specular; // 0.0 - 1.0
-    float roughness; // 0.0 - 1.0
-    float specularTint; // 0.0 - 1.0
-    float anisotropic; // 0.0 - 1.0
-    float sheen; // 0.0 - 1.0
-    float sheenTint; // 0.0 - 1.0
-    float clearcoat; // 0.0 - 1.0
-    float clearcoatGloss; // 0.0 - 1.0
-
-    // bsdf
-    float specTrans; // 0.0 - 1.0
-    float ior;
-    vec3 scatrDist;
-
-    float flatness; // 0.0 - 1.0
-    float diffTrans; // 0.0 - 1.0
-
-    // not official?
-    vec3 emission;
+        vec3 diffuseReflectance;
+        bool twoSided;
+        float interiorIor;
+        float exteriorIor;
+        vec3 specularReflectance;
+        vec3 specularTransmittance;
+        vec2 alpha;
+        vec2 complexIor;
+        bool nonlinear;
 };
 
 struct SurfaceState
 {
-    DisneyBSDFParameters bsdf;
+    BSDFParameters bsdf;
 
     vec3 gNormal;
     vec3 normal;
     vec3 tangent;
     vec3 bitangent;
+
+    uint canUseUv;
 
     vec3 wi; // in tangent space
     vec3 wo; // in tangent space
@@ -48,25 +34,6 @@ SurfaceState surfaceState;
 
 void populateSurfaceState(in Material material)
 {
-    // reset
-    surfaceState.bsdf.baseColor = vec3(0.82, 0.67, 0.16);
-    surfaceState.bsdf.metallic = 0.0;
-    surfaceState.bsdf.subsurface = 0.0;
-    surfaceState.bsdf.specular = 0.5;
-    surfaceState.bsdf.roughness = 0.5;;
-    surfaceState.bsdf.specularTint = 0.0;
-    surfaceState.bsdf.anisotropic = 0.0;
-    surfaceState.bsdf.sheen = 0.0;
-    surfaceState.bsdf.sheenTint = 0.5;
-    surfaceState.bsdf.clearcoat = 0.0;
-    surfaceState.bsdf.clearcoatGloss = 1.0;
-    surfaceState.bsdf.specTrans = 0.0;
-    surfaceState.bsdf.ior = 1.5;
-    surfaceState.bsdf.scatrDist = vec3(1.0);
-    surfaceState.bsdf.flatness = 0.0;
-    surfaceState.bsdf.diffTrans = 0.0;
-    surfaceState.bsdf.emission = vec3(0.0);
-
     surfaceState.gNormal = vec3(0.0);
     surfaceState.normal = vec3(0.0);
     surfaceState.tangent = vec3(0.0);
@@ -75,50 +42,54 @@ void populateSurfaceState(in Material material)
     surfaceState.wo = vec3(0.0);
     surfaceState.wm = vec3(0.0);
 
-    surfaceState.bsdf.baseColor = material.baseColor.rgb;
-    if (material.baseColorTextureId >= 0)
+    surfaceState.bsdf.diffuseReflectance = material.diffuseReflectance;
+    if (material.diffuseReflectanceTexture >= 0)
     {
-        surfaceState.bsdf.baseColor *= texture(textures[nonuniformEXT(material.baseColorTextureId)], pld.triangle.interpolatedUV).rgb;
+        surfaceState.bsdf.diffuseReflectance = texture(textures[nonuniformEXT(material.diffuseReflectanceTexture)], pld.triangle.interpolatedUV).rgb;
     }
 
-    surfaceState.gNormal = pld.triangle.interpolatedNormal;
+    surfaceState.gNormal = pld.triangle.geometryNormal;
     surfaceState.normal = pld.triangle.interpolatedNormal;
-    createTBN(surfaceState.gNormal, material.hasUV == 1,
+    createTBN(surfaceState.normal, (material.canUseUv == 1),
                 pld.triangle.dfd1, pld.triangle.dfd2,
                 pld.triangle.uvd1, pld.triangle.uvd2,
                 surfaceState.tangent, surfaceState.bitangent);
 
+    /*
     if(material.normalTextureId >= 0)
     {
         surfaceState.normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
         surfaceState.normal = normalize(tangentToWorld(surfaceState.normal, surfaceState.tangent, surfaceState.bitangent, surfaceState.gNormal));
 
-        // FIXME
         // recompute tangent frame - does this make sense?
         createTBN(surfaceState.normal, material.hasUV == 1,
                     pld.triangle.dfd1, pld.triangle.dfd2,
                     pld.triangle.uvd1, pld.triangle.uvd2,
                     surfaceState.tangent, surfaceState.bitangent);
     }
+    */
 
-    surfaceState.bsdf.metallic = material.metallicFactor;
-    surfaceState.bsdf.roughness = material.roughnessFactor;
-    if (material.metallicRoughnessTextureId >= 0)
+    surfaceState.bsdf.alpha = material.alpha;
+    if (material.alphaTexture >= 0)
     {
-        surfaceState.bsdf.metallic *= texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).g;
-        surfaceState.bsdf.roughness *= texture(textures[nonuniformEXT(material.metallicRoughnessTextureId)], pld.triangle.interpolatedUV).b;
+        surfaceState.bsdf.alpha = texture(textures[nonuniformEXT(material.alphaTexture)], pld.triangle.interpolatedUV).rg;
     }
 
+    /*
     surfaceState.bsdf.emission = material.emissiveStrength * material.emissiveColor;
     if (material.emissiveTextureId >= 0)
     {
         surfaceState.bsdf.emission *= material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], pld.triangle.interpolatedUV).rgb;
     }
+    */
 
-    surfaceState.bsdf.specTrans = material.transmission;
-
-    surfaceState.bsdf.ior = material.ior;
+    surfaceState.bsdf.twoSided = (material.twoSided == 1);
+    surfaceState.bsdf.interiorIor = material.interiorIor;
+    surfaceState.bsdf.exteriorIor = material.exteriorIor;
+    surfaceState.bsdf.specularReflectance = material.specularReflectance;
+    surfaceState.bsdf.specularTransmittance = material.specularTransmittance;
+    surfaceState.bsdf.complexIor = material.complexIor;
+    surfaceState.bsdf.nonlinear = (material.nonlinear == 1);
 }
-
 
 #endif // SURFACE_STATE_GLSL

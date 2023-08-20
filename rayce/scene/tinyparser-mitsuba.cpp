@@ -6,7 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <tinyxml2.h>
+#include <scene/tinyxml2.h>
 
 namespace TPM_NAMESPACE {
 using LookupPaths		= std::vector<std::string>;

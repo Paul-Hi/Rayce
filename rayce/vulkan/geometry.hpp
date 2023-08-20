@@ -14,7 +14,7 @@ namespace rayce
     class RAYCE_API_EXPORT Geometry
     {
     public:
-        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const std::vector<mat4>& transformationMatrices);
+        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices);
 
         const std::vector<std::unique_ptr<class Buffer>>& getVertexBuffers() const
         {
@@ -41,6 +41,11 @@ namespace rayce
             return mMaterialIds;
         }
 
+        const std::vector<int32>& getLightIds() const
+        {
+            return mLightIds;
+        }
+
         const std::vector<std::vector<mat4>>& getTransformationMatrices() const
         {
             return mTransformationMatrices;
@@ -53,6 +58,7 @@ namespace rayce
         std::vector<uint32> mMaxVertices;
         std::vector<uint32> mPrimitiveCounts;
         std::vector<uint32> mMaterialIds;
+        std::vector<int32> mLightIds;
 
         std::vector<std::vector<mat4>> mTransformationMatrices;
     };

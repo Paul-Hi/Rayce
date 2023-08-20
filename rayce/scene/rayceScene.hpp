@@ -47,6 +47,13 @@ namespace rayce
             return pGeometry;
         }
 
+        /// @brief Retrieves the @a Lights.
+        /// @return The @a Lights in the @a RayceScene.
+        const std::vector<std::unique_ptr<struct Light>>& getLights()
+        {
+            return mLights;
+        }
+
         /// @brief Retrieves the @a Materials.
         /// @return The @a Materials in the @a RayceScene.
         const std::vector<std::unique_ptr<struct Material>>& getMaterials()
@@ -83,6 +90,9 @@ namespace rayce
 
         /// @brief The list of @a Materials of the loaded @a Geometry.
         std::vector<std::unique_ptr<struct Material>> mMaterials;
+
+        /// @brief The list of @a Lights.
+        std::vector<std::unique_ptr<struct Light>> mLights;
 
         /// @brief Image cache to remember already loaded textures.
         std::unordered_map<str, byte*> mImageCache;

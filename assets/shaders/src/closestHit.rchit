@@ -11,7 +11,7 @@
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 hitAttributeEXT vec2 hitAttributes;
 
-layout(set = 2, binding = 1, scalar) buffer _InstanceInfo { InstanceData ref[]; };
+layout(set = MODEL_SET, binding = INSTANCE_BINDING, scalar) buffer _InstanceInfo { InstanceData ref[]; };
 
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
@@ -32,6 +32,7 @@ Tri getTriangle(uint primitiveIndex)
 
     tri.barycentrics = vec3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
     tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
+
     tri.interpolatedNormal = normalize(tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z);
     tri.interpolatedNormal = normalize(vec3(tri.interpolatedNormal * gl_WorldToObjectEXT));
 
@@ -40,7 +41,16 @@ Tri getTriangle(uint primitiveIndex)
     tri.uvd1 = tri.vertices[1].uv - tri.vertices[0].uv;
     tri.uvd2 = tri.vertices[2].uv - tri.vertices[0].uv;
 
+    tri.geometryNormal = vec3(
+        tri.dfd1.y * tri.dfd2.z - tri.dfd1.z * tri.dfd2.y,
+        tri.dfd1.z * tri.dfd2.x - tri.dfd1.x * tri.dfd2.z,
+        tri.dfd1.x * tri.dfd2.y - tri.dfd1.y * tri.dfd2.x
+    );
+    tri.geometryNormal = normalize(vec3(tri.geometryNormal * gl_WorldToObjectEXT));
+
     tri.materialId = ref[gl_InstanceCustomIndexEXT].materialId;
+
+    tri.lightId = ref[gl_InstanceCustomIndexEXT].lightId;
 
     return tri;
 }

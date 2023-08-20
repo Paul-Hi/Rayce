@@ -16,6 +16,7 @@ struct Tri
     Vertex vertices[3];
     vec3 barycentrics;
     vec2 interpolatedUV;
+    vec3 geometryNormal;
     vec3 interpolatedNormal;
 
     vec3 dfd1;
@@ -24,6 +25,7 @@ struct Tri
     vec2 uvd2;
 
     uint materialId;
+    int lightId;
 };
 
 struct RayPayload
@@ -36,6 +38,12 @@ struct RayPayload
 struct BSDFSample
 {
     vec3 reflectance;
+    float pdf;
+};
+
+struct LightSample
+{
+    vec3 radiance;
     float pdf;
 };
 

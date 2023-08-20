@@ -32,13 +32,11 @@ void createTBN(in vec3 normal, in bool hasUV,
                 in vec2 uvd1, in vec2 uvd2,
                 out vec3 tangent, out vec3 bitangent)
 {
-    if(hasUV)
+    if(hasUV && uvd1.x > 0.0)
     {
         vec3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
         tangent    = normalize(t_ - normal * dot(normal, t_));
         bitangent  = cross(normal, tangent);
-        tangent = normalize(tangent);
-        bitangent = normalize(bitangent);
     }
     else
     {

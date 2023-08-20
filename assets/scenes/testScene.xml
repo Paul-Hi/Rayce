@@ -1,0 +1,37 @@
+<scene version="3.0.0">
+
+    <bsdf type="diffuse" id="white">
+        <rgb name="reflectance" value="0.885809, 0.698859, 0.666422" />
+    </bsdf>
+
+    <bsdf type="diffuse" id="red">
+        <rgb name="reflectance" value="0.570068, 0.0430135, 0.0443706" />
+    </bsdf>
+
+    <shape type="rectangle">
+        <transform name="to_world">
+            <scale x="4" z="4" />
+        </transform>
+        <ref id="white" />
+    </shape>
+
+    <shape type="ply">
+        <string name="filename" value="suzanne.ply" />
+        <transform name="to_world">
+            <rotate x="1" angle="-35" />
+            <rotate y="1" angle="-45" />
+            <translate x="0" y="0.48" z="0" />
+        </transform>
+        <ref id="red" />
+    </shape>
+
+    <shape type="sphere">
+        <transform name="to_world">
+            <translate x="-4" y="4" z="-1" />
+        </transform>
+        <emitter type="area">
+            <rgb name="radiance" value="10.0 10.0 10.0" />
+        </emitter>
+        <ref id="white" />
+    </shape>
+</scene>

@@ -17,6 +17,21 @@ namespace rayce
 #define END_BINDING()
 #endif
 
+// binding points
+#define RT_SET 0
+#define TLAS_BINDING 0
+#define ACCUM_BINDING 1
+#define RESULT_BINDING 2
+
+#define CAMERA_SET 1
+#define CAMERA_BINDING 0
+
+#define MODEL_SET 2
+#define TEXTURE_BINDING 0
+#define INSTANCE_BINDING 1
+#define MATERIAL_BINDING 2
+#define LIGHT_BINDING 3
+
     struct RAYCE_API_EXPORT Vertex
     {
         vec3 position;
@@ -67,19 +82,22 @@ namespace rayce
         uint64_t indexReference;
         uint64_t vertexReference;
         uint materialId;
+        int lightId;
 
-        int pad[3];
+        int pad[2];
     };
 
 // clang-format off
 #ifdef __cplusplus
-#define ENUM(a)                 \
-  enum class RAYCE_API_EXPORT a \
+#define ENUM(a)                          \
+  enum class RAYCE_API_EXPORT a : uint \
   {
 #define ENUM_END() }
 #else
 #define ENUM(a) const uint
 #define ENUM_END()
+#define ELightType uint
+#define EBSDFType uint
 #endif
 
     ENUM(ELightType)
@@ -91,7 +109,7 @@ namespace rayce
         projector = 5,
         directional = 6,
         directionalArea = 7,
-        count = 8
+        lightTypeCount = 8
     ENUM_END();
 
     ENUM(EBSDFType)
@@ -103,7 +121,7 @@ namespace rayce
         roughConductor = 5,
         smoothPlastic = 6,
         roughPlastic = 7,
-        count = 8
+        bsdfTypeCount = 8
     ENUM_END();
 
     struct RAYCE_API_EXPORT Light
@@ -112,8 +130,24 @@ namespace rayce
 
         //  area light
         uint primitiveId;
-        vec3 radiance;
+        uint triangleCount;
         int radianceTexture;
+        vec3 radiance;
+
+        uint pad;
+        mat4 objectToWorld;
+
+#ifdef __cplusplus
+        Light()
+        : type(ELightType::area)
+        , primitiveId(0)
+        , triangleCount(0)
+        , radiance(vec3(0.0, 0.0, 0.0))
+        , radianceTexture(-1)
+        , pad(0)
+        , objectToWorld(mat4::Identity())
+        {}
+#endif
     };
 
     struct RAYCE_API_EXPORT Material
@@ -133,15 +167,36 @@ namespace rayce
         int specularTransmittanceTexture;
 
         vec2 alpha; // alpha u, alpha v;
-        int alphTexture;
+        int alphaTexture;
 
         // for complex conducting materials
-        vec2 complexIor; // eta, k
         int complexIorTexture;
+        vec2 complexIor; // eta, k
 
         uint nonlinear;
 
         uint canUseUv;
+
+#ifdef __cplusplus
+        Material()
+        : diffuseReflectance(vec3(0.5, 0.5, 0.5))
+        , diffuseReflectanceTexture(-1)
+        , twoSided(0)
+        , bsdfType(EBSDFType::diffuse)
+        , interiorIor(1.5046f)
+        , exteriorIor(1.000277f)
+        , specularReflectance(vec3(1.0, 1.0, 1.0))
+        , specularReflectanceTexture(-1)
+        , specularTransmittance(vec3(1.0, 1.0, 1.0))
+        , specularTransmittanceTexture(-1)
+        , alpha(vec2(0.1, 0.1))
+        , alphaTexture(-1)
+        , complexIorTexture(-1)
+        , complexIor(vec2(0.0, 1.0))
+        , nonlinear(0)
+        , canUseUv(0)
+        {}
+#endif
 
         /*
         // Disney (later)

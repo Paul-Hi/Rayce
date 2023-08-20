@@ -1,7 +1,7 @@
 message(STATUS "================================================")
 message(STATUS "Adding rayce::scene!")
 
-file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
+file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp, ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 add_library(scene

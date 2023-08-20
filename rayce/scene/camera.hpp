@@ -48,7 +48,7 @@ namespace rayce
 
         vec2 mRotation;
         ivec4 mWASD;
-        vec2 mLastMousePostion;
+        vec2 mLastMousePosition;
         float mSpeed;
         bool mMoving;
         bool mFirstClick;

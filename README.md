@@ -16,3 +16,5 @@ We use:
 * Doxygen to generate the documentation
 * stb_image to load image files
 * TinyParser-Mitsuba to parse mitsuba scene xmls
+* TinyXML-2 for TinyParser-Mitsuba to work
+* miniply to load *.ply files

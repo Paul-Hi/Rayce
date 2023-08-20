@@ -27,9 +27,9 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str flightHelmet = ".\\assets\\gltf\\customCornell\\customCornell.glb";
+    const str testScene = ".\\assets\\scenes\\testScene.xml";
 
-    pScene->loadFromGltf(flightHelmet, device, commandPool, 1.0f);
+    pScene->loadFromMitsubaFile(testScene, device, commandPool, 1.0f);
 
     auto& geometry = pScene->getGeometry();
 
@@ -42,6 +42,7 @@ bool SimpleGUI::onInitialize()
     auto& primitiveCounts        = geometry->getPrimitiveCounts();
     auto& transformationMatrices = geometry->getTransformationMatrices();
     auto& materialIds            = geometry->getMaterialIds();
+    auto& lightIds               = geometry->getLightIds();
 
     for (ptr_size i = 0; i < vertexBuffers.size(); ++i)
     {
@@ -55,6 +56,7 @@ bool SimpleGUI::onInitialize()
         {
             auto instance             = std::make_unique<InstanceData>();
             instance->materialId      = materialIds[i];
+            instance->lightId         = lightIds[i];
             instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
             instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
             mInstances.push_back(std::move(instance));
@@ -83,7 +85,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(8.0f, 0.5f, 0.0f), vec3(0.0f, 0.25f, 0.0f), getInput());
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(0.0f, 1.0f, 8.0f), vec3(0.0f, 0.5f, 0.0f), getInput());
 
     mAccumulationFrame = 0;
 
@@ -159,7 +161,15 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     std::vector<VkDescriptorSet> rtDescriptorSets = pRaytracingPipeline->getVkDescriptorSets(imageIndex);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pRaytracingPipeline->getVkPipelineLayout(), 0, rtDescriptorSets.size(), rtDescriptorSets.data(), 0, nullptr);
 
-    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(int32), static_cast<void*>(&mAccumulationFrame));
+    struct
+    {
+        int32 frame;
+        int32 lightCount;
+    } pushConstants;
+    pushConstants.frame      = mAccumulationFrame;
+    pushConstants.lightCount = pScene->getLights().size();
+
+    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(int32) * 2, static_cast<void*>(&pushConstants));
 
     VkExtent2D extent = getSwapchain()->getSwapExtent();
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
@@ -230,7 +240,7 @@ void SimpleGUI::recreateSwapchain()
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
     pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
-    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), textureViews, samplers);
+    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);
 }
 
 int main(int argc, char** argv)

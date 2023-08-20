@@ -9,12 +9,13 @@
 
 using namespace rayce;
 
-void Geometry::add(std::unique_ptr<Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const std::vector<mat4>& transformationMatrices)
+void Geometry::add(std::unique_ptr<Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices)
 {
     mVertexBuffers.push_back(std::move(vertexBuffer));
     mIndexBuffers.push_back(std::move(indexBuffer));
     mMaxVertices.push_back(maxVertex);
     mPrimitiveCounts.push_back(primitiveCount);
     mMaterialIds.push_back(materialId);
+    mLightIds.push_back(lightId);
     mTransformationMatrices.push_back(transformationMatrices);
 }

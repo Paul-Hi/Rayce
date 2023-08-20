@@ -1,6 +1,7 @@
 #version 460
 
 #extension GL_EXT_ray_tracing : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_scalar_block_layout : enable
@@ -9,27 +10,110 @@
 #include "globals.glsl"
 #include "utils.glsl"
 
-layout(set = 0, binding = 0) uniform accelerationStructureEXT TLAS;
-layout(set = 0, binding = 1, rgba32f) uniform image2D accumulationImage;
-layout(set = 0, binding = 2, rgba8) uniform image2D resultImage;
+layout(set = RT_SET, binding = TLAS_BINDING) uniform accelerationStructureEXT TLAS;
+layout(set = RT_SET, binding = ACCUM_BINDING, rgba32f) uniform image2D accumulationImage;
+layout(set = RT_SET, binding = RESULT_BINDING, rgba8) uniform image2D resultImage;
 
 layout(location = 0) rayPayloadEXT RayPayload pld;
 
-layout(set = 1, binding = 0, scalar) uniform CameraBufferRT
+layout(set = CAMERA_SET, binding = CAMERA_BINDING, scalar) uniform CameraBufferRT
 {
     mat4 inverseView;
     mat4 inverseProjection;
 } camera;
 
-layout(set = 2, binding = 0) uniform sampler2D textures[];
-layout(set = 2, binding = 2, scalar) buffer _MaterialInfo { Material materials[]; };
+layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
+layout(set = MODEL_SET, binding = INSTANCE_BINDING, scalar) buffer _InstanceInfo { InstanceData ref[]; };
+layout(set = MODEL_SET, binding = MATERIAL_BINDING, scalar) buffer _MaterialInfo { Material materials[]; };
+layout(set = MODEL_SET, binding = LIGHT_BINDING, scalar) buffer _LightInfo { Light lights[]; };
+
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
+layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 
 layout(push_constant) uniform PushConstants {
     int frame;
+    int lightCount;
 };
 
 #include "surface_state.glsl"
-#include "disney_bsdf.glsl"
+#include "bsdf.glsl"
+
+bool sampleLights(in vec3 p, out LightSample lightSample)
+{
+    lightSample.pdf = 1.0 / float(lightCount);
+    int lightIndex = int(rand() * lightCount);
+
+    Light sampledLight = lights[lightIndex];
+
+    if(sampledLight.type == area)
+    {
+        Indices indices = Indices(ref[sampledLight.primitiveId].indexReference);
+        Vertices vertices = Vertices(ref[sampledLight.primitiveId].vertexReference);
+
+        // FIXME: In theory we would have to weight that ...
+        uint triangleIndex = uint(rand() * sampledLight.triangleCount) * 3;
+
+        Vertex vert[3];
+        for(uint i = 0; i < 3; ++i)
+        {
+            const uint idx = indices.i[triangleIndex + i];
+            vert[i] = vertices.v[idx];
+        }
+
+        vec2 rands = vec2(rand(), rand());
+        float u = 1.0 - sqrt(rands.x);
+        float v = rands.y * sqrt(rands.x);
+        vec3 barycentrics = vec3(u, v, 1.0 - u - v);
+
+        vec3 interpolatedPosition = vert[0].position * barycentrics.x + vert[1].position * barycentrics.y + vert[2].position * barycentrics.z;
+        interpolatedPosition = vec3(sampledLight.objectToWorld * vec4(interpolatedPosition, 1.0));
+        vec3 interpolatedNormal = normalize(vert[0].normal * barycentrics.x + vert[1].normal * barycentrics.y + vert[2].normal * barycentrics.z);
+        interpolatedNormal = normalize(vec3(transpose(inverse(sampledLight.objectToWorld)) * vec4(interpolatedNormal, 0.0)));
+
+        vec3 wDir = interpolatedPosition - p;
+        float pointDistance = length(wDir);
+
+        float G = dot(interpolatedNormal, -wDir);
+
+        surfaceState.wi = worldToTangentFrame(normalize(wDir), surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
+        float nDotL = cosTheta(surfaceState.wi);
+
+        if(nDotL <= 0.0 || G <= 0.0)
+        {
+            return false;
+        }
+
+        pld.hit = true;
+        traceRayEXT(
+            TLAS,
+            gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+            0xff,   // cullMask
+            0,      // sbtRecordOffset
+            0,      // sbtRecordStride
+            0,      // missIndex
+            p,
+            0.001,
+            wDir,
+            pointDistance,
+            0       // payloadLocation
+        );
+
+        if(pld.hit)
+        {
+            return false;
+        }
+
+        const vec3 A = vec3(vert[1].position - vert[0].position);
+        const vec3 B = vec3(vert[2].position - vert[0].position);
+        lightSample.pdf *= 2.0 / (length((cross(A, B))));
+
+        lightSample.radiance = nDotL * G * sampledLight.radiance;
+
+        return true;
+    }
+
+    return false;
+};
 
 void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
 {
@@ -70,14 +154,22 @@ vec3 tracePaths(in vec2 uv)
             Material material = materials[pld.triangle.materialId];
             populateSurfaceState(material);
 
-            color += throughput * surfaceState.bsdf.emission;
-
             surfaceState.wo = worldToTangentFrame(-direction.xyz, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
-
             origin.xyz = pld.hitPoint;
 
+            if(pld.triangle.lightId >= 0)
+            {
+                color += throughput * lights[pld.triangle.lightId].radiance;
+            }
+
+            LightSample lightSample;
+            if(sampleLights(origin.xyz, lightSample))
+            {
+                color += throughput * evaluateBSDF() * lightSample.radiance / lightSample.pdf;
+            }
+
             BSDFSample bsdfSample;
-            if(!sampleDisneyDiffuse(bsdfSample))
+            if(!sampleBSDF(bsdfSample))
             {
                 break;
             }
@@ -86,7 +178,14 @@ vec3 tracePaths(in vec2 uv)
 
             float nDotL = cosTheta(surfaceState.wi);
 
-            throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
+            //if(pld.triangle.lightId < 0)
+            {
+                throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
+            }
+            //else if (depth == 0)
+            //{
+            //    color += lights[pld.triangle.lightId].radiance;
+            //}
 
             // russian roulette
             if (depth >= russianRouletteStart)

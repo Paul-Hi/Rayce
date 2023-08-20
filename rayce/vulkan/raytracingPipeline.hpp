@@ -64,8 +64,8 @@ namespace rayce
         }
 
         void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances,
-                             const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<class ImageView>>& images,
-                             const std::vector<std::unique_ptr<class Sampler>>& samplers);
+                             const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<struct Light>>& lights,
+                             const std::vector<std::unique_ptr<class ImageView>>& images, const std::vector<std::unique_ptr<class Sampler>>& samplers);
 
         void updateCameraData(CameraDataRT& cameraData);
 
@@ -88,6 +88,8 @@ namespace rayce
         std::vector<void*> mInstanceBuffersMapped;
         std::vector<std::unique_ptr<class Buffer>> mMaterialBuffers;
         std::vector<void*> mMaterialBuffersMapped;
+        std::vector<std::unique_ptr<class Buffer>> mLightBuffers;
+        std::vector<void*> mLightBuffersMapped;
         std::unique_ptr<class Image> pAccumulationImage;
         std::unique_ptr<class ImageView> pAccumulationImageView;
 

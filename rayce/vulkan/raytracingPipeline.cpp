@@ -37,19 +37,19 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pAccumulationImageView = std::make_unique<ImageView>(logicalDevice, *pAccumulationImage, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT);
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorTLAS{};
-    layoutBindingDescriptorTLAS.binding         = 0;
+    layoutBindingDescriptorTLAS.binding         = TLAS_BINDING;
     layoutBindingDescriptorTLAS.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     layoutBindingDescriptorTLAS.descriptorCount = 1;
     layoutBindingDescriptorTLAS.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorAccumulationImage{};
-    layoutBindingDescriptorAccumulationImage.binding         = 1;
+    layoutBindingDescriptorAccumulationImage.binding         = ACCUM_BINDING;
     layoutBindingDescriptorAccumulationImage.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     layoutBindingDescriptorAccumulationImage.descriptorCount = 1;
     layoutBindingDescriptorAccumulationImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorResultImage{};
-    layoutBindingDescriptorResultImage.binding         = 2;
+    layoutBindingDescriptorResultImage.binding         = RESULT_BINDING;
     layoutBindingDescriptorResultImage.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     layoutBindingDescriptorResultImage.descriptorCount = 1;
     layoutBindingDescriptorResultImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
@@ -59,7 +59,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pDescriptorSetLayoutRT = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorCameraBuffer{};
-    layoutBindingDescriptorCameraBuffer.binding         = 0;
+    layoutBindingDescriptorCameraBuffer.binding         = CAMERA_BINDING;
     layoutBindingDescriptorCameraBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     layoutBindingDescriptorCameraBuffer.descriptorCount = 1;
     layoutBindingDescriptorCameraBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
@@ -69,24 +69,30 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pDescriptorSetLayoutCamera = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorTextures{};
-    layoutBindingDescriptorTextures.binding         = 0;
+    layoutBindingDescriptorTextures.binding         = TEXTURE_BINDING;
     layoutBindingDescriptorTextures.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindingDescriptorTextures.descriptorCount = requiredImageDescriptors;
     layoutBindingDescriptorTextures.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorInstanceDataBuffer{};
-    layoutBindingDescriptorInstanceDataBuffer.binding         = 1;
+    layoutBindingDescriptorInstanceDataBuffer.binding         = INSTANCE_BINDING;
     layoutBindingDescriptorInstanceDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorInstanceDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorMaterialDataBuffer{};
-    layoutBindingDescriptorMaterialDataBuffer.binding         = 2;
+    layoutBindingDescriptorMaterialDataBuffer.binding         = MATERIAL_BINDING;
     layoutBindingDescriptorMaterialDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorMaterialDataBuffer.descriptorCount = 1;
     layoutBindingDescriptorMaterialDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer };
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorLightDataBuffer{};
+    layoutBindingDescriptorLightDataBuffer.binding         = LIGHT_BINDING;
+    layoutBindingDescriptorLightDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingDescriptorLightDataBuffer.descriptorCount = 1;
+    layoutBindingDescriptorLightDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer, layoutBindingDescriptorLightDataBuffer };
 
     pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -98,7 +104,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkPushConstantRange bufferReferencePushConstantRange{};
     bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
     bufferReferencePushConstantRange.offset     = 0;
-    bufferReferencePushConstantRange.size       = sizeof(int32);
+    bufferReferencePushConstantRange.size       = sizeof(int32) * 2;
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -220,7 +226,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkWriteDescriptorSet accelerationStructureWrite{};
     accelerationStructureWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    accelerationStructureWrite.dstBinding      = 0;
+    accelerationStructureWrite.dstBinding      = TLAS_BINDING;
     accelerationStructureWrite.descriptorCount = 1;
     accelerationStructureWrite.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 
@@ -232,7 +238,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkWriteDescriptorSet accumImageWrite{};
     accumImageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    accumImageWrite.dstBinding      = 1;
+    accumImageWrite.dstBinding      = ACCUM_BINDING;
     accumImageWrite.descriptorCount = 1;
     accumImageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     accumImageWrite.pImageInfo      = &descriptorAccumImageInfo;
@@ -243,7 +249,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkWriteDescriptorSet resultImageWrite{};
     resultImageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    resultImageWrite.dstBinding      = 2;
+    resultImageWrite.dstBinding      = RESULT_BINDING;
     resultImageWrite.descriptorCount = 1;
     resultImageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     resultImageWrite.pImageInfo      = &descriptorResultImageInfo;
@@ -254,7 +260,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkWriteDescriptorSet cameraBufferWrite{};
     cameraBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    cameraBufferWrite.dstBinding      = 0;
+    cameraBufferWrite.dstBinding      = CAMERA_BINDING;
     cameraBufferWrite.descriptorCount = 1;
     cameraBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
@@ -278,7 +284,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
-void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<ImageView>>& images, const std::vector<std::unique_ptr<Sampler>>& samplers)
+void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<Light>>& lights, const std::vector<std::unique_ptr<ImageView>>& images, const std::vector<std::unique_ptr<Sampler>>& samplers)
 {
     // FIXME: If we want to update that some time in the future we should not create the buffers each time :D
     // buffers
@@ -286,9 +292,12 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     mInstanceBuffersMapped.resize(mFramesInFlight);
     mMaterialBuffers.resize(mFramesInFlight);
     mMaterialBuffersMapped.resize(mFramesInFlight);
+    mLightBuffers.resize(mFramesInFlight);
+    mLightBuffersMapped.resize(mFramesInFlight);
 
     uint32 bufferSizeI = sizeof(InstanceData) * instances.size();
     uint32 bufferSizeM = sizeof(Material) * materials.size();
+    uint32 bufferSizeL = sizeof(Light) * lights.size();
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
@@ -296,12 +305,16 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
         mInstanceBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         mMaterialBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeM, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
         mMaterialBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        mLightBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        mLightBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         const std::unique_ptr<DeviceMemory>& deviceMemoryI = mInstanceBuffers[i]->getDeviceMemory();
         const std::unique_ptr<DeviceMemory>& deviceMemoryM = mMaterialBuffers[i]->getDeviceMemory();
+        const std::unique_ptr<DeviceMemory>& deviceMemoryL = mLightBuffers[i]->getDeviceMemory();
 
         mInstanceBuffersMapped[i] = deviceMemoryI->map(0, bufferSizeI); // persistent mapping
         mMaterialBuffersMapped[i] = deviceMemoryM->map(0, bufferSizeM); // persistent mapping
+        mLightBuffersMapped[i]    = deviceMemoryL->map(0, bufferSizeL); // persistent mapping
     }
 
     VkDescriptorImageInfo textureInfo{};
@@ -309,7 +322,7 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkWriteDescriptorSet textureWrite{};
     textureWrite.sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    textureWrite.dstBinding     = 0;
+    textureWrite.dstBinding     = TEXTURE_BINDING;
     textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     std::vector<VkDescriptorImageInfo> textureInfos;
@@ -328,7 +341,7 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkWriteDescriptorSet instanceBufferWrite{};
     instanceBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    instanceBufferWrite.dstBinding      = 1;
+    instanceBufferWrite.dstBinding      = INSTANCE_BINDING;
     instanceBufferWrite.descriptorCount = 1;
     instanceBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
@@ -338,9 +351,19 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
 
     VkWriteDescriptorSet materialBufferWrite{};
     materialBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    materialBufferWrite.dstBinding      = 2;
+    materialBufferWrite.dstBinding      = MATERIAL_BINDING;
     materialBufferWrite.descriptorCount = 1;
     materialBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    VkDescriptorBufferInfo lightBufferInfo{};
+    lightBufferInfo.offset = 0;
+    lightBufferInfo.range  = bufferSizeL;
+
+    VkWriteDescriptorSet lightBufferWrite{};
+    lightBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    lightBufferWrite.dstBinding      = LIGHT_BINDING;
+    lightBufferWrite.descriptorCount = 1;
+    lightBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
@@ -358,6 +381,12 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
             deviceMaterial           = *materials[j].get();
         }
 
+        for (ptr_size j = 0; j < lights.size(); ++j)
+        {
+            Light& deviceLight = *(reinterpret_cast<Light*>(mLightBuffersMapped[i]) + j);
+            deviceLight        = *lights[j].get();
+        }
+
         instanceBufferInfo.buffer       = mInstanceBuffers[i]->getVkBuffer();
         instanceBufferWrite.pBufferInfo = &instanceBufferInfo;
         instanceBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
@@ -366,7 +395,11 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
         materialBufferWrite.pBufferInfo = &materialBufferInfo;
         materialBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
 
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite };
+        lightBufferInfo.buffer       = mLightBuffers[i]->getVkBuffer();
+        lightBufferWrite.pBufferInfo = &lightBufferInfo;
+        lightBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite, lightBufferWrite };
         pDescriptorSetsModel->update(writeDescriptorSets);
     }
 }
