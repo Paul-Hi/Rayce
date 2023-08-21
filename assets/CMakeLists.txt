@@ -13,6 +13,8 @@ set(GLSL_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/basic.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/raygen.rgen
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/closestHit.rchit
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/sphereIntersection.rint
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/closestHitSphere.rchit
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/miss.rmiss
 )
 

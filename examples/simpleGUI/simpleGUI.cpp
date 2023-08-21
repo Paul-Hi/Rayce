@@ -36,30 +36,91 @@ bool SimpleGUI::onInitialize()
     AccelerationStructureInitData accelerationStructureInitData{};
     accelerationStructureInitData.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-    auto& vertexBuffers          = geometry->getVertexBuffers();
-    auto& indexBuffers           = geometry->getIndexBuffers();
-    auto& maxVertices            = geometry->getMaxVertices();
-    auto& primitiveCounts        = geometry->getPrimitiveCounts();
-    auto& transformationMatrices = geometry->getTransformationMatrices();
-    auto& materialIds            = geometry->getMaterialIds();
-    auto& lightIds               = geometry->getLightIds();
+    auto& triangleMeshes    = geometry->getTriangleMeshes();
+    auto& proceduralSpheres = geometry->getProceduralSpheres();
 
-    for (ptr_size i = 0; i < vertexBuffers.size(); ++i)
+    std::vector<std::vector<std::pair<VkTransformMatrixKHR, uint32>>> instanceInfo(triangleMeshes.size() + 1);
+
+    for (ptr_size i = 0; i < triangleMeshes.size(); ++i)
     {
-        accelerationStructureInitData.vertexDataDeviceAddress = vertexBuffers[i]->getDeviceAddress();
-        accelerationStructureInitData.indexDataDeviceAddress  = indexBuffers[i]->getDeviceAddress();
-        accelerationStructureInitData.maxVertex               = maxVertices[i];
-        accelerationStructureInitData.primitiveCount          = primitiveCounts[i];
+        const TriangleMeshGeometry& triMesh                   = triangleMeshes[i];
+        accelerationStructureInitData.vertexDataDeviceAddress = triMesh.vertexBuffer->getDeviceAddress();
+        accelerationStructureInitData.indexDataDeviceAddress  = triMesh.indexBuffer->getDeviceAddress();
+        accelerationStructureInitData.maxVertex               = triMesh.maxVertex;
+        accelerationStructureInitData.primitiveCount          = triMesh.primitiveCount;
+        accelerationStructureInitData.procedural              = false;
         mBLAS.push_back(std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData));
 
-        for (ptr_size j = 0; j < transformationMatrices[i].size(); ++j)
+        for (ptr_size j = 0; j < triMesh.transformationMatrices.size(); ++j)
         {
             auto instance             = std::make_unique<InstanceData>();
-            instance->materialId      = materialIds[i];
-            instance->lightId         = lightIds[i];
+            instance->materialId      = triMesh.materialId;
+            instance->lightId         = -1; // triMesh.lightId;
             instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
             instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
+            instance->sphereId        = -1;
             mInstances.push_back(std::move(instance));
+
+            const auto& tr = triMesh.transformationMatrices[j];
+
+            VkTransformMatrixKHR transformationMatrix = {
+                tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
+                tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
+                tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
+            };
+            instanceInfo[i].push_back({ transformationMatrix, 0 });
+        }
+    }
+
+    if (!proceduralSpheres.empty())
+    {
+        // for now put all spheres in one BLAS - should be more efficent since we do not have more complex or moving stuff.
+        // FIXME: The buffers should live somewhere else...
+        std::vector<AxisAlignedBoundingBox> aabbs;
+        for (ptr_size i = 0; i < proceduralSpheres.size(); ++i)
+        {
+            const ProceduralSphereGeometry& sphere = proceduralSpheres[i];
+            mSpheres.push_back(*sphere.sphere);
+            aabbs.push_back(*sphere.boundingBox);
+        }
+
+        mAABBBuffer = std::make_unique<Buffer>(device, sizeof(AxisAlignedBoundingBox) * aabbs.size(),
+                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+        mAABBBuffer->allocateMemory(device, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        Buffer::uploadDataWithStagingBuffer(device, commandPool, *mAABBBuffer, aabbs);
+
+        accelerationStructureInitData.aabbDataDeviceAddress = mAABBBuffer->getDeviceAddress();
+        accelerationStructureInitData.aabbStride            = sizeof(AxisAlignedBoundingBox);
+        accelerationStructureInitData.primitiveCount        = mSpheres.size();
+        accelerationStructureInitData.procedural            = true;
+
+        auto tr = mat4::Identity();
+
+        VkTransformMatrixKHR transformationMatrix = {
+            tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
+            tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
+            tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
+        };
+        instanceInfo[mBLAS.size()].push_back({ transformationMatrix, 1 });
+        mBLAS.push_back(std::make_unique<AccelerationStructure>(device, commandPool, accelerationStructureInitData));
+
+        for (ptr_size i = 0; i < proceduralSpheres.size(); ++i)
+        {
+            const ProceduralSphereGeometry& sphere = proceduralSpheres[i];
+
+            for (ptr_size j = 0; j < sphere.transformationMatrices.size(); ++j)
+            {
+                auto instance             = std::make_unique<InstanceData>();
+                instance->materialId      = sphere.materialId;
+                instance->lightId         = sphere.lightId;
+                instance->indexReference  = -1;
+                instance->vertexReference = -1;
+                instance->sphereId        = i;
+                mInstances.push_back(std::move(instance));
+            }
         }
     }
 
@@ -68,15 +129,10 @@ bool SimpleGUI::onInitialize()
     uint32 i                                     = 0;
     for (const std::unique_ptr<AccelerationStructure>& blas : mBLAS)
     {
-        for (const mat4& tr : transformationMatrices[i])
+        for (const auto& [transformationMatrix, hitGroup] : instanceInfo[i])
         {
-            VkTransformMatrixKHR transformMatrix = {
-                tr(0, 0), tr(0, 1), tr(0, 2), tr(0, 3),
-                tr(1, 0), tr(1, 1), tr(1, 2), tr(1, 3),
-                tr(2, 0), tr(2, 1), tr(2, 2), tr(2, 3)
-            };
-            accelerationStructureInitData.transformMatrices.push_back(transformMatrix);
-            accelerationStructureInitData.blasDeviceAddresses.push_back(blas->getDeviceAddress());
+            accelerationStructureInitData.transformMatrices.push_back(transformationMatrix);
+            accelerationStructureInitData.blasDeviceAddresses.push_back({ blas->getDeviceAddress(), hitGroup });
             accelerationStructureInitData.primitiveCount++;
         }
         i++;
@@ -240,7 +296,7 @@ void SimpleGUI::recreateSwapchain()
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
     pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
-    pRaytracingPipeline->updateModelData(device, mInstances, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);
+    pRaytracingPipeline->updateModelData(device, mInstances, mSpheres, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);
 }
 
 int main(int argc, char** argv)

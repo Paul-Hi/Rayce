@@ -26,6 +26,7 @@ layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
 layout(set = MODEL_SET, binding = INSTANCE_BINDING, scalar) buffer _InstanceInfo { InstanceData ref[]; };
 layout(set = MODEL_SET, binding = MATERIAL_BINDING, scalar) buffer _MaterialInfo { Material materials[]; };
 layout(set = MODEL_SET, binding = LIGHT_BINDING, scalar) buffer _LightInfo { Light lights[]; };
+layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
@@ -38,6 +39,45 @@ layout(push_constant) uniform PushConstants {
 #include "surface_state.glsl"
 #include "bsdf.glsl"
 
+Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttributes, mat4x3 worldToObject)
+{
+    Tri tri;
+    const uint triangleIndex = primitiveIndex * 3;
+
+    Indices indices = Indices(ref[instanceCustomIndex].indexReference);
+    Vertices vertices = Vertices(ref[instanceCustomIndex].vertexReference);
+
+    for(uint i = 0; i < 3; ++i)
+    {
+        const uint idx = indices.i[triangleIndex + i];
+        tri.vertices[i] = vertices.v[idx];
+    }
+
+    tri.barycentrics = vec3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
+    tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
+
+    tri.interpolatedNormal = normalize(tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z);
+    tri.interpolatedNormal = normalize(vec3(tri.interpolatedNormal * worldToObject));
+
+    tri.dfd1 = tri.vertices[1].position - tri.vertices[0].position;
+    tri.dfd2 = tri.vertices[2].position - tri.vertices[0].position;
+    tri.uvd1 = tri.vertices[1].uv - tri.vertices[0].uv;
+    tri.uvd2 = tri.vertices[2].uv - tri.vertices[0].uv;
+
+    tri.geometryNormal = vec3(
+        tri.dfd1.y * tri.dfd2.z - tri.dfd1.z * tri.dfd2.y,
+        tri.dfd1.z * tri.dfd2.x - tri.dfd1.x * tri.dfd2.z,
+        tri.dfd1.x * tri.dfd2.y - tri.dfd1.y * tri.dfd2.x
+    );
+    tri.geometryNormal = normalize(vec3(tri.geometryNormal * worldToObject));
+
+    tri.materialId = ref[instanceCustomIndex].materialId;
+
+    tri.lightId = ref[instanceCustomIndex].lightId;
+
+    return tri;
+}
+
 bool sampleLights(in vec3 p, out LightSample lightSample)
 {
     lightSample.pdf = 1.0 / float(lightCount);
@@ -47,11 +87,12 @@ bool sampleLights(in vec3 p, out LightSample lightSample)
 
     if(sampledLight.type == area)
     {
-        Indices indices = Indices(ref[sampledLight.primitiveId].indexReference);
-        Vertices vertices = Vertices(ref[sampledLight.primitiveId].vertexReference);
+        Indices indices = Indices(ref[sampledLight.meshId].indexReference);
+        Vertices vertices = Vertices(ref[sampledLight.meshId].vertexReference);
 
         // FIXME: In theory we would have to weight that ...
         uint triangleIndex = uint(rand() * sampledLight.triangleCount) * 3;
+        lightSample.pdf *= 1.0 / float(sampledLight.triangleCount);
 
         Vertex vert[3];
         for(uint i = 0; i < 3; ++i)
@@ -151,22 +192,27 @@ vec3 tracePaths(in vec2 uv)
 
         if(pld.hit)
         {
-            Material material = materials[pld.triangle.materialId];
-            populateSurfaceState(material);
+            uint lightId = -1;
+            if(pld.hitInfo.hitKind == hitKindTriangleMesh)
+            {
+                Tri triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject);
+                Material material = materials[triangle.materialId];
+                populateSurfaceStateTriangle(material, triangle);
+            }
 
             surfaceState.wo = worldToTangentFrame(-direction.xyz, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
             origin.xyz = pld.hitPoint;
 
-            if(pld.triangle.lightId >= 0)
+            if(lightId >= 0)
             {
-                color += throughput * lights[pld.triangle.lightId].radiance;
+                color += throughput * lights[lightId].radiance;
             }
 
-            LightSample lightSample;
-            if(sampleLights(origin.xyz, lightSample))
-            {
-                color += throughput * evaluateBSDF() * lightSample.radiance / lightSample.pdf;
-            }
+            // LightSample lightSample;
+            // if(sampleLights(origin.xyz, lightSample))
+            // {
+            //     color += throughput * evaluateBSDF() * lightSample.radiance / lightSample.pdf;
+            // }
 
             BSDFSample bsdfSample;
             if(!sampleBSDF(bsdfSample))
@@ -178,14 +224,16 @@ vec3 tracePaths(in vec2 uv)
 
             float nDotL = cosTheta(surfaceState.wi);
 
-            //if(pld.triangle.lightId < 0)
-            {
-                throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
-            }
-            //else if (depth == 0)
-            //{
-            //    color += lights[pld.triangle.lightId].radiance;
-            //}
+            throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
+
+            // if(lightId < 0)
+            // {
+            //     throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
+            // }
+            // else if (depth == 0)
+            // {
+            //     color += lights[lightId].radiance;
+            // }
 
             // russian roulette
             if (depth >= russianRouletteStart)

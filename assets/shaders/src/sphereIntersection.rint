@@ -1,0 +1,41 @@
+#version 460
+
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_GOOGLE_include_directive : require
+
+#include "globals.glsl"
+
+layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
+
+float intersectSphere(const Sphere s, const vec3 origin, const vec3 direction)
+{
+    vec3  d = origin - s.center;
+    float a = dot(direction, direction);
+    float b = 2.0 * dot(d, direction);
+    float c = dot(d, d) - s.radius * s.radius;
+    float discriminant = b * b - 4 * a * c;
+    if(discriminant < 0)
+    {
+        return -1.0;
+    }
+    else
+    {
+        return (-b - sqrt(discriminant)) / (2.0 * a);
+    }
+}
+
+void main()
+{
+    Sphere sphere = spheres[gl_PrimitiveID];
+
+    float hitT    = -1;
+    uint   hitKind = hitKindProceduralSphere; // FIXME: Always that atm.
+
+    hitT = intersectSphere(sphere, gl_WorldRayOriginEXT, gl_WorldRayDirectionEXT);
+    if(hitT > 0)
+    {
+        reportIntersectionEXT(hitT, hitKind);
+    }
+}

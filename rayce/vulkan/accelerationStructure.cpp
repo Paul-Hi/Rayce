@@ -4,12 +4,12 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <host_device.hpp>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/immediateSubmit.hpp>
 #include <vulkan/rtFunctions.hpp>
-#include <host_device.hpp>
 
 using namespace rayce;
 
@@ -21,16 +21,28 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
     if (initData.type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR)
     {
         VkAccelerationStructureGeometryKHR accelerationStructureGeometry{};
-        accelerationStructureGeometry.sType                           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-        accelerationStructureGeometry.geometryType                    = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-        accelerationStructureGeometry.flags                           = VK_GEOMETRY_OPAQUE_BIT_KHR;
-        accelerationStructureGeometry.geometry.triangles.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        accelerationStructureGeometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-        accelerationStructureGeometry.geometry.triangles.vertexData   = { initData.vertexDataDeviceAddress };
-        accelerationStructureGeometry.geometry.triangles.maxVertex    = initData.maxVertex;
-        accelerationStructureGeometry.geometry.triangles.vertexStride = Vertex::getSize();
-        accelerationStructureGeometry.geometry.triangles.indexType    = VK_INDEX_TYPE_UINT32;
-        accelerationStructureGeometry.geometry.triangles.indexData    = { initData.indexDataDeviceAddress };
+        if (initData.procedural)
+        {
+            accelerationStructureGeometry.sType                             = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            accelerationStructureGeometry.geometryType                      = VK_GEOMETRY_TYPE_AABBS_KHR;
+            accelerationStructureGeometry.flags                             = VK_GEOMETRY_OPAQUE_BIT_KHR;
+            accelerationStructureGeometry.geometry.aabbs.sType              = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+            accelerationStructureGeometry.geometry.aabbs.data.deviceAddress = initData.aabbDataDeviceAddress;
+            accelerationStructureGeometry.geometry.aabbs.stride             = initData.aabbStride;
+        }
+        else
+        {
+            accelerationStructureGeometry.sType                           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            accelerationStructureGeometry.geometryType                    = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+            accelerationStructureGeometry.flags                           = VK_GEOMETRY_OPAQUE_BIT_KHR;
+            accelerationStructureGeometry.geometry.triangles.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            accelerationStructureGeometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+            accelerationStructureGeometry.geometry.triangles.vertexData   = { initData.vertexDataDeviceAddress };
+            accelerationStructureGeometry.geometry.triangles.maxVertex    = initData.maxVertex;
+            accelerationStructureGeometry.geometry.triangles.vertexStride = Vertex::getSize();
+            accelerationStructureGeometry.geometry.triangles.indexType    = VK_INDEX_TYPE_UINT32;
+            accelerationStructureGeometry.geometry.triangles.indexData    = { initData.indexDataDeviceAddress };
+        }
 
         VkAccelerationStructureBuildGeometryInfoKHR accelerationStructureBuildGeometryInfo{};
         accelerationStructureBuildGeometryInfo.sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
@@ -89,14 +101,14 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
     {
         std::vector<VkAccelerationStructureInstanceKHR> accelerationStructureInstances;
         uint32 instance = 0; // gl_InstanceCustomIndexEXT
-        for (const VkDeviceAddress& blasAddress : initData.blasDeviceAddresses)
+        for (const auto& [blasAddress, hitGroup] : initData.blasDeviceAddresses)
         {
             VkAccelerationStructureInstanceKHR accelerationStructureInstance{};
             accelerationStructureInstance.transform                              = initData.transformMatrices[instance];
             accelerationStructureInstance.instanceCustomIndex                    = instance++;
             accelerationStructureInstance.mask                                   = 0xFF;
-            accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;
-            accelerationStructureInstance.flags                                  = 0;
+            accelerationStructureInstance.instanceShaderBindingTableRecordOffset = hitGroup;
+            accelerationStructureInstance.flags                                  = hitGroup == 1 ? VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR : 0;
             accelerationStructureInstance.accelerationStructureReference         = blasAddress;
             accelerationStructureInstances.push_back(accelerationStructureInstance);
         }

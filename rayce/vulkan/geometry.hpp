@@ -11,56 +11,49 @@
 
 namespace rayce
 {
+    struct RAYCE_API_EXPORT TriangleMeshGeometry
+    {
+        std::unique_ptr<class Buffer> vertexBuffer;
+        std::unique_ptr<class Buffer> indexBuffer;
+
+        uint32 maxVertex;
+        uint32 primitiveCount;
+
+        uint32 materialId;
+        // int32 lightId;
+
+        std::vector<mat4> transformationMatrices;
+    };
+
+    struct RAYCE_API_EXPORT ProceduralSphereGeometry
+    {
+        std::unique_ptr<class Sphere> sphere;
+        std::unique_ptr<class AxisAlignedBoundingBox> boundingBox;
+
+        uint32 materialId;
+        int32 lightId;
+
+        std::vector<mat4> transformationMatrices;
+    };
     class RAYCE_API_EXPORT Geometry
     {
     public:
-        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices);
+        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const std::vector<mat4>& transformationMatrices);
+        void add(std::unique_ptr<class Sphere>&& sphere, std::unique_ptr<class AxisAlignedBoundingBox>&& boundingBox, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices);
 
-        const std::vector<std::unique_ptr<class Buffer>>& getVertexBuffers() const
+        const std::vector<TriangleMeshGeometry>& getTriangleMeshes() const
         {
-            return mVertexBuffers;
+            return mTriangleMeshes;
         }
 
-        const std::vector<std::unique_ptr<class Buffer>>& getIndexBuffers() const
+        const std::vector<ProceduralSphereGeometry>& getProceduralSpheres() const
         {
-            return mIndexBuffers;
-        }
-
-        const std::vector<uint32>& getMaxVertices() const
-        {
-            return mMaxVertices;
-        }
-
-        const std::vector<uint32>& getPrimitiveCounts() const
-        {
-            return mPrimitiveCounts;
-        }
-
-        const std::vector<uint32>& getMaterialIds() const
-        {
-            return mMaterialIds;
-        }
-
-        const std::vector<int32>& getLightIds() const
-        {
-            return mLightIds;
-        }
-
-        const std::vector<std::vector<mat4>>& getTransformationMatrices() const
-        {
-            return mTransformationMatrices;
+            return mProceduralSpheres;
         }
 
     private:
-        std::vector<std::unique_ptr<class Buffer>> mVertexBuffers;
-        std::vector<std::unique_ptr<class Buffer>> mIndexBuffers;
-
-        std::vector<uint32> mMaxVertices;
-        std::vector<uint32> mPrimitiveCounts;
-        std::vector<uint32> mMaterialIds;
-        std::vector<int32> mLightIds;
-
-        std::vector<std::vector<mat4>> mTransformationMatrices;
+        std::vector<TriangleMeshGeometry> mTriangleMeshes;
+        std::vector<ProceduralSphereGeometry> mProceduralSpheres;
     };
 } // namespace rayce
 

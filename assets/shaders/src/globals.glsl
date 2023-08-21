@@ -28,11 +28,23 @@ struct Tri
     int lightId;
 };
 
+uint hitKindTriangleMesh = 0;
+uint hitKindProceduralSphere = 1;
+
+struct Hit
+{
+    uint hitKind;
+    uint primitiveId;
+    uint instanceCustomIndex;
+    vec2 hitAttributes;
+    mat4x3 worldToObject;
+};
+
 struct RayPayload
 {
     bool hit;
     vec3 hitPoint;
-    Tri triangle;
+    Hit hitInfo;
 };
 
 struct BSDFSample

@@ -16,18 +16,24 @@ namespace rayce
     {
         /// @brief The structure type (BLAS or TLAS).
         VkAccelerationStructureTypeKHR type;
-        /// @brief Device address of the vertex buffer (Only BLAS).
+        /// @brief Device address of the vertex buffer (Only BLAS and not procedural).
         VkDeviceAddress vertexDataDeviceAddress;
-        /// @brief Device address of the index buffer (Only BLAS).
+        /// @brief Device address of the index buffer (Only BLAS and not procedural).
         VkDeviceAddress indexDataDeviceAddress;
         /// @brief List of device addresses of bottom level acceleration structures (Only TLAS).
-        std::vector<VkDeviceAddress> blasDeviceAddresses;
+        std::vector<std::pair<VkDeviceAddress, uint32>> blasDeviceAddresses;
         /// @brief List of transform matrices of bottom level acceleration structures (Only TLAS).
         std::vector<VkTransformMatrixKHR> transformMatrices;
-        /// @brief Maximum index of any vertex (Only BLAS).
+        /// @brief Maximum index of any vertex (Only BLAS and not procedural).
         uint32 maxVertex;
         /// @brief Number of primitives.
         uint32 primitiveCount;
+        /// @brief Device address of the aabb buffer (Only AABB).
+        VkDeviceAddress aabbDataDeviceAddress;
+        /// @brief AABB stride (Only AABB).
+        uint32 aabbStride;
+        /// @brief Procedural.
+        bool procedural;
     };
 
     /// @brief Any kind of acceleration structure.

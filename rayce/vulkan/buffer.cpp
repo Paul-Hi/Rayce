@@ -4,10 +4,10 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <host_device.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/immediateSubmit.hpp>
-#include <host_device.hpp>
 
 using namespace rayce;
 
@@ -16,7 +16,7 @@ Buffer::Buffer(const std::unique_ptr<Device>& logicalDevice, const ptr_size size
 {
     VkBufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.size        = size;
+    bufferCreateInfo.size        = std::max(size, static_cast<ptr_size>(4));
     bufferCreateInfo.usage       = usage;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     bufferCreateInfo.flags       = NULL;

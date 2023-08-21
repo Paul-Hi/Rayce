@@ -63,7 +63,7 @@ namespace rayce
             return mAlignedHandleSize;
         }
 
-        void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances,
+        void updateModelData(const std::unique_ptr<class Device>& logicalDevice, const std::vector<std::unique_ptr<struct InstanceData>>& instances, const std::vector<struct Sphere>& spheres,
                              const std::vector<std::unique_ptr<struct Material>>& materials, const std::vector<std::unique_ptr<struct Light>>& lights,
                              const std::vector<std::unique_ptr<class ImageView>>& images, const std::vector<std::unique_ptr<class Sampler>>& samplers);
 
@@ -90,11 +90,15 @@ namespace rayce
         std::vector<void*> mMaterialBuffersMapped;
         std::vector<std::unique_ptr<class Buffer>> mLightBuffers;
         std::vector<void*> mLightBuffersMapped;
+        std::vector<std::unique_ptr<class Buffer>> mSphereBuffers;
+        std::vector<void*> mSphereBuffersMapped;
         std::unique_ptr<class Image> pAccumulationImage;
         std::unique_ptr<class ImageView> pAccumulationImageView;
 
         std::unique_ptr<class ShaderModule> pRayGenShader;
         std::unique_ptr<class ShaderModule> pClosestHitShader;
+        std::unique_ptr<class ShaderModule> pSphereIntersectionShader;
+        std::unique_ptr<class ShaderModule> pClosestHitSphereShader;
         std::unique_ptr<class ShaderModule> pMissShader;
 
         std::unique_ptr<class Buffer> pShaderBindingTableBuffer;

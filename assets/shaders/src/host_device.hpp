@@ -31,6 +31,7 @@ namespace rayce
 #define INSTANCE_BINDING 1
 #define MATERIAL_BINDING 2
 #define LIGHT_BINDING 3
+#define SPHERE_BINDING 4
 
     struct RAYCE_API_EXPORT Vertex
     {
@@ -77,14 +78,29 @@ namespace rayce
 #endif
     };
 
+    struct RAYCE_API_EXPORT AxisAlignedBoundingBox
+    {
+        vec3 minimum;
+        vec3 maximum;
+
+        int pad[2];
+    };
+
+    struct RAYCE_API_EXPORT Sphere
+    {
+        vec3 center;
+        float radius;
+    };
+
     struct RAYCE_API_EXPORT InstanceData
     {
         uint64_t indexReference;
         uint64_t vertexReference;
         uint materialId;
         int lightId;
+        int sphereId;
 
-        int pad[2];
+        int pad;
     };
 
 // clang-format off
@@ -129,7 +145,7 @@ namespace rayce
         ELightType type;
 
         //  area light
-        uint primitiveId;
+        uint meshId;
         uint triangleCount;
         int radianceTexture;
         vec3 radiance;
@@ -140,7 +156,7 @@ namespace rayce
 #ifdef __cplusplus
         Light()
         : type(ELightType::area)
-        , primitiveId(0)
+        , meshId(0)
         , triangleCount(0)
         , radiance(vec3(0.0, 0.0, 0.0))
         , radianceTexture(-1)

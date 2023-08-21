@@ -12,7 +12,7 @@ namespace rayce
 {
     class SimpleGUI : public RayceApp
     {
-      public:
+    public:
         SimpleGUI(const RayceOptions& options);
 
         bool onInitialize() override;
@@ -23,12 +23,14 @@ namespace rayce
         void onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageIndex) override;
         void recreateSwapchain() override;
 
-      private:
+    private:
         std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
         std::unique_ptr<class RayceScene> pScene;
         std::unique_ptr<class Camera> pCamera;
         int32 mAccumulationFrame;
 
+        std::vector<class Sphere> mSpheres;
+        std::unique_ptr<class Buffer> mAABBBuffer;
         std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
         std::unique_ptr<class AccelerationStructure> pTLAS;
 

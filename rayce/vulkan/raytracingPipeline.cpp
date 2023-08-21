@@ -78,7 +78,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorInstanceDataBuffer.binding         = INSTANCE_BINDING;
     layoutBindingDescriptorInstanceDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorInstanceDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorMaterialDataBuffer{};
     layoutBindingDescriptorMaterialDataBuffer.binding         = MATERIAL_BINDING;
@@ -92,7 +92,13 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorLightDataBuffer.descriptorCount = 1;
     layoutBindingDescriptorLightDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer, layoutBindingDescriptorLightDataBuffer };
+    VkDescriptorSetLayoutBinding layoutBindingDescriptorSphereDataBuffer{};
+    layoutBindingDescriptorSphereDataBuffer.binding         = SPHERE_BINDING;
+    layoutBindingDescriptorSphereDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingDescriptorSphereDataBuffer.descriptorCount = 1;
+    layoutBindingDescriptorSphereDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+
+    bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer, layoutBindingDescriptorLightDataBuffer, layoutBindingDescriptorSphereDataBuffer };
 
     pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -116,11 +122,14 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
     // shader stages
-    pRayGenShader     = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\raygen.rgen.spv");
-    pClosestHitShader = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHit.rchit.spv");
-    pMissShader       = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\miss.rmiss.spv");
+    pRayGenShader             = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\raygen.rgen.spv");
+    pClosestHitShader         = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHit.rchit.spv");
+    pSphereIntersectionShader = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\sphereIntersection.rint.spv");
+    pClosestHitSphereShader   = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHitSphere.rchit.spv");
+    pMissShader               = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\miss.rmiss.spv");
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { pRayGenShader->createShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_KHR), pClosestHitShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR),
+                                                       pClosestHitSphereShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR), pSphereIntersectionShader->createShaderStage(VK_SHADER_STAGE_INTERSECTION_BIT_KHR),
                                                        pMissShader->createShaderStage(VK_SHADER_STAGE_MISS_BIT_KHR) };
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupCreateInfos;
@@ -139,14 +148,23 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     rtShaderGroupCreateInfo.generalShader    = VK_SHADER_UNUSED_KHR;
     shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
 
-    rtShaderGroupCreateInfo.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-    rtShaderGroupCreateInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
-    rtShaderGroupCreateInfo.generalShader    = 2;
+    rtShaderGroupCreateInfo.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+    rtShaderGroupCreateInfo.closestHitShader = 2;
+    shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
+
+    rtShaderGroupCreateInfo.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+    rtShaderGroupCreateInfo.intersectionShader = 3;
+    rtShaderGroupCreateInfo.closestHitShader   = VK_SHADER_UNUSED_KHR;
+    shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
+
+    rtShaderGroupCreateInfo.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+    rtShaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
+    rtShaderGroupCreateInfo.generalShader      = 4;
     shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
 
     VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCreateInfo{};
     rayTracingPipelineCreateInfo.sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    rayTracingPipelineCreateInfo.stageCount                   = 3;
+    rayTracingPipelineCreateInfo.stageCount                   = 5;
     rayTracingPipelineCreateInfo.pStages                      = shaderStages;
     rayTracingPipelineCreateInfo.groupCount                   = static_cast<uint32>(shaderGroupCreateInfos.size());
     rayTracingPipelineCreateInfo.pGroups                      = shaderGroupCreateInfos.data();
@@ -284,7 +302,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_LOG_INFO("Created raytracing pipeline!");
 }
 
-void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<Light>>& lights, const std::vector<std::unique_ptr<ImageView>>& images, const std::vector<std::unique_ptr<Sampler>>& samplers)
+void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalDevice, const std::vector<std::unique_ptr<InstanceData>>& instances, const std::vector<Sphere>& spheres, const std::vector<std::unique_ptr<Material>>& materials, const std::vector<std::unique_ptr<Light>>& lights, const std::vector<std::unique_ptr<ImageView>>& images, const std::vector<std::unique_ptr<Sampler>>& samplers)
 {
     // FIXME: If we want to update that some time in the future we should not create the buffers each time :D
     // buffers
@@ -294,10 +312,13 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     mMaterialBuffersMapped.resize(mFramesInFlight);
     mLightBuffers.resize(mFramesInFlight);
     mLightBuffersMapped.resize(mFramesInFlight);
+    mSphereBuffers.resize(mFramesInFlight);
+    mSphereBuffersMapped.resize(mFramesInFlight);
 
-    uint32 bufferSizeI = sizeof(InstanceData) * instances.size();
-    uint32 bufferSizeM = sizeof(Material) * materials.size();
-    uint32 bufferSizeL = sizeof(Light) * lights.size();
+    uint32 bufferSizeI = std::max(sizeof(InstanceData) * instances.size(), static_cast<ptr_size>(4));
+    uint32 bufferSizeM = std::max(sizeof(Material) * materials.size(), static_cast<ptr_size>(4));
+    uint32 bufferSizeL = std::max(sizeof(Light) * lights.size(), static_cast<ptr_size>(4));
+    uint32 bufferSizeS = std::max(sizeof(Sphere) * spheres.size(), static_cast<ptr_size>(4));
 
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
@@ -307,14 +328,18 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
         mMaterialBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         mLightBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
         mLightBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        mSphereBuffers[i] = std::make_unique<Buffer>(logicalDevice, bufferSizeS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        mSphereBuffers[i]->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         const std::unique_ptr<DeviceMemory>& deviceMemoryI = mInstanceBuffers[i]->getDeviceMemory();
         const std::unique_ptr<DeviceMemory>& deviceMemoryM = mMaterialBuffers[i]->getDeviceMemory();
         const std::unique_ptr<DeviceMemory>& deviceMemoryL = mLightBuffers[i]->getDeviceMemory();
+        const std::unique_ptr<DeviceMemory>& deviceMemoryS = mSphereBuffers[i]->getDeviceMemory();
 
         mInstanceBuffersMapped[i] = deviceMemoryI->map(0, bufferSizeI); // persistent mapping
         mMaterialBuffersMapped[i] = deviceMemoryM->map(0, bufferSizeM); // persistent mapping
         mLightBuffersMapped[i]    = deviceMemoryL->map(0, bufferSizeL); // persistent mapping
+        mSphereBuffersMapped[i]   = deviceMemoryS->map(0, bufferSizeS); // persistent mapping
     }
 
     VkDescriptorImageInfo textureInfo{};
@@ -365,26 +390,38 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
     lightBufferWrite.descriptorCount = 1;
     lightBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
+    VkDescriptorBufferInfo sphereBufferInfo{};
+    sphereBufferInfo.offset = 0;
+    sphereBufferInfo.range  = bufferSizeS;
+
+    VkWriteDescriptorSet sphereBufferWrite{};
+    sphereBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    sphereBufferWrite.dstBinding      = SPHERE_BINDING;
+    sphereBufferWrite.descriptorCount = 1;
+    sphereBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
     for (ptr_size i = 0; i < mFramesInFlight; ++i)
     {
         textureWrite.dstSet = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
 
         for (ptr_size j = 0; j < instances.size(); ++j)
         {
-            InstanceData& deviceInstance = *(reinterpret_cast<InstanceData*>(mInstanceBuffersMapped[i]) + j);
-            deviceInstance               = *instances[j].get();
+            *(reinterpret_cast<InstanceData*>(mInstanceBuffersMapped[i]) + j) = *instances[j];
         }
 
         for (ptr_size j = 0; j < materials.size(); ++j)
         {
-            Material& deviceMaterial = *(reinterpret_cast<Material*>(mMaterialBuffersMapped[i]) + j);
-            deviceMaterial           = *materials[j].get();
+            *(reinterpret_cast<Material*>(mMaterialBuffersMapped[i]) + j) = *materials[j];
         }
 
         for (ptr_size j = 0; j < lights.size(); ++j)
         {
-            Light& deviceLight = *(reinterpret_cast<Light*>(mLightBuffersMapped[i]) + j);
-            deviceLight        = *lights[j].get();
+            *(reinterpret_cast<Light*>(mLightBuffersMapped[i]) + j) = *lights[j];
+        }
+
+        for (ptr_size j = 0; j < spheres.size(); ++j)
+        {
+            *(reinterpret_cast<Sphere*>(mSphereBuffersMapped[i]) + j) = spheres[j];
         }
 
         instanceBufferInfo.buffer       = mInstanceBuffers[i]->getVkBuffer();
@@ -399,7 +436,12 @@ void RaytracingPipeline::updateModelData(const std::unique_ptr<Device>& logicalD
         lightBufferWrite.pBufferInfo = &lightBufferInfo;
         lightBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
 
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite, lightBufferWrite };
+        sphereBufferInfo.buffer       = mSphereBuffers[i]->getVkBuffer();
+        sphereBufferWrite.pBufferInfo = &sphereBufferInfo;
+        sphereBufferWrite.dstSet      = pDescriptorSetsModel->operator[](static_cast<uint32>(i));
+
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { textureWrite, instanceBufferWrite, materialBufferWrite, lightBufferWrite, sphereBufferWrite };
+
         pDescriptorSetsModel->update(writeDescriptorSets);
     }
 }

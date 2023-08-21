@@ -689,11 +689,11 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             {
                 lightId                         = mitsubaEmitters[shape.emitter].lightId;
                 mLights[lightId]->triangleCount = primitiveCount;
-                mLights[lightId]->primitiveId   = meshId;
+                mLights[lightId]->meshId   = meshId;
                 mLights[lightId]->objectToWorld = shape.transformationMatrix;
             }
             mMaterials[materialId]->canUseUv = hasUVs;
-            pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
+            pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
         }
 
         meshId++;

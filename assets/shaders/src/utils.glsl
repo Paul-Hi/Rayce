@@ -26,7 +26,6 @@ float rand()
     return uintBitsToFloat(xorshift32() >> 9 | 0x3f800000) - 1.0;
 }
 
-
 void createTBN(in vec3 normal, in bool hasUV,
                 in vec3 dfd1, in vec3 dfd2,
                 in vec2 uvd1, in vec2 uvd2,

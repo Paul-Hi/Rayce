@@ -15,7 +15,7 @@ void main()
 {
     payload.hit = true;
     payload.hitPoint = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    payload.hitInfo.hitKind = hitKindTriangleMesh;
+    payload.hitInfo.hitKind = hitKindProceduralSphere;
     payload.hitInfo.primitiveId = gl_PrimitiveID;
     payload.hitInfo.instanceCustomIndex = gl_InstanceCustomIndexEXT;
     payload.hitInfo.hitAttributes = hitAttributes;

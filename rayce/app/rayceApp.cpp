@@ -155,6 +155,7 @@ void RayceApp::onFrameDraw()
     submitInfo.pSignalSemaphores      = signalSemaphores;
 
     RAYCE_CHECK_VK(vkQueueSubmit(pDevice->getVkGraphicsQueue(), 1, &submitInfo, inFlightFence->getVkFence()), "Submit to graphics queue failed!");
+    RAYCE_CHECK_VK(vkQueueWaitIdle(pDevice->getVkGraphicsQueue()), "vkQueueWaitIdle");
 
     pImguiInterface->platformWindows();
 

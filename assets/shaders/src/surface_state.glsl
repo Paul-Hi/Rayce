@@ -32,7 +32,7 @@ struct SurfaceState
 
 SurfaceState surfaceState;
 
-void populateSurfaceState(in Material material)
+void populateSurfaceStateTriangle(in Material material, in Tri triangle)
 {
     surfaceState.gNormal = vec3(0.0);
     surfaceState.normal = vec3(0.0);
@@ -45,26 +45,26 @@ void populateSurfaceState(in Material material)
     surfaceState.bsdf.diffuseReflectance = material.diffuseReflectance;
     if (material.diffuseReflectanceTexture >= 0)
     {
-        surfaceState.bsdf.diffuseReflectance = texture(textures[nonuniformEXT(material.diffuseReflectanceTexture)], pld.triangle.interpolatedUV).rgb;
+        surfaceState.bsdf.diffuseReflectance = texture(textures[nonuniformEXT(material.diffuseReflectanceTexture)], triangle.interpolatedUV).rgb;
     }
 
-    surfaceState.gNormal = pld.triangle.geometryNormal;
-    surfaceState.normal = pld.triangle.interpolatedNormal;
+    surfaceState.gNormal = triangle.geometryNormal;
+    surfaceState.normal = triangle.interpolatedNormal;
     createTBN(surfaceState.normal, (material.canUseUv == 1),
-                pld.triangle.dfd1, pld.triangle.dfd2,
-                pld.triangle.uvd1, pld.triangle.uvd2,
+                triangle.dfd1, triangle.dfd2,
+                triangle.uvd1, triangle.uvd2,
                 surfaceState.tangent, surfaceState.bitangent);
 
     /*
     if(material.normalTextureId >= 0)
     {
-        surfaceState.normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], pld.triangle.interpolatedUV).rgb * 2.0 - 1.0);
+        surfaceState.normal = normalize(texture(textures[nonuniformEXT(material.normalTextureId)], triangle.interpolatedUV).rgb * 2.0 - 1.0);
         surfaceState.normal = normalize(tangentToWorld(surfaceState.normal, surfaceState.tangent, surfaceState.bitangent, surfaceState.gNormal));
 
         // recompute tangent frame - does this make sense?
         createTBN(surfaceState.normal, material.hasUV == 1,
-                    pld.triangle.dfd1, pld.triangle.dfd2,
-                    pld.triangle.uvd1, pld.triangle.uvd2,
+                    triangle.dfd1, triangle.dfd2,
+                    triangle.uvd1, triangle.uvd2,
                     surfaceState.tangent, surfaceState.bitangent);
     }
     */
@@ -72,14 +72,14 @@ void populateSurfaceState(in Material material)
     surfaceState.bsdf.alpha = material.alpha;
     if (material.alphaTexture >= 0)
     {
-        surfaceState.bsdf.alpha = texture(textures[nonuniformEXT(material.alphaTexture)], pld.triangle.interpolatedUV).rg;
+        surfaceState.bsdf.alpha = texture(textures[nonuniformEXT(material.alphaTexture)], triangle.interpolatedUV).rg;
     }
 
     /*
     surfaceState.bsdf.emission = material.emissiveStrength * material.emissiveColor;
     if (material.emissiveTextureId >= 0)
     {
-        surfaceState.bsdf.emission *= material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], pld.triangle.interpolatedUV).rgb;
+        surfaceState.bsdf.emission *= material.emissiveStrength * texture(textures[nonuniformEXT(material.emissiveTextureId)], triangle.interpolatedUV).rgb;
     }
     */
 

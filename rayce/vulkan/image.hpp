@@ -47,6 +47,11 @@ namespace rayce
         template <class T>
         static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Image& dstImage, const T* data, uint32 size, VkExtent3D extent)
         {
+            if (size == 0)
+            {
+                return;
+            }
+
             std::unique_ptr<Buffer> stagingBuffer = std::make_unique<Buffer>(logicalDevice, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
             stagingBuffer->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             const std::unique_ptr<DeviceMemory>& deviceMemory = stagingBuffer->getDeviceMemory();
