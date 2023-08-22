@@ -84,7 +84,7 @@ bool sampleLights(in vec3 p, out LightSample lightSample)
     int lightIndex = int(rand() * lightCount);
 
     Light sampledLight = lights[lightIndex];
-
+/*
     if(sampledLight.type == area)
     {
         Indices indices = Indices(ref[sampledLight.meshId].indexReference);
@@ -152,7 +152,7 @@ bool sampleLights(in vec3 p, out LightSample lightSample)
 
         return true;
     }
-
+*/
     return false;
 };
 

@@ -43,19 +43,19 @@ namespace rayce
             return pShaderBindingTableBuffer;
         }
 
-        VkDeviceAddress getRayGenAddress() const
+        std::pair<VkDeviceAddress, uint32> getRayGenAddress() const
         {
-            return pShaderBindingTableBuffer->getDeviceAddress() + mRayGenOffset;
+            return {pShaderBindingTableBuffer->getDeviceAddress() + mRayGenOffset, mRayGenSize};
         }
 
-        VkDeviceAddress getClosestHitAddress() const
+        std::pair<VkDeviceAddress, uint32> getClosestHitAddress() const
         {
-            return pShaderBindingTableBuffer->getDeviceAddress() + mCHitOffset;
+            return {pShaderBindingTableBuffer->getDeviceAddress() + mCHitOffset, mCHitSize};
         }
 
-        VkDeviceAddress getMissAddress() const
+        std::pair<VkDeviceAddress, uint32> getMissAddress() const
         {
-            return pShaderBindingTableBuffer->getDeviceAddress() + mMissOffset;
+            return {pShaderBindingTableBuffer->getDeviceAddress() + mMissOffset, mMissSize};
         }
 
         uint32 getAlignedHandleSize() const
@@ -106,6 +106,9 @@ namespace rayce
         uint32 mRayGenOffset;
         uint32 mCHitOffset;
         uint32 mMissOffset;
+        uint32 mRayGenSize;
+        uint32 mCHitSize;
+        uint32 mMissSize;
 
         std::unique_ptr<class DescriptorPool> pDescriptorPool;
 

@@ -196,20 +196,24 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
     const uint32 alignedHandleSize = pRaytracingPipeline->getAlignedHandleSize();
 
+    const auto& [rayGenOffset, rayGenSize] = pRaytracingPipeline->getRayGenAddress();
+    const auto& [chitOffset, chitSize] = pRaytracingPipeline->getClosestHitAddress();
+    const auto& [missOffset, missSize] = pRaytracingPipeline->getMissAddress();
+
     VkStridedDeviceAddressRegionKHR raygenEntry{};
-    raygenEntry.deviceAddress = pRaytracingPipeline->getRayGenAddress();
+    raygenEntry.deviceAddress = rayGenOffset;
     raygenEntry.stride        = alignedHandleSize;
-    raygenEntry.size          = alignedHandleSize;
+    raygenEntry.size          = rayGenSize;
 
     VkStridedDeviceAddressRegionKHR hitEntry{};
-    hitEntry.deviceAddress = pRaytracingPipeline->getClosestHitAddress();
+    hitEntry.deviceAddress = chitOffset;
     hitEntry.stride        = alignedHandleSize;
-    hitEntry.size          = alignedHandleSize;
+    hitEntry.size          = chitSize;
 
     VkStridedDeviceAddressRegionKHR missEntry{};
-    missEntry.deviceAddress = pRaytracingPipeline->getMissAddress();
+    missEntry.deviceAddress = missOffset;
     missEntry.stride        = alignedHandleSize;
-    missEntry.size          = alignedHandleSize;
+    missEntry.size          = missSize;
 
     VkStridedDeviceAddressRegionKHR callableEntry{};
 

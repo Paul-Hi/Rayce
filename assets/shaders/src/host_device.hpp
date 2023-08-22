@@ -116,6 +116,11 @@ namespace rayce
 #define EBSDFType uint
 #endif
 
+    ENUM(EShapeType)
+        triangleMesh = 0,
+        sphere = 1
+    ENUM_END();
+
     ENUM(ELightType)
         area = 0,
         point = 1,
@@ -145,23 +150,18 @@ namespace rayce
         ELightType type;
 
         //  area light
-        uint meshId;
-        uint triangleCount;
+        uint sphereId;
         int radianceTexture;
+        int pad0;
         vec3 radiance;
-
-        uint pad;
-        mat4 objectToWorld;
+        int pad1;
 
 #ifdef __cplusplus
         Light()
         : type(ELightType::area)
-        , meshId(0)
-        , triangleCount(0)
-        , radiance(vec3(0.0, 0.0, 0.0))
+        , sphereId(0)
         , radianceTexture(-1)
-        , pad(0)
-        , objectToWorld(mat4::Identity())
+        , radiance(vec3(0.0, 0.0, 0.0))
         {}
 #endif
     };

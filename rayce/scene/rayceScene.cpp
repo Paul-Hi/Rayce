@@ -46,6 +46,7 @@ struct MitsubaEmitter
 
 struct MitsubaShape
 {
+    EShapeType type;
     str filename;
     mat4 transformationMatrix;
     MitsubaRef bsdf;
@@ -289,29 +290,34 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             auto pluginType = object->pluginType();
             mReflectionInfo.meshNames.push_back(object->id());
             mReflectionInfo.meshTriCounts.push_back(0);
-            if (pluginType == "rectangle")
-            {
-                shape.filename = fs::path(filename).parent_path().concat("\\rectangle.ply").string();
-            }
             if (pluginType == "sphere")
             {
-                shape.filename = fs::path(filename).parent_path().concat("\\sphere.ply").string();
+                shape.type = EShapeType::sphere;
             }
-            for (const auto& prop : object->properties())
+            else
             {
-                if (prop.first == "filename")
+                if (pluginType == "rectangle")
                 {
-                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string(); // FIXME: absolute? relative?
+                    shape.type     = EShapeType::triangleMesh;
+                    shape.filename = fs::path(filename).parent_path().concat("\\rectangle.ply").string();
                 }
-                else if (prop.first == "to_world")
+                for (const auto& prop : object->properties())
                 {
-                    const auto& transform      = prop.second.getTransform();
-                    shape.transformationMatrix = mat4::Identity();
-                    for (int i = 0; i < 4; i++)
+                    shape.type = EShapeType::triangleMesh;
+                    if (prop.first == "filename")
                     {
-                        for (int j = 0; j < 4; j++)
+                        shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string(); // FIXME: absolute? relative?
+                    }
+                    else if (prop.first == "to_world")
+                    {
+                        const auto& transform      = prop.second.getTransform();
+                        shape.transformationMatrix = mat4::Identity();
+                        for (int i = 0; i < 4; i++)
                         {
-                            shape.transformationMatrix(i, j) = transform(i, j);
+                            for (int j = 0; j < 4; j++)
+                            {
+                                shape.transformationMatrix(i, j) = transform(i, j);
+                            }
                         }
                     }
                 }
@@ -548,155 +554,175 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     }
 
     // shapes -> meshes
-    uint32 meshId = 0;
+    uint32 meshId   = 0;
+    uint32 sphereId = 0;
     for (auto& shape : mitsubaShapes)
     {
-        str ext = shape.filename.substr(shape.filename.find_last_of(".") + 1);
-
-        if (ext == "ply")
+        if (shape.type == EShapeType::triangleMesh)
         {
-            RAYCE_LOG_INFO("Loading: %s.", shape.filename.c_str());
-            miniply::PLYReader plyReader(shape.filename.c_str());
+            str ext = shape.filename.substr(shape.filename.find_last_of(".") + 1);
 
-            if (!plyReader.valid())
+            if (ext == "ply")
             {
-                RAYCE_LOG_ERROR("Can not load: %s!", shape.filename.c_str());
-                continue;
-            }
+                RAYCE_LOG_INFO("Loading: %s.", shape.filename.c_str());
+                miniply::PLYReader plyReader(shape.filename.c_str());
 
-            bool hasPositions = false, hasIndices = false, hasNormals = false, hasUVs = false;
-            uint32 positionIndices[3];
-            uint32 normalIndices[3];
-            uint32 uvIndices[2];
-            uint32 indexIndex;
-            std::vector<uint32> indices;
-            std::vector<vec3> positions;
-            std::vector<vec3> normals;
-            std::vector<vec2> uvs;
-
-            while (plyReader.has_element() && (!hasPositions || !hasIndices || !hasNormals || !hasUVs))
-            {
-                if (plyReader.element_is(miniply::kPLYVertexElement))
+                if (!plyReader.valid())
                 {
-                    if (!plyReader.load_element())
-                    {
-                        RAYCE_LOG_ERROR("Can not load index element. Canceling the loading process!");
-                        break;
-                    }
-
-                    if (!plyReader.find_pos(positionIndices))
-                    {
-                        RAYCE_LOG_ERROR("Can not find position properties. Canceling the loading process!");
-                        break;
-                    }
-
-                    hasPositions = true;
-                    positions.resize(plyReader.num_rows());
-                    plyReader.extract_properties(positionIndices, 3, miniply::PLYPropertyType::Float, positions.data());
-
-                    if (plyReader.find_normal(normalIndices))
-                    {
-                        hasNormals = true;
-                        normals.resize(plyReader.num_rows());
-                        plyReader.extract_properties(normalIndices, 3, miniply::PLYPropertyType::Float, normals.data());
-                    }
-
-                    if (plyReader.find_texcoord(uvIndices))
-                    {
-                        hasUVs = true;
-                        uvs.resize(plyReader.num_rows());
-                        plyReader.extract_properties(uvIndices, 2, miniply::PLYPropertyType::Float, uvs.data());
-                    }
+                    RAYCE_LOG_ERROR("Can not load: %s!", shape.filename.c_str());
+                    continue;
                 }
-                else if (!hasIndices && plyReader.element_is(miniply::kPLYFaceElement))
+
+                bool hasPositions = false, hasIndices = false, hasNormals = false, hasUVs = false;
+                uint32 positionIndices[3];
+                uint32 normalIndices[3];
+                uint32 uvIndices[2];
+                uint32 indexIndex;
+                std::vector<uint32> indices;
+                std::vector<vec3> positions;
+                std::vector<vec3> normals;
+                std::vector<vec2> uvs;
+
+                while (plyReader.has_element() && (!hasPositions || !hasIndices || !hasNormals || !hasUVs))
                 {
-                    if (!plyReader.load_element())
+                    if (plyReader.element_is(miniply::kPLYVertexElement))
                     {
-                        RAYCE_LOG_ERROR("Can not load face element. Canceling the loading process!");
-                        break;
-                    }
-
-                    if (!plyReader.find_indices(&indexIndex))
-                    {
-                        RAYCE_LOG_ERROR("Can not find index properties. Canceling the loading process!");
-                        break;
-                    }
-
-                    hasIndices = true;
-
-                    bool hasPolygons = plyReader.requires_triangulation(indexIndex);
-
-                    if (hasPolygons)
-                    {
-                        if (!hasPositions)
+                        if (!plyReader.load_element())
                         {
-                            RAYCE_LOG_ERROR("Can not triangulate before finding vertex data. Canceling the loading process!");
+                            RAYCE_LOG_ERROR("Can not load index element. Canceling the loading process!");
                             break;
                         }
-                        indices.resize(plyReader.num_triangles(indexIndex) * 3);
-                        plyReader.extract_triangles(indexIndex, reinterpret_cast<float*>(positions.data()), positions.size(), miniply::PLYPropertyType::Int, indices.data());
+
+                        if (!plyReader.find_pos(positionIndices))
+                        {
+                            RAYCE_LOG_ERROR("Can not find position properties. Canceling the loading process!");
+                            break;
+                        }
+
+                        hasPositions = true;
+                        positions.resize(plyReader.num_rows());
+                        plyReader.extract_properties(positionIndices, 3, miniply::PLYPropertyType::Float, positions.data());
+
+                        if (plyReader.find_normal(normalIndices))
+                        {
+                            hasNormals = true;
+                            normals.resize(plyReader.num_rows());
+                            plyReader.extract_properties(normalIndices, 3, miniply::PLYPropertyType::Float, normals.data());
+                        }
+
+                        if (plyReader.find_texcoord(uvIndices))
+                        {
+                            hasUVs = true;
+                            uvs.resize(plyReader.num_rows());
+                            plyReader.extract_properties(uvIndices, 2, miniply::PLYPropertyType::Float, uvs.data());
+                        }
                     }
-                    else
+                    else if (!hasIndices && plyReader.element_is(miniply::kPLYFaceElement))
                     {
-                        indices.resize(plyReader.num_rows() * 3);
-                        plyReader.extract_list_property(indexIndex, miniply::PLYPropertyType::Int, indices.data());
+                        if (!plyReader.load_element())
+                        {
+                            RAYCE_LOG_ERROR("Can not load face element. Canceling the loading process!");
+                            break;
+                        }
+
+                        if (!plyReader.find_indices(&indexIndex))
+                        {
+                            RAYCE_LOG_ERROR("Can not find index properties. Canceling the loading process!");
+                            break;
+                        }
+
+                        hasIndices = true;
+
+                        bool hasPolygons = plyReader.requires_triangulation(indexIndex);
+
+                        if (hasPolygons)
+                        {
+                            if (!hasPositions)
+                            {
+                                RAYCE_LOG_ERROR("Can not triangulate before finding vertex data. Canceling the loading process!");
+                                break;
+                            }
+                            indices.resize(plyReader.num_triangles(indexIndex) * 3);
+                            plyReader.extract_triangles(indexIndex, reinterpret_cast<float*>(positions.data()), positions.size(), miniply::PLYPropertyType::Int, indices.data());
+                        }
+                        else
+                        {
+                            indices.resize(plyReader.num_rows() * 3);
+                            plyReader.extract_list_property(indexIndex, miniply::PLYPropertyType::Int, indices.data());
+                        }
                     }
+
+                    plyReader.next_element();
                 }
 
-                plyReader.next_element();
+                if (!(hasPositions && hasIndices))
+                {
+                    RAYCE_LOG_ERROR("%s has no positions or indices!", shape.filename.c_str());
+                    continue;
+                }
+
+                std::vector<Vertex> vertices(positions.size());
+                for (ptr_size v = 0; v < positions.size(); ++v)
+                {
+                    Vertex vertex;
+
+                    vertex.position = positions[v];
+                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
+                    vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
+
+                    vertices[v] = vertex;
+                }
+
+                std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(logicalDevice, sizeof(Vertex) * vertices.size(),
+                                                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(logicalDevice, sizeof(uint32) * indices.size(),
+                                                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+                vertexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                indexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+                Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *vertexBuffer, vertices);
+                Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *indexBuffer, indices);
+
+                uint32 maxVertex      = static_cast<uint32>(vertices.size() - 1);
+                uint32 primitiveCount = static_cast<uint32>(indices.size() / 3);
+                mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
+
+                // materialId is filled before
+                uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
+                mMaterials[materialId]->canUseUv = hasUVs;
+                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
             }
 
-            if (!(hasPositions && hasIndices))
-            {
-                RAYCE_LOG_ERROR("%s has no positions or indices!", shape.filename.c_str());
-                continue;
-            }
-
-            std::vector<Vertex> vertices(positions.size());
-            for (ptr_size v = 0; v < positions.size(); ++v)
-            {
-                Vertex vertex;
-
-                vertex.position = positions[v];
-                vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
-                vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
-
-                vertices[v] = vertex;
-            }
-
-            std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(logicalDevice, sizeof(Vertex) * vertices.size(),
-                                                                            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                                                                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-            std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(logicalDevice, sizeof(uint32) * indices.size(),
-                                                                           VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                                                               VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-            vertexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-            indexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *vertexBuffer, vertices);
-            Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *indexBuffer, indices);
-
-            uint32 maxVertex      = static_cast<uint32>(vertices.size() - 1);
-            uint32 primitiveCount = static_cast<uint32>(indices.size() / 3);
-            mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
-
+            meshId++;
+        }
+        else if (shape.type == EShapeType::sphere)
+        {
+            // FIXME NEXT: Sphere transformation is wrong and we don't see the sphere either way.
+            std::unique_ptr<Sphere> sphere = std::make_unique<Sphere>();
+            sphere->center                 = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>();
+            sphere->radius                 = (shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).x();
+            RAYCE_LOG_INFO("Sphere Center: %f, %f, %f", sphere->center.x(), sphere->center.y(), sphere->center.z());
+            RAYCE_LOG_INFO("Sphere Radius: %f", sphere->radius);
+            std::unique_ptr<AxisAlignedBoundingBox> boundingBox = std::make_unique<AxisAlignedBoundingBox>();
+            boundingBox->minimum                                = sphere->center - vec3(sphere->radius, sphere->radius, sphere->radius);
+            boundingBox->maximum                                = sphere->center + vec3(sphere->radius, sphere->radius, sphere->radius);
             // materialId is filled before
             // lightId is filled before
             uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
             int32 lightId     = -1;
             if (shape.emitter >= 0)
             {
-                lightId                         = mitsubaEmitters[shape.emitter].lightId;
-                mLights[lightId]->triangleCount = primitiveCount;
-                mLights[lightId]->meshId   = meshId;
-                mLights[lightId]->objectToWorld = shape.transformationMatrix;
+                lightId                    = mitsubaEmitters[shape.emitter].lightId;
+                mLights[lightId]->sphereId = sphereId;
             }
-            mMaterials[materialId]->canUseUv = hasUVs;
-            pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
-        }
+            mMaterials[materialId]->canUseUv = false;
+            pGeometry->add(std::move(sphere), std::move(boundingBox), materialId, lightId, { mat4::Identity() });
 
-        meshId++;
+            sphereId++;
+        }
     }
 }
 
