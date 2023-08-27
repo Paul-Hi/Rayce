@@ -28,6 +28,14 @@ struct Tri
     int lightId;
 };
 
+struct Sph
+{
+    vec3 normal;
+
+    uint materialId;
+    int lightId;
+};
+
 uint hitKindTriangleMesh = 0;
 uint hitKindProceduralSphere = 1;
 

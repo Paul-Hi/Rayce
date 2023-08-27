@@ -96,7 +96,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorSphereDataBuffer.binding         = SPHERE_BINDING;
     layoutBindingDescriptorSphereDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorSphereDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorSphereDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+    layoutBindingDescriptorSphereDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
 
     bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer, layoutBindingDescriptorLightDataBuffer, layoutBindingDescriptorSphereDataBuffer };
 
@@ -185,32 +185,32 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     vkGetPhysicalDeviceFeatures2(logicalDevice->getVkPhysicalDevice(), &physicalDeviceFeatures2);
 
     // shader binding table
-    mAlignedHandleSize                  = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupHandleAlignment);
-    const uint32 baseAlignedHandleSize  = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
-    const uint32 groupCount             = rayTracingPipelineCreateInfo.groupCount;
-    const uint32 shaderBindingTableSize = groupCount * baseAlignedHandleSize;
-    mRayGenOffset                       = 0;
-    mCHitOffset                         = baseAlignedHandleSize;
-    mMissOffset                         = mCHitOffset + baseAlignedHandleSize * 2; // FIXME: This could be clearer
+    mAlignedHandleSize                       = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupHandleAlignment);
+    const uint32 raygenBaseAlignedHandleSize = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
+    const uint32 cHitBaseAlignedHandleSize   = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize * 2, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
+    const uint32 missBaseAlignedHandleSize   = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
+    const uint32 groupCount                  = rayTracingPipelineCreateInfo.groupCount;
+    mRayGenOffset                            = 0;
+    mCHitOffset                              = raygenBaseAlignedHandleSize;
+    mMissOffset                              = mCHitOffset + cHitBaseAlignedHandleSize; // FIXME: This could be clearer
     // intersection shders are not included here?!
-    mRayGenSize = mAlignedHandleSize * 1;
-    mCHitSize   = mAlignedHandleSize * 2;
-    mMissSize   = mAlignedHandleSize * 1;
+    mRayGenSize                         = mAlignedHandleSize * 1;
+    mCHitSize                           = mAlignedHandleSize * 2;
+    mMissSize                           = mAlignedHandleSize * 1;
 
+    const uint32 shaderBindingTableSize = raygenBaseAlignedHandleSize + cHitBaseAlignedHandleSize + missBaseAlignedHandleSize;
     pShaderBindingTableBuffer =
         std::make_unique<Buffer>(logicalDevice, shaderBindingTableSize, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     pShaderBindingTableBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    std::vector<byte> shaderHandleTempStorage(groupCount * mAlignedHandleSize);
+    std::vector<byte> shaderHandleTempStorage(shaderBindingTableSize);
     RAYCE_CHECK_VK(pRTF->vkGetRayTracingShaderGroupHandlesKHR(mVkLogicalDeviceRef, mVkPipeline, 0, groupCount, shaderBindingTableSize, shaderHandleTempStorage.data()),
                    "Getting ray tracing shader group handles failed!");
     byte* mappedMemory = static_cast<byte*>(pShaderBindingTableBuffer->getDeviceMemory()->map(0, shaderBindingTableSize));
     std::memcpy(mappedMemory, shaderHandleTempStorage.data(), mAlignedHandleSize);
-    mappedMemory += baseAlignedHandleSize;
-    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + mAlignedHandleSize, mAlignedHandleSize);
-    mappedMemory += baseAlignedHandleSize;
-    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + 2 * mAlignedHandleSize, mAlignedHandleSize);
-    mappedMemory += baseAlignedHandleSize;
+    mappedMemory += raygenBaseAlignedHandleSize;
+    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + mAlignedHandleSize, 2 * mAlignedHandleSize);
+    mappedMemory += cHitBaseAlignedHandleSize;
     std::memcpy(mappedMemory, shaderHandleTempStorage.data() + 3 * mAlignedHandleSize, mAlignedHandleSize);
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 

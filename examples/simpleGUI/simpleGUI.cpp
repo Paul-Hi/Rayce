@@ -116,8 +116,8 @@ bool SimpleGUI::onInitialize()
                 auto instance             = std::make_unique<InstanceData>();
                 instance->materialId      = sphere.materialId;
                 instance->lightId         = sphere.lightId;
-                instance->indexReference  = -1;
-                instance->vertexReference = -1;
+                instance->indexReference  = 0;
+                instance->vertexReference = 0;
                 instance->sphereId        = i;
                 mInstances.push_back(std::move(instance));
             }

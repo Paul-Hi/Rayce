@@ -294,30 +294,27 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             {
                 shape.type = EShapeType::sphere;
             }
-            else
+            if (pluginType == "rectangle")
             {
-                if (pluginType == "rectangle")
+                shape.type     = EShapeType::triangleMesh;
+                shape.filename = fs::path(filename).parent_path().concat("\\rectangle.ply").string();
+            }
+            for (const auto& prop : object->properties())
+            {
+                if (pluginType == "ply" && prop.first == "filename")
                 {
                     shape.type     = EShapeType::triangleMesh;
-                    shape.filename = fs::path(filename).parent_path().concat("\\rectangle.ply").string();
+                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string(); // FIXME: absolute? relative?
                 }
-                for (const auto& prop : object->properties())
+                else if (prop.first == "to_world")
                 {
-                    shape.type = EShapeType::triangleMesh;
-                    if (prop.first == "filename")
+                    const auto& transform      = prop.second.getTransform();
+                    shape.transformationMatrix = mat4::Identity();
+                    for (int i = 0; i < 4; i++)
                     {
-                        shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string(); // FIXME: absolute? relative?
-                    }
-                    else if (prop.first == "to_world")
-                    {
-                        const auto& transform      = prop.second.getTransform();
-                        shape.transformationMatrix = mat4::Identity();
-                        for (int i = 0; i < 4; i++)
+                        for (int j = 0; j < 4; j++)
                         {
-                            for (int j = 0; j < 4; j++)
-                            {
-                                shape.transformationMatrix(i, j) = transform(i, j);
-                            }
+                            shape.transformationMatrix(i, j) = transform(i, j);
                         }
                     }
                 }
@@ -700,10 +697,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         }
         else if (shape.type == EShapeType::sphere)
         {
-            // FIXME NEXT: Sphere transformation is wrong and we don't see the sphere either way.
             std::unique_ptr<Sphere> sphere = std::make_unique<Sphere>();
             sphere->center                 = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>();
-            sphere->radius                 = (shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).x();
+            sphere->radius                 = ((shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).head<3>() - sphere->center).x();
             RAYCE_LOG_INFO("Sphere Center: %f, %f, %f", sphere->center.x(), sphere->center.y(), sphere->center.z());
             RAYCE_LOG_INFO("Sphere Radius: %f", sphere->radius);
             std::unique_ptr<AxisAlignedBoundingBox> boundingBox = std::make_unique<AxisAlignedBoundingBox>();

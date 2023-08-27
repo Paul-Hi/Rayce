@@ -20,7 +20,7 @@
         <transform name="to_world">
             <rotate x="1" angle="-35" />
             <rotate y="1" angle="-45" />
-            <translate x="0" y="0.48" z="0" />
+            <translate x="0.5" y="0.47" z="0.5" />
         </transform>
         <ref id="red" />
     </shape>
@@ -32,6 +32,14 @@
         <emitter type="area">
             <rgb name="radiance" value="10.0 10.0 10.0" />
         </emitter>
+        <ref id="white" />
+    </shape>
+
+    <shape type="sphere">
+        <transform name="to_world">
+            <scale x="0.5" y="0.5" z="0.5" />
+            <translate x="-1" y="0.5" z="-0" />
+        </transform>
         <ref id="white" />
     </shape>
 </scene>

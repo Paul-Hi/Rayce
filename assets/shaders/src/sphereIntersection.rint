@@ -9,6 +9,8 @@
 
 layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
+hitAttributeEXT vec2 hitAttributes;
+
 float intersectSphere(const Sphere s, const vec3 origin, const vec3 direction)
 {
     vec3  d = origin - s.center;
@@ -30,12 +32,13 @@ void main()
 {
     Sphere sphere = spheres[gl_PrimitiveID];
 
-    float hitT    = -1;
+    float hitT    = -1.0;
     uint   hitKind = hitKindProceduralSphere; // FIXME: Always that atm.
 
     hitT = intersectSphere(sphere, gl_WorldRayOriginEXT, gl_WorldRayDirectionEXT);
-    if(hitT > 0)
+    if(hitT >= 0.0)
     {
+        hitAttributes = vec2(0.0);
         reportIntersectionEXT(hitT, hitKind);
     }
 }
