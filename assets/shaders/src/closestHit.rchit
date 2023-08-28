@@ -20,4 +20,5 @@ void main()
     payload.hitInfo.instanceCustomIndex = gl_InstanceCustomIndexEXT;
     payload.hitInfo.hitAttributes = hitAttributes;
     payload.hitInfo.worldToObject = gl_WorldToObjectEXT;
+    payload.hitInfo.objectToWorld = gl_ObjectToWorldEXT;
 }

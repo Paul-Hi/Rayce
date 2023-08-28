@@ -87,12 +87,11 @@ float sinPhi(const vec3 w) {return (sinTheta(w) == 0.0) ? 0.0 : clamp(w.y / sinT
 float cos2Phi(const vec3 w) {return cosPhi(w) * cosPhi(w);}
 float sin2Phi(const vec3 w) {return sinPhi(w) * sinPhi(w);}
 
-vec3 sampleSphereUniform(in Sphere sphere, out float pdf)
+vec3 sampleSphereUniform(in Sphere sphere)
 {
     float z = 1.0 - 2.0 * rand();
     float r = sqrt(max(0.0, 1.0 - z * z));
     float phi = TWO_PI * rand();
-    pdf = 2.0 * TWO_PI * sphere.radius * sphere.radius;
     return vec3(r * cos(phi), r * sin(phi), z);
 }
 
@@ -104,28 +103,30 @@ vec3 sampleSphereSolidAngle(in vec3 point, in Sphere sphere, out float pdf)
         vec3 wDx, wDy;
         createCoordinateSystem(wDir, wDx, wDy);
 
-        bool inside = dist <= sphere.radius;
+        bool inside = (dist <= sphere.radius);
         if(inside)
         {
-            return sampleSphereUniform(sphere, pdf);
+            pdf = 1.0 / (2.0 * TWO_PI * sphere.radius * sphere.radius);
+            vec3 samplePoint = sampleSphereUniform(sphere);
+            return sphere.center + samplePoint * sphere.radius;
         }
 
         // max cone angles
-        float sinThetaMax = sphere.radius / dist;
-        float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax * sinThetaMax));
+        float sinThetaMaxSqrd = sphere.radius * sphere.radius / (dist * dist);
+        float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
         pdf = 1.0 / (TWO_PI * (1.0 - cosThetaMax));
         // random in cone
         float rand0 = rand();
         float cosTheta = (1.0 - rand0) + rand0 * cosThetaMax;
-        float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+        float sinThetaSqrd = max(0.0, 1.0 - cosTheta * cosTheta);
         float phi = TWO_PI * rand();
         // project to sphere surface
-        float distSample = dist * cosTheta - sqrt(max(0.0, sphere.radius * sphere.radius - dist * dist * sinThetaMax * sinThetaMax));
-        float cosAlpha = (dist * dist + sphere.radius * sphere.radius - distSample * distSample) / (2.0 * dist * sphere.radius);
+        float cosAlpha = dist / sphere.radius * sinThetaSqrd + cosTheta * sqrt(max(0.0, 1.0 - dist * dist / (sphere.radius * sphere.radius) * sinThetaSqrd));
         float sinAlpha = sqrt(max(0.0, 1.0 - cosAlpha * cosAlpha));
-        vec3 samplePoint = sphere.radius * (sinTheta * cos(phi) * -wDx + sinTheta * sin(phi) * -wDy + cosTheta * -wDir);
+        vec3 samplePoint = vec3(sinAlpha * cos(phi), sinAlpha * sin(phi), cosAlpha);
+        samplePoint = tangentToWorld(samplePoint, -wDx, -wDy, -wDir);
 
-        return samplePoint;
+        return sphere.center + samplePoint * sphere.radius;
 }
 
 const float GAMMA     = 2.2;

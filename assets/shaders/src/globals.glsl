@@ -46,6 +46,7 @@ struct Hit
     uint instanceCustomIndex;
     vec2 hitAttributes;
     mat4x3 worldToObject;
+    mat4x3 objectToWorld;
 };
 
 struct RayPayload
