@@ -1,6 +1,8 @@
 #ifndef BSDF_GLSL
 #define BSDF_GLSL
 
+#include "random.glsl"
+
 float getLuminance(in vec3 baseColor)
 {
     // approximation
@@ -18,7 +20,6 @@ float Fresnel(in float F0, in float x)
 {
     return F0 + (1.0 - F0) * Schlick(x);
 }
-
 
 // Geometry Terms
 
@@ -58,6 +59,11 @@ vec3 evaluateBSDF()
     return surfaceState.bsdf.diffuseReflectance * INV_PI;
 }
 
+float pdfBSDF()
+{
+    return cosTheta(surfaceState.wi) / INV_PI;
+}
+
 bool sampleBSDF(out BSDFSample bsdfSample)
 {
     bsdfSample.pdf = 1.0;
@@ -70,7 +76,7 @@ bool sampleBSDF(out BSDFSample bsdfSample)
     surfaceState.wm = normalize(surfaceState.wi + surfaceState.wo);
 
     float nDotL = cosTheta(surfaceState.wi);
-    if(nDotL == 0.0)
+    if(nDotL <= 0.0)
     {
         bsdfSample.pdf = 0.0;
         bsdfSample.reflectance = vec3(0.0);

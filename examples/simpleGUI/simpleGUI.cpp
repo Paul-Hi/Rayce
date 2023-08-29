@@ -197,8 +197,8 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     const uint32 alignedHandleSize = pRaytracingPipeline->getAlignedHandleSize();
 
     const auto& [rayGenOffset, rayGenSize] = pRaytracingPipeline->getRayGenAddress();
-    const auto& [chitOffset, chitSize] = pRaytracingPipeline->getClosestHitAddress();
-    const auto& [missOffset, missSize] = pRaytracingPipeline->getMissAddress();
+    const auto& [chitOffset, chitSize]     = pRaytracingPipeline->getClosestHitAddress();
+    const auto& [missOffset, missSize]     = pRaytracingPipeline->getMissAddress();
 
     VkStridedDeviceAddressRegionKHR raygenEntry{};
     raygenEntry.deviceAddress = rayGenOffset;
@@ -274,6 +274,15 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         ImGui::Text("Average %.3f ms/frame", 1000.0 / fr);
         ImGui::End();
     }
+
+    if (!ImGui::Begin("RT Information", nullptr, 0))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::Text("Accumulated Frames: %d", mAccumulationFrame);
+
+    ImGui::End();
 }
 
 void SimpleGUI::recreateSwapchain()
