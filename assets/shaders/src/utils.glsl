@@ -1,6 +1,12 @@
 #ifndef UTILS_GLSL
 #define UTILS_GLSL
 
+float getLuminance(in vec3 baseColor)
+{
+    // approximation
+    return dot(vec3(0.3, 0.6, 1.0), baseColor);
+}
+
 void createCoordinateSystem(in vec3 normal, out vec3 tangent, out vec3 bitangent,
                             in bool hasUV,
                             in vec3 dfd1, in vec3 dfd2,

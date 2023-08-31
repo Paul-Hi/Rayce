@@ -137,16 +137,17 @@ vec3 tracePaths(in vec2 uv)
         if(pld.hit)
         {
             int lightId = -1;
+            Material material;
             if(pld.hitInfo.hitKind == hitKindTriangleMesh)
             {
                 Tri triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject);
-                Material material = materials[triangle.materialId];
+                material = materials[triangle.materialId];
                 populateSurfaceStateTriangle(material, triangle);
             }
             else if(pld.hitInfo.hitKind == hitKindProceduralSphere)
             {
                 Sph sphere = getSphere(pld.hitPoint, pld.hitInfo.instanceCustomIndex, pld.hitInfo.primitiveId);
-                Material material = materials[sphere.materialId];
+                material = materials[sphere.materialId];
                 populateSurfaceStateSphere(material, sphere);
                 lightId = sphere.lightId;
             }
@@ -164,12 +165,12 @@ vec3 tracePaths(in vec2 uv)
 
             if(sampleLights(origin.xyz, lightId, lightSample))
             {
-                float bsdfPdf = pdfBSDF();
+                float bsdfPdf = pdfBSDF(material);
                 float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                color += throughput * miWeight * evaluateBSDF() * lightSample.radiance / lightSample.pdf;
+                color += throughput * miWeight * evaluateBSDF(material) * lightSample.radiance / lightSample.pdf;
             }
 
-            if(!sampleBSDF(bsdfSample))
+            if(!sampleBSDF(material, bsdfSample))
             {
                 break;
             }

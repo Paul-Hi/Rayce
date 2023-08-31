@@ -3,12 +3,6 @@
 
 #include "random.glsl"
 
-float getLuminance(in vec3 baseColor)
-{
-    // approximation
-    return dot(vec3(0.3, 0.6, 1.0), baseColor);
-}
-
 float Schlick(in float x)
 {
     float m = clamp(1.0 - x, 0.0, 1.0);
@@ -51,39 +45,55 @@ vec3 sampleHemisphereCosine(inout float pdf)
     return vec3(x, y, z);
 }
 
-
-vec3 evaluateBSDF()
+vec3 evaluateLambert()
 {
-    // FIXME: Switch on type
-    // diffuse -> lambert
     return surfaceState.bsdf.diffuseReflectance * INV_PI;
 }
 
-float pdfBSDF()
+vec3 evaluateBSDF(in Material material)
 {
-    return cosTheta(surfaceState.wi) / INV_PI;
+    if(material.bsdfType == diffuse)
+    {
+       return evaluateLambert();
+    }
 }
 
-bool sampleBSDF(out BSDFSample bsdfSample)
+float pdfBSDF(in Material material)
+{
+    if(material.bsdfType == diffuse)
+    {
+        return cosTheta(surfaceState.wi) / INV_PI;
+    }
+    else if(material.bsdfType == smoothConductor)
+    {
+        return 0.0;
+    }
+}
+
+bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
 {
     bsdfSample.pdf = 1.0;
-    float sgn = sign(cosTheta(surfaceState.wo));
 
-    float u = rand();
-    float v = rand();
-
-    surfaceState.wi = sampleHemisphereCosine(bsdfSample.pdf);
-    surfaceState.wm = normalize(surfaceState.wi + surfaceState.wo);
-
-    float nDotL = cosTheta(surfaceState.wi);
-    if(nDotL <= 0.0)
+    if(material.bsdfType == diffuse)
     {
-        bsdfSample.pdf = 0.0;
-        bsdfSample.reflectance = vec3(0.0);
-        return false;
-    }
+        float sgn = sign(cosTheta(surfaceState.wo));
 
-    bsdfSample.reflectance = evaluateBSDF();
+        float u = rand();
+        float v = rand();
+
+        surfaceState.wi = sampleHemisphereCosine(bsdfSample.pdf);
+        surfaceState.wm = normalize(surfaceState.wi + surfaceState.wo);
+
+        float nDotL = cosTheta(surfaceState.wi);
+        if(nDotL <= 0.0)
+        {
+            bsdfSample.pdf = 0.0;
+            bsdfSample.reflectance = vec3(0.0);
+            return false;
+        }
+
+        bsdfSample.reflectance = evaluateLambert();
+    }
 
     return true;
 }
