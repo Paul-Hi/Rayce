@@ -108,7 +108,8 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
             accelerationStructureInstance.instanceCustomIndex                    = instance++;
             accelerationStructureInstance.mask                                   = 0xFF;
             accelerationStructureInstance.instanceShaderBindingTableRecordOffset = hitGroup;
-            accelerationStructureInstance.flags                                  = hitGroup == 1 ? VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR : 0;
+            // FIXME: We should distinguish between objects with twosided bsdfs and onesided ones...
+            accelerationStructureInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; //hitGroup == 1 ? VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR : 0;
             accelerationStructureInstance.accelerationStructureReference         = blasAddress;
             accelerationStructureInstances.push_back(accelerationStructureInstance);
         }

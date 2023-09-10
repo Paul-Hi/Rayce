@@ -84,8 +84,8 @@ void populateSurfaceStateTriangle(in Material material, in Tri triangle)
     */
 
     surfaceState.bsdf.twoSided = (material.twoSided == 1);
-    surfaceState.bsdf.interiorIor = material.interiorIor;
-    surfaceState.bsdf.exteriorIor = material.exteriorIor;
+    surfaceState.bsdf.interiorIor = triangle.inside ? material.exteriorIor : material.interiorIor;
+    surfaceState.bsdf.exteriorIor = triangle.inside ? material.interiorIor : material.exteriorIor;
     surfaceState.bsdf.specularReflectance = material.specularReflectance;
     surfaceState.bsdf.specularTransmittance = material.specularTransmittance;
     surfaceState.bsdf.complexIor = material.complexIor;
@@ -111,8 +111,8 @@ void populateSurfaceStateSphere(in Material material, in Sph sphere)
     surfaceState.bsdf.alpha = material.alpha;
 
     surfaceState.bsdf.twoSided = (material.twoSided == 1);
-    surfaceState.bsdf.interiorIor = material.interiorIor;
-    surfaceState.bsdf.exteriorIor = material.exteriorIor;
+    surfaceState.bsdf.interiorIor = sphere.inside ? material.exteriorIor : material.interiorIor;
+    surfaceState.bsdf.exteriorIor = sphere.inside ? material.interiorIor : material.exteriorIor;
     surfaceState.bsdf.specularReflectance = material.specularReflectance;
     surfaceState.bsdf.specularTransmittance = material.specularTransmittance;
     surfaceState.bsdf.complexIor = material.complexIor;

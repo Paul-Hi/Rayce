@@ -107,15 +107,15 @@ bool sampleLights(in vec3 p, in int pLightId, out LightSample lightSample)
         pld.hit = true;
         traceRayEXT(
             TLAS,
-            gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+            gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT, // FIXME: | gl_RayFlagsCullBackFacingTrianglesEXT,
             0xff,   // cullMask
             0,      // sbtRecordOffset
             0,      // sbtRecordStride
             0,      // missIndex
-            p,
+            p + surfaceState.normal * EPSILON,
             0.001,
             wDir,
-            pointDistance * 0.99,
+            (pointDistance - EPSILON) * 0.99,
             0       // payloadLocation
         );
 

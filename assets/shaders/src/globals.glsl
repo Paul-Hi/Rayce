@@ -4,7 +4,7 @@
 #include "host_device.hpp"
 
 #define INFINITY 1e32
-#define EPSILON 1e-9
+#define EPSILON 1e-6
 
 #define PI 3.1415926535897932384626433832795
 #define INV_PI (1.0 / PI)
@@ -26,6 +26,7 @@ struct Tri
 
     uint materialId;
     int lightId;
+    bool inside;
 };
 
 struct Sph
@@ -34,6 +35,7 @@ struct Sph
 
     uint materialId;
     int lightId;
+    bool inside;
 };
 
 uint hitKindTriangleMesh = 0;

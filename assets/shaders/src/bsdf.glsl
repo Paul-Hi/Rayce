@@ -15,6 +15,37 @@ float Fresnel(in float F0, in float x)
     return F0 + (1.0 - F0) * Schlick(x);
 }
 
+float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT)
+{
+    if(eta == 1.0)
+    {
+        cosThetaT = -cosThetaI;
+        return 0.0;
+    }
+
+    float scale = (cosThetaI > 0.0) ? 1.0 / eta : eta;
+    float cosThetaTSqrd = 1.0 - (1.0 - cosThetaI * cosThetaI) * (scale * scale);
+
+    // total internal reflection
+    if (cosThetaTSqrd <= 0.0)
+    {
+        cosThetaT = 0.0;
+        return 1.0;
+    }
+
+    float absCosThetaI = abs(cosThetaI);
+    cosThetaT = sqrt(cosThetaTSqrd);
+
+    float Rs = (absCosThetaI - eta * cosThetaT)
+             / (absCosThetaI + eta * cosThetaT);
+    float Rp = (eta * absCosThetaI - cosThetaT)
+             / (eta * absCosThetaI + cosThetaT);
+
+    cosThetaT = (cosThetaI > 0.0) ? -cosThetaT : cosThetaT;
+
+    return 0.5 * (Rs * Rs + Rp * Rp);
+}
+
 // Geometry Terms
 
 // clearcoat specular G term -> Basic Smith GGX Separable with fixed roughness of 0.25
@@ -56,6 +87,10 @@ vec3 evaluateBSDF(in Material material)
     {
        return evaluateLambert();
     }
+    else if(material.bsdfType == smoothDielectric)
+    {
+       return vec3(1.0, 0.0, 0.0); // FIXME: wrong, but should not happen
+    }
 }
 
 float pdfBSDF(in Material material)
@@ -64,9 +99,9 @@ float pdfBSDF(in Material material)
     {
         return cosTheta(surfaceState.wi) / INV_PI;
     }
-    else if(material.bsdfType == smoothConductor)
+    else if(material.bsdfType == smoothDielectric)
     {
-        return 0.0;
+        return 1.0; // FIXME: wrong, but should not happen
     }
 }
 
@@ -76,8 +111,6 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
 
     if(material.bsdfType == diffuse)
     {
-        float sgn = sign(cosTheta(surfaceState.wo));
-
         float u = rand();
         float v = rand();
 
@@ -93,6 +126,30 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
         }
 
         bsdfSample.reflectance = evaluateLambert();
+    }
+    else if(material.bsdfType == smoothDielectric)
+    {
+        // FIXME: Probably somethig wrong with FresnelDielectric and the transmission, reflection works - but the grazing angles are off.
+        float s = rand();
+        float cosThetaI = cosTheta(surfaceState.wo);
+        float eta = surfaceState.bsdf.interiorIor / surfaceState.bsdf.exteriorIor;
+        float cosThetaT;
+        float F = FresnelDielectric(cosThetaI, eta, cosThetaT);
+
+        if (s <= F)
+        {
+            surfaceState.wi = reflect(surfaceState.wo);
+            bsdfSample.pdf = F;
+
+            bsdfSample.reflectance = surfaceState.bsdf.specularReflectance;
+        }
+        else
+        {
+            surfaceState.wi = refract(surfaceState.wo, cosThetaT, eta);
+            bsdfSample.pdf = 1.0 - F;
+
+            bsdfSample.reflectance = surfaceState.bsdf.specularTransmittance;
+        }
     }
 
     return true;

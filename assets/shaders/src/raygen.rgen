@@ -40,7 +40,7 @@ layout(push_constant) uniform PushConstants {
 #include "bsdf.glsl"
 #include "sampling.glsl"
 
-Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttributes, mat4x3 worldToObject)
+Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttributes, mat4x3 worldToObject, vec3 viewPosition, vec3 hitPosition)
 {
     Tri tri;
     const uint triangleIndex = primitiveIndex * 3;
@@ -62,6 +62,7 @@ Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttribute
 
     tri.dfd1 = tri.vertices[1].position - tri.vertices[0].position;
     tri.dfd2 = tri.vertices[2].position - tri.vertices[0].position;
+
     tri.uvd1 = tri.vertices[1].uv - tri.vertices[0].uv;
     tri.uvd2 = tri.vertices[2].uv - tri.vertices[0].uv;
 
@@ -72,6 +73,14 @@ Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttribute
     );
     tri.geometryNormal = normalize(vec3(tri.geometryNormal * worldToObject));
 
+    tri.inside = false;
+    if(dot(normalize(hitPosition - viewPosition), tri.geometryNormal) > 0.0)
+    {
+        tri.inside = true;
+        tri.geometryNormal *= -1.0;
+        tri.interpolatedNormal *= -1.0;
+    }
+
     tri.materialId = ref[instanceCustomIndex].materialId;
 
     tri.lightId = ref[instanceCustomIndex].lightId;
@@ -79,7 +88,7 @@ Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttribute
     return tri;
 }
 
-Sph getSphere(vec3 hitPoint, uint instanceCustomIndex, uint primitiveIndex)
+Sph getSphere(vec3 hitPoint, uint instanceCustomIndex, uint primitiveIndex, vec2 hitAttributes)
 {
     Sph sphere;
 
@@ -87,7 +96,9 @@ Sph getSphere(vec3 hitPoint, uint instanceCustomIndex, uint primitiveIndex)
 
     Sphere pShere = spheres[sphereId];
 
-    sphere.normal = normalize(hitPoint - pShere.center);
+    sphere.normal = normalize(hitPoint - pShere.center) * hitAttributes.x;
+
+    sphere.inside = hitAttributes.x < 0.0;
 
     sphere.materialId = ref[instanceCustomIndex + primitiveIndex].materialId;
 
@@ -118,16 +129,18 @@ vec3 tracePaths(in vec2 uv)
     lightSample.pdf = 1.0;
     BSDFSample bsdfSample;
     bsdfSample.pdf = 1.0;
+    bool inside = false;
+    surfaceState.normal = vec3(0.0, 0.0, 0.0);
     for(uint depth = 0; depth < maxDepth; ++depth)
     {
         traceRayEXT(
             TLAS,
-            gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+            gl_RayFlagsOpaqueEXT, // FIXME: | gl_RayFlagsCullBackFacingTrianglesEXT,
             0xff,   // cullMask
             0,      // sbtRecordOffset
             0,      // sbtRecordStride
             0,      // missIndex
-            origin.xyz,
+            origin.xyz + surfaceState.normal * EPSILON, // This is required for i.e. curved diffuse surfaces like spheres interiors
             0.001,
             direction.xyz,
             1000.0,
@@ -140,13 +153,13 @@ vec3 tracePaths(in vec2 uv)
             Material material;
             if(pld.hitInfo.hitKind == hitKindTriangleMesh)
             {
-                Tri triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject);
+                Tri triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject, origin.xyz, pld.hitPoint);
                 material = materials[triangle.materialId];
                 populateSurfaceStateTriangle(material, triangle);
             }
             else if(pld.hitInfo.hitKind == hitKindProceduralSphere)
             {
-                Sph sphere = getSphere(pld.hitPoint, pld.hitInfo.instanceCustomIndex, pld.hitInfo.primitiveId);
+                Sph sphere = getSphere(pld.hitPoint, pld.hitInfo.instanceCustomIndex, pld.hitInfo.primitiveId, pld.hitInfo.hitAttributes);
                 material = materials[sphere.materialId];
                 populateSurfaceStateSphere(material, sphere);
                 lightId = sphere.lightId;
@@ -163,7 +176,7 @@ vec3 tracePaths(in vec2 uv)
             surfaceState.wo = worldToTangentFrame(-direction.xyz, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
             origin.xyz = pld.hitPoint;
 
-            if(sampleLights(origin.xyz, lightId, lightSample))
+            if(!hasDiracPdf(material) && sampleLights(origin.xyz, lightId, lightSample))
             {
                 float bsdfPdf = pdfBSDF(material);
                 float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);

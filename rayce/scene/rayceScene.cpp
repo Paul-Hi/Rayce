@@ -4,6 +4,8 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <functional>
 #include <host_device.hpp>
@@ -145,11 +147,69 @@ static ELightType lightFromPluginType(const str& pluginType)
     RAYCE_ASSERT(false, "Unknown BSDF Type");
 }
 
-static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad)
+struct IOREntry
+{
+    const char* name;
+    float value;
+};
+// from mitsuba
+static IOREntry iorData[] = {
+    { "vacuum", 1.0f },
+    { "helium", 1.000036f },
+    { "hydrogen", 1.000132f },
+    { "air", 1.000277f },
+    { "carbon dioxide", 1.00045f },
+    //////////////////////////////////////
+    { "water", 1.3330f },
+    { "acetone", 1.36f },
+    { "ethanol", 1.361f },
+    { "carbon tetrachloride", 1.461f },
+    { "glycerol", 1.4729f },
+    { "benzene", 1.501f },
+    { "silicone oil", 1.52045f },
+    { "bromine", 1.661f },
+    //////////////////////////////////////
+    { "water ice", 1.31f },
+    { "fused quartz", 1.458f },
+    { "pyrex", 1.470f },
+    { "acrylic glass", 1.49f },
+    { "polypropylene", 1.49f },
+    { "bk7", 1.5046f },
+    { "sodium chloride", 1.544f },
+    { "amber", 1.55f },
+    { "pet", 1.5750f },
+    { "diamond", 2.419f },
+
+    { NULL, 0.0f }
+};
+
+static float iorFromString(str materialName)
+{
+    std::transform(materialName.begin(), materialName.end(), materialName.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+
+    IOREntry* ior = iorData;
+
+    while (ior->name)
+    {
+        if (materialName == ior->name)
+            return ior->value;
+        ++ior;
+    }
+
+    RAYCE_LOG_ERROR("Can not find an IOR value for %s!", materialName.c_str());
+
+    return 0.0f;
+}
+
+static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
 {
     MitsubaBSDF bsdf;
-    bsdf.id   = bsdfObject->id();
-    bsdf.type = bsdfFromPluginType(bsdfObject->pluginType());
+    bsdf.id                    = bsdfObject->id();
+    bsdf.type                  = bsdfFromPluginType(bsdfObject->pluginType());
+    bsdf.possibleData.twoSided = twoSided;
+    bsdf.possibleData.bsdfType = bsdf.type;
 
     auto& props = bsdfObject->properties();
     switch (bsdf.type)
@@ -163,7 +223,14 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 continue;
             }
 
-            return loadMitsubaBSDF(bsdfChild, imagesToLoad);
+            auto inlineBSDF = loadMitsubaBSDF(bsdfChild, imagesToLoad, true);
+
+            if (inlineBSDF.id.empty())
+            {
+                inlineBSDF.id = bsdf.id;
+            }
+
+            return inlineBSDF;
         }
         break;
     }
@@ -195,6 +262,98 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                     if (textureProperty.first == "filename")
                     {
                         bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        break;
+    }
+    case EBSDFType::smoothDielectric:
+    {
+        if (props.contains("int_ior"))
+        {
+            auto interiorIor = props.at("int_ior");
+
+            if (interiorIor.type() == mp::PT_NUMBER) // <float></float>
+            {
+                bsdf.possibleData.interiorIor = interiorIor.getNumber();
+            }
+            if (interiorIor.type() == mp::PT_STRING) // <string></string>
+            {
+                bsdf.possibleData.interiorIor = iorFromString(interiorIor.getString());
+            }
+        }
+        if (props.contains("ext_ior"))
+        {
+            auto exteriorIor = props.at("ext_ior");
+
+            if (exteriorIor.type() == mp::PT_NUMBER) // <float></float>
+            {
+                bsdf.possibleData.exteriorIor = exteriorIor.getNumber();
+            }
+            if (exteriorIor.type() == mp::PT_STRING) // <string></string>
+            {
+                bsdf.possibleData.exteriorIor = iorFromString(exteriorIor.getString());
+            }
+        }
+        if (props.contains("specular_reflectance"))
+        {
+            auto specularReflectance = props.at("specular_reflectance");
+
+            if (specularReflectance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                               = specularReflectance.getColor();
+                bsdf.possibleData.specularReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        if (props.contains("specular_transmittance"))
+        {
+            auto specularTransmittance = props.at("specular_reflectance");
+
+            if (specularTransmittance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                                 = specularTransmittance.getColor();
+                bsdf.possibleData.specularTransmittance = vec3(c.r, c.g, c.b);
+            }
+            if (specularTransmittance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularTransmittanceTexture = imagesToLoad.size();
                         imagesToLoad.push_back(textureProperty.second.getString());
                     }
                 }
@@ -328,7 +487,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     if (mbsdf.id.empty())
                     {
-                        mbsdf.id = "inline_bsdf_" + inlineBSDFId++; // FIXME: potential collisions
+                        mbsdf.id = "inline_bsdf_" + std::to_string(inlineBSDFId++); // FIXME: potential collisions
                     }
 
                     shape.bsdf               = mbsdf.id;
@@ -380,6 +539,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     for (auto& [ref, bsdf] : mitsubaBSDFs)
     {
         RAYCE_LOG_INFO("Creating material from %s.", ref.c_str());
+        RAYCE_LOG_INFO("BSDF Type: %d", bsdf.type);
 
         switch (bsdf.type)
         {
@@ -405,6 +565,116 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.diffuseReflectanceTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = static_cast<uint32>(c);
+                uint32 imageSize  = width * height * components;
+
+                mImageCache[name]    = new byte[imageSize];
+                mImageCache[name][0] = 0;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages.back();
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers.push_back(std::move(defaultSampler));
+            }
+            break;
+        }
+        case EBSDFType::smoothDielectric:
+        {
+            if (bsdf.possibleData.specularReflectanceTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_specularReflectance";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.specularReflectanceTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = static_cast<uint32>(c);
+                uint32 imageSize  = width * height * components;
+
+                mImageCache[name]    = new byte[imageSize];
+                mImageCache[name][0] = 0;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages.back();
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers.push_back(std::move(defaultSampler));
+            }
+            if (bsdf.possibleData.specularTransmittanceTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_specularTransmittance";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.specularTransmittanceTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularTransmittanceTexture].c_str(), imageFile.c_str());
                     }
                 }
 
@@ -697,11 +967,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         }
         else if (shape.type == EShapeType::sphere)
         {
-            std::unique_ptr<Sphere> sphere = std::make_unique<Sphere>();
-            sphere->center                 = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>();
-            sphere->radius                 = ((shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).head<3>() - sphere->center).x();
-            RAYCE_LOG_INFO("Sphere Center: %f, %f, %f", sphere->center.x(), sphere->center.y(), sphere->center.z());
-            RAYCE_LOG_INFO("Sphere Radius: %f", sphere->radius);
+            std::unique_ptr<Sphere> sphere                      = std::make_unique<Sphere>();
+            sphere->center                                      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>();
+            sphere->radius                                      = ((shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).head<3>() - sphere->center).x();
             std::unique_ptr<AxisAlignedBoundingBox> boundingBox = std::make_unique<AxisAlignedBoundingBox>();
             boundingBox->minimum                                = sphere->center - vec3(sphere->radius, sphere->radius, sphere->radius);
             boundingBox->maximum                                = sphere->center + vec3(sphere->radius, sphere->radius, sphere->radius);
