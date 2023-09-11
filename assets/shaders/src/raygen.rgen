@@ -73,14 +73,6 @@ Tri getTriangle(uint primitiveIndex, uint instanceCustomIndex, vec2 hitAttribute
     );
     tri.geometryNormal = normalize(vec3(tri.geometryNormal * worldToObject));
 
-    tri.inside = false;
-    if(dot(normalize(hitPosition - viewPosition), tri.geometryNormal) > 0.0)
-    {
-        tri.inside = true;
-        tri.geometryNormal *= -1.0;
-        tri.interpolatedNormal *= -1.0;
-    }
-
     tri.materialId = ref[instanceCustomIndex].materialId;
 
     tri.lightId = ref[instanceCustomIndex].lightId;
@@ -96,9 +88,7 @@ Sph getSphere(vec3 hitPoint, uint instanceCustomIndex, uint primitiveIndex, vec2
 
     Sphere pShere = spheres[sphereId];
 
-    sphere.normal = normalize(hitPoint - pShere.center) * hitAttributes.x;
-
-    sphere.inside = hitAttributes.x < 0.0;
+    sphere.normal = normalize(hitPoint - pShere.center);
 
     sphere.materialId = ref[instanceCustomIndex + primitiveIndex].materialId;
 
@@ -192,7 +182,7 @@ vec3 tracePaths(in vec2 uv)
 
             float nDotL = cosTheta(surfaceState.wi);
 
-            throughput *= bsdfSample.reflectance * nDotL / bsdfSample.pdf;
+            throughput *= bsdfSample.reflectance * abs(nDotL) / bsdfSample.pdf;
 
             // russian roulette
             if (depth >= russianRouletteStart)

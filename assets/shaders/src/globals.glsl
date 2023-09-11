@@ -26,7 +26,6 @@ struct Tri
 
     uint materialId;
     int lightId;
-    bool inside;
 };
 
 struct Sph
@@ -35,7 +34,6 @@ struct Sph
 
     uint materialId;
     int lightId;
-    bool inside;
 };
 
 uint hitKindTriangleMesh = 0;

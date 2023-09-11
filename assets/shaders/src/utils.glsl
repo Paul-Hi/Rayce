@@ -84,7 +84,7 @@ float sin2Phi(in const vec3 w) { return sinPhi(w) * sinPhi(w); }
 vec3 reflect(in const vec3 w) { return vec3(-w.x, -w.y, w.z); }
 vec3 refract(in const vec3 w, in float cosThetaT, in float eta)
 {
-    float scale = -(cosThetaT < 0.0 ? 1.0 / eta : eta);
+    float scale = -(cosThetaT > 0.0 ? 1.0 / eta : eta);
     return vec3(scale * w.x, scale * w.y, cosThetaT);
 }
 
