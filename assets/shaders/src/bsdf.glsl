@@ -192,7 +192,7 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
         float s = rand();
         float cosThetaI = cosThetaTS(surfaceState.wo);
         float eta = surfaceState.bsdf.interiorIor / surfaceState.bsdf.exteriorIor;
-        float F = FresnelDielectric(cosThetaI, eta);
+        float F = FresnelDielectric(abs(cosThetaI), eta);
         // Account for internal reflections
         F *= 2.0 / (1.0 + F);
 

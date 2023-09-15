@@ -28,6 +28,7 @@ namespace rayce
         std::unique_ptr<class RayceScene> pScene;
         std::unique_ptr<class Camera> pCamera;
         int32 mAccumulationFrame;
+        int32 mMaxSamples;
 
         std::vector<class Sphere> mSpheres;
         std::unique_ptr<class Buffer> mAABBBuffer;

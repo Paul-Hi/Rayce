@@ -15,6 +15,7 @@ using namespace rayce;
 SimpleGUI::SimpleGUI(const RayceOptions& options)
     : RayceApp::RayceApp(options)
 {
+    mMaxSamples = 8192;
 }
 
 bool SimpleGUI::onInitialize()
@@ -180,6 +181,11 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
     RayceApp::onRender(commandBuffer, imageIndex);
 
+    if(mAccumulationFrame >= mMaxSamples)
+    {
+        return;
+    }
+
     // raytracing
     VkImageSubresourceRange subresourceRange{};
     subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -275,12 +281,15 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         ImGui::End();
     }
 
-    if (!ImGui::Begin("RT Information", nullptr, 0))
+    if (!ImGui::Begin("Raytracing", nullptr, 0))
     {
         ImGui::End();
         return;
     }
+
     ImGui::Text("Accumulated Frames: %d", mAccumulationFrame);
+    ImGui::Separator();
+    ImGui::SliderInt("Max. Samples", &mMaxSamples, 4, 65536);
 
     ImGui::End();
 }
@@ -288,6 +297,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
 void SimpleGUI::recreateSwapchain()
 {
     RayceApp::recreateSwapchain();
+
+    mAccumulationFrame = 0;
 
     auto& swapchain   = getSwapchain();
     auto& device      = getDevice();
