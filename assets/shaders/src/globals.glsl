@@ -60,6 +60,7 @@ struct BSDFSample
 {
     vec3 reflectance;
     float pdf;
+    bool dirac;
 };
 
 struct LightSample

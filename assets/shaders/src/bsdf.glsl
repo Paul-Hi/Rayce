@@ -15,16 +15,18 @@ float Fresnel(in float F0, in float x)
     return F0 + (1.0 - F0) * Schlick(x);
 }
 
-float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT)
+float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT, out float etaIT, out float etaTI)
 {
+    etaIT = (cosThetaI < 0.0) ? 1.0 / eta : eta;
+    etaTI = (cosThetaI < 0.0) ? eta : 1.0 / eta;
+
     if(eta == 1.0)
     {
         cosThetaT = -cosThetaI;
         return 0.0;
     }
 
-    float scale = (cosThetaI < 0.0) ? 1.0 / eta : eta;
-    float cosThetaTSqrd = 1.0 - (1.0 - cosThetaI * cosThetaI) * (scale * scale);
+    float cosThetaTSqrd = fnma(fnma(cosThetaI, cosThetaI, 1.0), etaTI * etaTI, 1.0);
 
     // total internal reflection
     if (cosThetaTSqrd <= 0.0)
@@ -36,10 +38,10 @@ float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT)
     float absCosThetaI = abs(cosThetaI);
     cosThetaT = sqrt(cosThetaTSqrd);
 
-    float Rs = (absCosThetaI - eta * cosThetaT) / (absCosThetaI + eta * cosThetaT);
-    float Rp = (eta * absCosThetaI - cosThetaT) / (eta * absCosThetaI + cosThetaT);
+    float Rs = fnma(etaIT, cosThetaT, absCosThetaI) /  fma(etaIT, cosThetaT, absCosThetaI);
+    float Rp =  fnma(etaIT, absCosThetaI, cosThetaT) /  fma(etaIT, absCosThetaI, cosThetaT);
 
-    cosThetaT = (cosThetaI < 0.0) ? -cosThetaT : cosThetaT;
+    cosThetaT = (cosThetaI > 0.0) ? -cosThetaT : cosThetaT;
 
     return 0.5 * (Rs * Rs + Rp * Rp);
 }
@@ -52,7 +54,7 @@ float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT)
 float GSmithSeparableGGX(in vec3 w, in float alpha)
 {
     float aSqrd = alpha * alpha;
-    float tanThetaSqrd = tan2Theta(w);
+    float tanThetaSqrd = tan2ThetaTS(w);
     return 2.0 / (1.0 + sqrt(1.0 + aSqrd * tanThetaSqrd));
 }
 
@@ -83,7 +85,7 @@ vec3 evaluateBSDF(in Material material)
 {
     if(material.bsdfType == diffuse)
     {
-        float nDotV = cosTheta(surfaceState.wo);
+        float nDotV = cosThetaTS(surfaceState.wo);
         if(nDotV <= 0.0)
         {
             return vec3(0.0, 0.0, 0.0);
@@ -100,12 +102,12 @@ float pdfBSDF(in Material material)
 {
     if(material.bsdfType == diffuse)
     {
-        float nDotV = cosTheta(surfaceState.wo);
+        float nDotV = cosThetaTS(surfaceState.wo);
         if(nDotV <= 0.0)
         {
             return 0.0;
         }
-        return cosTheta(surfaceState.wi) / INV_PI;
+        return cosThetaTS(surfaceState.wi) / INV_PI;
     }
     else if(material.bsdfType == smoothDielectric)
     {
@@ -119,7 +121,8 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
 
     if(material.bsdfType == diffuse)
     {
-        float nDotV = cosTheta(surfaceState.wo);
+        bsdfSample.dirac = false;
+        float nDotV = cosThetaTS(surfaceState.wo);
         if(nDotV <= 0.0)
         {
             bsdfSample.pdf = 0.0;
@@ -133,7 +136,7 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
         surfaceState.wi = sampleHemisphereCosine(bsdfSample.pdf);
         surfaceState.wm = normalize(surfaceState.wi + surfaceState.wo);
 
-        float nDotL = cosTheta(surfaceState.wi);
+        float nDotL = cosThetaTS(surfaceState.wi);
         if(nDotL <= 0.0)
         {
             bsdfSample.pdf = 0.0;
@@ -145,27 +148,28 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
     }
     else if(material.bsdfType == smoothDielectric)
     {
-        // FIXME: Air - air interface darkens emitters?
-        // FIXME: Strange 'bubble' for air - diamond or air water ...
+        bsdfSample.dirac = true;
+
+        // FIXME: Strange 'bubble'
         float s = rand();
-        float cosThetaI = cosTheta(surfaceState.wo);
+        float cosThetaI = cosThetaTS(surfaceState.wo);
         float eta = surfaceState.bsdf.interiorIor / surfaceState.bsdf.exteriorIor;
-        float cosThetaT;
-        float F = FresnelDielectric(cosThetaI, eta, cosThetaT);
+        float cosThetaT, etaIT, etaTI;
+        float F = FresnelDielectric(cosThetaI, eta, cosThetaT, etaIT, etaTI);
 
         if (s <= F)
         {
-            surfaceState.wi = reflect(surfaceState.wo);
+            surfaceState.wi = reflectTS(surfaceState.wo);
             bsdfSample.pdf = F;
 
-            bsdfSample.reflectance = surfaceState.bsdf.specularReflectance / abs(cosTheta(surfaceState.wi));
+            bsdfSample.reflectance = surfaceState.bsdf.specularReflectance / abs(cosThetaTS(surfaceState.wi));
         }
         else
         {
-            surfaceState.wi = refract(surfaceState.wo, cosThetaT, eta);
+            surfaceState.wi = refractTS(surfaceState.wo, cosThetaT, etaTI);
             bsdfSample.pdf = 1.0 - F;
 
-            bsdfSample.reflectance = surfaceState.bsdf.specularTransmittance / abs(cosTheta(surfaceState.wi));
+            bsdfSample.reflectance = etaTI * etaTI * surfaceState.bsdf.specularTransmittance / abs(cosThetaTS(surfaceState.wi));
         }
     }
 

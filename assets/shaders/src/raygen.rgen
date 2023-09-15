@@ -121,6 +121,7 @@ vec3 tracePaths(in vec2 uv)
     bsdfSample.pdf = 1.0;
     bool inside = false;
     surfaceState.normal = vec3(0.0, 0.0, 0.0);
+
     for(uint depth = 0; depth < maxDepth; ++depth)
     {
         traceRayEXT(
@@ -157,7 +158,7 @@ vec3 tracePaths(in vec2 uv)
 
             if(lightId >= 0)
             {
-                float lightPdf = depth == 0 ? 1.0 : pdfLight(lightId, origin.xyz);
+                float lightPdf = (depth == 0 || bsdfSample.dirac) ? 1.0 : pdfLight(lightId, origin.xyz);
                 float miWeight = powerHeuristic(bsdfSample.pdf, lightPdf);
 
                 color += throughput * miWeight * lights[lightId].radiance;
@@ -180,7 +181,7 @@ vec3 tracePaths(in vec2 uv)
 
             direction.xyz = tangentToWorld(surfaceState.wi, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
 
-            float nDotL = cosTheta(surfaceState.wi);
+            float nDotL = cosThetaTS(surfaceState.wi);
 
             throughput *= bsdfSample.reflectance * abs(nDotL) / bsdfSample.pdf;
 

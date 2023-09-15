@@ -47,6 +47,17 @@ float powerHeuristic(in float fPdf, in float gPdf) {
     return fPdf / (fPdf + gPdf);
 }
 
+#define FNMA_T(genDType)                          \
+genDType fnma(genDType a, genDType b, genDType c) \
+{                                                 \
+    return fma(-a, b, c);                         \
+}
+
+FNMA_T(float)
+FNMA_T(vec2)
+FNMA_T(vec3)
+FNMA_T(vec4)
+
 vec3 tangentToWorld(in vec3 p, in vec3 tangent, in vec3 bitangent, in vec3 normal)
 {
     return fma(vec3(p.x), tangent, fma(vec3(p.y), bitangent, p.z * normal));
@@ -70,22 +81,21 @@ bool hasDiracPdf(in Material material)
 }
 
 // tangent space trigonometry
-float cosTheta(in const vec3 w) { return w.z; }
-float cos2Theta(in const vec3 w) { return w.z * w.z; }
-float sin2Theta(in const vec3 w) { return max(0.0, 1.0 - cos2Theta(w)); }
-float sinTheta(in const vec3 w) { return sqrt(sin2Theta(w)); }
-float tanTheta(in const vec3 w) { return sinTheta(w) / cosTheta(w); }
-float tan2Theta(in const vec3 w) { return sin2Theta(w) / cos2Theta(w); }
-float cosPhi(in const vec3 w) { return (sinTheta(w) == 0.0) ? 1.0 : clamp(w.x / sinTheta(w), -1.0, 1.0); }
-float sinPhi(in const vec3 w) { return (sinTheta(w) == 0.0) ? 0.0 : clamp(w.y / sinTheta(w), -1.0, 1.0); }
-float cos2Phi(in const vec3 w) { return cosPhi(w) * cosPhi(w); }
-float sin2Phi(in const vec3 w) { return sinPhi(w) * sinPhi(w); }
+float cosThetaTS(in const vec3 w) { return w.z; }
+float cos2ThetaTS(in const vec3 w) { return w.z * w.z; }
+float sin2ThetaTS(in const vec3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
+float sinThetaTS(in const vec3 w) { return sqrt(sin2ThetaTS(w)); }
+float tanThetaTS(in const vec3 w) { return sinThetaTS(w) / cosThetaTS(w); }
+float tan2ThetaTS(in const vec3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
+float cosPhiTS(in const vec3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
+float sinPhiTS(in const vec3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
+float cos2PhiTS(in const vec3 w) { return cosPhiTS(w) * cosPhiTS(w); }
+float sin2PhiTS(in const vec3 w) { return sinPhiTS(w) * sinPhiTS(w); }
 
-vec3 reflect(in const vec3 w) { return vec3(-w.x, -w.y, w.z); }
-vec3 refract(in const vec3 w, in float cosThetaT, in float eta)
+vec3 reflectTS(in const vec3 w) { return vec3(-w.x, -w.y, w.z); }
+vec3 refractTS(in const vec3 w, in float cosThetaT, in float etaTI)
 {
-    float scale = -(cosThetaT > 0.0 ? 1.0 / eta : eta);
-    return vec3(scale * w.x, scale * w.y, cosThetaT);
+    return vec3(-etaTI * w.x, -etaTI * w.y, cosThetaT);
 }
 
 const float GAMMA     = 2.2;

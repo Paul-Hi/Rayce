@@ -97,7 +97,7 @@ bool sampleLights(in vec3 p, in int pLightId, out LightSample lightSample)
         wDir = normalize(wDir);
 
         surfaceState.wi = worldToTangentFrame(wDir, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
-        float nDotL = cosTheta(surfaceState.wi);
+        float nDotL = cosThetaTS(surfaceState.wi);
 
         if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
         {
