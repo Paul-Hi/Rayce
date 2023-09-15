@@ -15,6 +15,10 @@
         <rgb name="reflectance" value="0.2, 0.2, 0.8" />
     </bsdf>
 
+    <bsdf type="diffuse" id="red">
+        <rgb name="reflectance" value="0.8, 0.2, 0.2" />
+    </bsdf>
+
     <bsdf type="diffuse" id="light">
         <rgb name="reflectance" value="0.1, 0.1, 0.1" />
     </bsdf>
@@ -50,5 +54,13 @@
             <translate x="-1" y="0.5" z="-0" />
         </transform>
         <ref id="blue" />
+    </shape>
+
+    <shape type="sphere">
+        <transform name="to_world">
+            <scale x="0.75" y="0.75" z="0.75" />
+            <translate x="1" y="0.75" z="-1" />
+        </transform>
+        <ref id="red" />
     </shape>
 </scene>

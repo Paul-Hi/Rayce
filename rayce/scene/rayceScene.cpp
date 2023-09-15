@@ -270,6 +270,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         break;
     }
     case EBSDFType::smoothDielectric:
+    case EBSDFType::smoothDielectricThin:
     {
         if (props.contains("int_ior"))
         {
@@ -601,6 +602,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             break;
         }
         case EBSDFType::smoothDielectric:
+        case EBSDFType::smoothDielectricThin:
         {
             if (bsdf.possibleData.specularReflectanceTexture >= 0)
             {

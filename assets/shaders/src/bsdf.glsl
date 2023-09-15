@@ -46,6 +46,12 @@ float FresnelDielectric(in float cosThetaI, in float eta, out float cosThetaT, o
     return 0.5 * (Rs * Rs + Rp * Rp);
 }
 
+float FresnelDielectric(in float cosThetaI, in float eta)
+{
+    float _ct, _eit, _eti;
+    return FresnelDielectric(cosThetaI, eta, _ct, _eit, _eti);
+}
+
 // Geometry Terms
 
 // clearcoat specular G term -> Basic Smith GGX Separable with fixed roughness of 0.25
@@ -96,6 +102,10 @@ vec3 evaluateBSDF(in Material material)
     {
        return vec3(0.0, 0.0, 0.0); // FIXME: wrong, but should not happen
     }
+    else if(material.bsdfType == smoothDielectricThin)
+    {
+       return vec3(0.0, 0.0, 0.0); // FIXME: wrong, but should not happen
+    }
 }
 
 float pdfBSDF(in Material material)
@@ -110,6 +120,10 @@ float pdfBSDF(in Material material)
         return cosThetaTS(surfaceState.wi) / INV_PI;
     }
     else if(material.bsdfType == smoothDielectric)
+    {
+        return 0.0; // FIXME: wrong, but should not happen
+    }
+    else if(material.bsdfType == smoothDielectricThin)
     {
         return 0.0; // FIXME: wrong, but should not happen
     }
@@ -150,7 +164,6 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
     {
         bsdfSample.dirac = true;
 
-        // FIXME: Strange 'bubble'
         float s = rand();
         float cosThetaI = cosThetaTS(surfaceState.wo);
         float eta = surfaceState.bsdf.interiorIor / surfaceState.bsdf.exteriorIor;
@@ -170,6 +183,32 @@ bool sampleBSDF(in Material material, out BSDFSample bsdfSample)
             bsdfSample.pdf = 1.0 - F;
 
             bsdfSample.reflectance = etaTI * etaTI * surfaceState.bsdf.specularTransmittance / abs(cosThetaTS(surfaceState.wi));
+        }
+    }
+    else if(material.bsdfType == smoothDielectricThin)
+    {
+        bsdfSample.dirac = true;
+
+        float s = rand();
+        float cosThetaI = cosThetaTS(surfaceState.wo);
+        float eta = surfaceState.bsdf.interiorIor / surfaceState.bsdf.exteriorIor;
+        float F = FresnelDielectric(cosThetaI, eta);
+        // Account for internal reflections
+        F *= 2.0 / (1.0 + F);
+
+        if (s <= F)
+        {
+            surfaceState.wi = reflectTS(surfaceState.wo);
+            bsdfSample.pdf = F;
+
+            bsdfSample.reflectance = surfaceState.bsdf.specularReflectance / abs(cosThetaTS(surfaceState.wi));
+        }
+        else
+        {
+            surfaceState.wi = -surfaceState.wo;
+            bsdfSample.pdf = 1.0 - F;
+
+            bsdfSample.reflectance = surfaceState.bsdf.specularTransmittance / abs(cosThetaTS(surfaceState.wi));
         }
     }
 
