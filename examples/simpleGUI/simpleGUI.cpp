@@ -142,7 +142,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(0.0f, 1.0f, 8.0f), vec3(0.0f, 0.5f, 0.0f), getInput());
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
 
     mAccumulationFrame = 0;
 

@@ -51,15 +51,6 @@
         <ref id="light_gray" />
     </shape>
 
-    <shape type="rectangle" id="front">
-        <transform name="to_world">
-            <scale x="1" z="1" />
-            <rotate x="1" angle="-90" />
-            <translate x="-1" y="1" z="2" />
-        </transform>
-        <ref id="acrylic glass" />
-    </shape>
-
     <shape type="rectangle" id="left">
         <transform name="to_world">
             <scale x="2" z="2" />

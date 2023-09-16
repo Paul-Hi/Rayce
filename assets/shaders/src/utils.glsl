@@ -47,10 +47,10 @@ float powerHeuristic(in float fPdf, in float gPdf) {
     return fPdf / (fPdf + gPdf);
 }
 
-#define FNMA_T(genDType)                          \
-genDType fnma(genDType a, genDType b, genDType c) \
-{                                                 \
-    return fma(-a, b, c);                         \
+#define FNMA_T(genDType)                                   \
+genDType fnma(in genDType a, in genDType b, in genDType c) \
+{                                                          \
+    return fma(-a, b, c);                                  \
 }
 
 FNMA_T(float)
@@ -81,19 +81,19 @@ bool hasDiracPdf(in Material material)
 }
 
 // tangent space trigonometry
-float cosThetaTS(in const vec3 w) { return w.z; }
-float cos2ThetaTS(in const vec3 w) { return w.z * w.z; }
-float sin2ThetaTS(in const vec3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
-float sinThetaTS(in const vec3 w) { return sqrt(sin2ThetaTS(w)); }
-float tanThetaTS(in const vec3 w) { return sinThetaTS(w) / cosThetaTS(w); }
-float tan2ThetaTS(in const vec3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
-float cosPhiTS(in const vec3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
-float sinPhiTS(in const vec3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
-float cos2PhiTS(in const vec3 w) { return cosPhiTS(w) * cosPhiTS(w); }
-float sin2PhiTS(in const vec3 w) { return sinPhiTS(w) * sinPhiTS(w); }
+float cosThetaTS(in vec3 w) { return w.z; }
+float cos2ThetaTS(in vec3 w) { return w.z * w.z; }
+float sin2ThetaTS(in vec3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
+float sinThetaTS(in vec3 w) { return sqrt(sin2ThetaTS(w)); }
+float tanThetaTS(in vec3 w) { return sinThetaTS(w) / cosThetaTS(w); }
+float tan2ThetaTS(in vec3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
+float cosPhiTS(in vec3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
+float sinPhiTS(in vec3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
+float cos2PhiTS(in vec3 w) { return cosPhiTS(w) * cosPhiTS(w); }
+float sin2PhiTS(in vec3 w) { return sinPhiTS(w) * sinPhiTS(w); }
 
-vec3 reflectTS(in const vec3 w) { return vec3(-w.x, -w.y, w.z); }
-vec3 refractTS(in const vec3 w, in float cosThetaT, in float etaTI)
+vec3 reflectTS(in vec3 w) { return vec3(-w.x, -w.y, w.z); }
+vec3 refractTS(in vec3 w, in float cosThetaT, in float etaTI)
 {
     return vec3(-etaTI * w.x, -etaTI * w.y, cosThetaT);
 }
@@ -113,13 +113,13 @@ vec3 linearTosRGB(in vec3 linear)
 
 // ACES tone map
 // see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-vec3 toneMapACES(vec3 color)
+vec3 toneMapACES(in vec3 color)
 {
-    const float A = 2.51;
-    const float B = 0.03;
-    const float C = 2.43;
-    const float D = 0.59;
-    const float E = 0.14;
+    float A = 2.51;
+    float B = 0.03;
+    float C = 2.43;
+    float D = 0.59;
+    float E = 0.14;
     return clamp((color * (A * color + B)) / (color * (C * color + D) + E), 0.0, 1.0);
 }
 

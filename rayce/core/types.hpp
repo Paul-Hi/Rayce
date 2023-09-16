@@ -147,6 +147,8 @@ namespace rayce
 #define TWO_PI (2.0 * PI)
 /// @brief Pi divided by two.
 #define HALF_PI (0.5 * PI)
+/// @brief One divided by Pi.
+#define INV_PI (1.0 / PI)
 
     // Utility functions
 
@@ -179,7 +181,7 @@ namespace rayce
     /// @return @a vec3 angles in degrees.
     inline vec3 rad_to_deg(const vec3& radians)
     {
-        return radians * (180.0f / PI);
+        return radians * (180.0f * INV_PI);
     }
 
     /// @brief Convert @a vec4 in degrees to radians.
@@ -195,7 +197,7 @@ namespace rayce
     /// @return @a vec4 angles in degrees.
     inline vec4 rad_to_deg(const vec4& radians)
     {
-        return radians * (180.0f / PI);
+        return radians * (180.0f * INV_PI);
     }
 
     /// @brief Clamp value between low and high.

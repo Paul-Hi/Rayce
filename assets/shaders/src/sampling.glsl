@@ -5,25 +5,25 @@
 
 vec3 sampleSphereUniform(in Sphere sphere)
 {
-    float z = 1.0 - 2.0 * rand();
+    vec2 uv = rand2();
+    float z = 1.0 - 2.0 * uv.x;
     float r = sqrt(max(0.0, 1.0 - z * z));
-    float phi = TWO_PI * rand();
+    float phi = TWO_PI * uv.y;
     return vec3(r * cos(phi), r * sin(phi), z);
 }
 
 vec3 sampleSphereSolidAngle(in vec3 point, in Sphere sphere, out float pdf)
 {
         vec3 wDir = sphere.center - point;
-        float dist = length(wDir);
+        const float dist = length(wDir);
         wDir = normalize(wDir);
         vec3 wDx, wDy;
         createCoordinateSystem(wDir, wDx, wDy);
 
-        bool inside = (dist <= sphere.radius);
-        if(inside)
+        if(dist <= sphere.radius) // inside
         {
             pdf = 1.0 / (2.0 * TWO_PI * sphere.radius * sphere.radius);
-            vec3 samplePoint = sampleSphereUniform(sphere);
+            const vec3 samplePoint = sampleSphereUniform(sphere);
             return sphere.center + samplePoint * sphere.radius;
         }
 
@@ -32,10 +32,10 @@ vec3 sampleSphereSolidAngle(in vec3 point, in Sphere sphere, out float pdf)
         float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
         pdf = 1.0 / (TWO_PI * (1.0 - cosThetaMax));
         // random in cone
-        float rand0 = rand();
-        float cosTheta = (1.0 - rand0) + rand0 * cosThetaMax;
+        vec2 uv = rand2();
+        float cosTheta = (1.0 - uv.x) + uv.x * cosThetaMax;
         float sinThetaSqrd = max(0.0, 1.0 - cosTheta * cosTheta);
-        float phi = TWO_PI * rand();
+        float phi = TWO_PI * uv.y;
         // project to sphere surface
         float cosAlpha = dist / sphere.radius * sinThetaSqrd + cosTheta * sqrt(max(0.0, 1.0 - dist * dist / (sphere.radius * sphere.radius) * sinThetaSqrd));
         float sinAlpha = sqrt(max(0.0, 1.0 - cosAlpha * cosAlpha));
@@ -48,7 +48,7 @@ vec3 sampleSphereSolidAngle(in vec3 point, in Sphere sphere, out float pdf)
 float pdfLight(in int lightId, in vec3 surfacePoint)
 {
     float pdf = 1.0 / lightCount;
-    Light light = lights[lightId];
+    const Light light = lights[lightId];
 
     if(light.type == area && light.sphereId >= 0)
     {

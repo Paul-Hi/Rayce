@@ -106,10 +106,11 @@ void createRay(in vec2 screenUV, out vec4 origin, out vec4 direction)
 
 vec3 tracePaths(in vec2 uv)
 {
+    const int maxDepth = 16; // hopyfully never reached
+    const int russianRouletteStart = 3;
+
     vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0);
-    const int maxDepth = 32; // never reached (hopyfully)
-    const int russianRouletteStart = 4;
 
     // create ray origin and direction from camera data.
     vec4 origin, direction;
@@ -119,7 +120,6 @@ vec3 tracePaths(in vec2 uv)
     lightSample.pdf = 1.0;
     BSDFSample bsdfSample;
     bsdfSample.pdf = 1.0;
-    bool inside = false;
     surfaceState.normal = vec3(0.0, 0.0, 0.0);
 
     for(uint depth = 0; depth < maxDepth; ++depth)
@@ -165,9 +165,8 @@ vec3 tracePaths(in vec2 uv)
             }
 
             surfaceState.wo = worldToTangentFrame(-direction.xyz, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
-            origin.xyz = pld.hitPoint;
 
-            if(!hasDiracPdf(material) && sampleLights(origin.xyz, lightId, lightSample))
+            if(!hasDiracPdf(material) && sampleLights(pld.hitPoint, lightId, lightSample))
             {
                 float bsdfPdf = pdfBSDF(material);
                 float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
@@ -178,8 +177,6 @@ vec3 tracePaths(in vec2 uv)
             {
                 break;
             }
-
-            direction.xyz = tangentToWorld(surfaceState.wi, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
 
             float nDotL = cosThetaTS(surfaceState.wi);
 
@@ -195,12 +192,13 @@ vec3 tracePaths(in vec2 uv)
 
                 throughput *= 1.0 / p;
             }
+
+            origin.xyz = pld.hitPoint;
+            direction.xyz = tangentToWorld(surfaceState.wi, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
             continue;
         }
-        else
-        {
-            color += throughput * vec3(0.02, 0.04, 0.08);
-        }
+
+        color += throughput * vec3(0.02, 0.04, 0.08);
 
         break;
     }
@@ -212,12 +210,12 @@ void main()
 {
     vec4 accumColor = frame > 0 ? imageLoad(accumulationImage, ivec2(gl_LaunchIDEXT.xy)) : vec4(0.0, 0.0, 0.0, 0.0);
     accumColor.rgb *= accumColor.w;
+    const vec2 pixelCorner = vec2(gl_LaunchIDEXT.xy);
 
     vec3 color = vec3(0.0);
-    const vec2 pixelCorner = vec2(gl_LaunchIDEXT.xy);
-    rngState = 1 + wangHash(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x) + frame * 100;
+    rngState = uvec4(gl_LaunchIDEXT.xy, frame, 2907);
 
-    vec2 uv = (pixelCorner + vec2(rand(), rand())) / vec2(gl_LaunchSizeEXT.xy);
+    vec2 uv = (pixelCorner + rand2()) / vec2(gl_LaunchSizeEXT.xy);
     uv = uv * 2.0 - 1.0;
 
     color += tracePaths(uv);
