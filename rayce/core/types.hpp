@@ -67,6 +67,10 @@ namespace rayce
     using dvec2 = Eigen::Vector2<double>;
     /// @brief Typedef for a 4 component integer vector.
     using ivec4 = Eigen::Vector4<int32>;
+    /// @brief Typedef for a 2 component integer vector.
+    using ivec2 = Eigen::Vector2<int32>;
+    /// @brief Typedef for a 2 component unsigned integer vector.
+    using uvec2 = Eigen::Vector2<uint32>;
 
     /// @brief Typedef for string.
     using str = std::string;

@@ -533,7 +533,6 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
     pGeometry = std::make_unique<Geometry>();
 
-    // TODO: NEXT: Connect everything (mesh, material, light)
     std::unique_ptr<Sampler> defaultSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                         VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
 

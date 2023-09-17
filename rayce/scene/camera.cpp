@@ -25,7 +25,7 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
     mRotation.y()       = acosf(-rotationVector.y());
     mRotation.x()       = asinf(rotationVector.z() / sinf(mRotation.y()));
     mWASD               = ivec4(0, 0, 0, 0);
-    mLastMousePosition   = vec2(0.0, 0.0);
+    mLastMousePosition  = vec2(0.0, 0.0);
     mMoving             = false;
     mFirstClick         = true;
     input->registerCursorPositionCallback(
@@ -36,10 +36,13 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
                 RAYCE_LOG_WARN("Input not valid. Can not control camera.");
                 return;
             }
+            bool noFocus = !pInput.lock()->isHovered();
+            if (noFocus)
+                return;
             bool noRotation       = pInput.lock()->getMouseButton(EMouseButton::mouseButtonLeft) == EInputAction::release;
             vec2 diff             = vec2(xPosition, yPosition) - mLastMousePosition;
             bool offsetIrrelevant = diff.norm() < 1.0f; // In pixels.
-            bool tmp = noRotation;
+            bool tmp              = noRotation;
             noRotation |= mFirstClick;
             mFirstClick = tmp;
 
@@ -65,6 +68,17 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
     input->registerScrollCallback(
         [this](double, double yOffset)
         {
+            if (pInput.expired())
+            {
+                RAYCE_LOG_WARN("Input not valid. Can not control camera.");
+                return;
+            }
+            bool noFocus = !pInput.lock()->isHovered();
+            if (noFocus)
+            {
+                return;
+            }
+
             if (yOffset < 0)
             {
                 mSpeed -= 0.5f;
@@ -84,8 +98,10 @@ Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& po
                 RAYCE_LOG_WARN("Input not valid. Can not control camera.");
                 return;
             }
+
+            bool noFocus    = !pInput.lock()->isHovered();
             bool noKeyInput = pInput.lock()->getMouseButton(EMouseButton::mouseButtonLeft) == EInputAction::release;
-            if (noKeyInput)
+            if (noFocus || noKeyInput)
             {
                 mWASD = ivec4(0, 0, 0, 0);
                 return;

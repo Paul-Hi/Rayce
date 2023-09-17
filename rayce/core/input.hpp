@@ -43,6 +43,13 @@ namespace rayce
         /// @return The scroll offset in x and y direction.
         dvec2 getScrollOffset();
 
+        /// @brief Retrieves if the window is hovered.
+        /// @return True if the window is hovered, else false.
+        bool isHovered();
+
+        /// @brief Clears the current state.
+        void clearInputState();
+
         //
         //
         //
@@ -190,6 +197,8 @@ namespace rayce
             dvec2 cursorPosition;
             /// @brief Current scroll offset.
             dvec2 scrollOffset;
+            /// @brief True if cursor is inside window, else false.
+            bool hovered;
         };
 
         /// @brief Current input state.

@@ -24,11 +24,19 @@ namespace rayce
         void recreateSwapchain() override;
 
     private:
+        void recreateRTData();
+
         std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
         std::unique_ptr<class RayceScene> pScene;
         std::unique_ptr<class Camera> pCamera;
         int32 mAccumulationFrame;
         int32 mMaxSamples;
+        bool mRegisteredToImguiViewport;
+        bool mViewportChange;
+        bool mRecreateRTData;
+        uvec2 mViewportPanelSize;
+
+        std::unique_ptr<class Sampler> pDefaultSampler;
 
         std::vector<class Sphere> mSpheres;
         std::unique_ptr<class Buffer> mAABBBuffer;
@@ -39,5 +47,7 @@ namespace rayce
 
         std::unique_ptr<class Image> pRaytracingTargetImage;
         std::unique_ptr<class ImageView> pRaytracingTargetView;
+
+        VkDescriptorSet mImguiVkSet;
     };
 } // namespace rayce

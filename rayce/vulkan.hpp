@@ -30,6 +30,7 @@
 #include "vulkan/raytracingPipeline.hpp"
 #include "vulkan/renderPass.hpp"
 #include "vulkan/rtFunctions.hpp"
+#include "vulkan/sampler.hpp"
 #include "vulkan/semaphore.hpp"
 #include "vulkan/shaderModule.hpp"
 #include "vulkan/surface.hpp"

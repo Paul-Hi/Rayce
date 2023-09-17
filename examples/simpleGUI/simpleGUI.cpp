@@ -5,8 +5,10 @@
 /// @copyright Apache License 2.0
 
 #include "simpleGUI.hpp"
+#include <app/imguiImpl.hpp>
 #include <core.hpp>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <scene.hpp>
 #include <vulkan.hpp>
 
@@ -15,7 +17,9 @@ using namespace rayce;
 SimpleGUI::SimpleGUI(const RayceOptions& options)
     : RayceApp::RayceApp(options)
 {
-    mMaxSamples = 8192;
+    mViewportPanelSize         = uvec2(1, 1);
+    mRegisteredToImguiViewport = false;
+    mMaxSamples                = 8192;
 }
 
 bool SimpleGUI::onInitialize()
@@ -151,12 +155,19 @@ bool SimpleGUI::onInitialize()
 
 bool SimpleGUI::onShutdown()
 {
+    ImGui_ImplVulkan_RemoveTexture(mImguiVkSet);
     return RayceApp::onShutdown();
 }
 
 void SimpleGUI::onUpdate(float dt)
 {
     RayceApp::onUpdate(dt);
+
+    if (mRecreateRTData)
+    {
+        recreateRTData();
+        mRecreateRTData = false;
+    }
 
     bool cameraMoved = pCamera->update(dt);
 
@@ -181,7 +192,7 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 {
     RayceApp::onRender(commandBuffer, imageIndex);
 
-    if(mAccumulationFrame >= mMaxSamples)
+    if (mAccumulationFrame >= mMaxSamples)
     {
         return;
     }
@@ -237,25 +248,27 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
     vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(int32) * 2, static_cast<void*>(&pushConstants));
 
-    VkExtent2D extent = getSwapchain()->getSwapExtent();
-    pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, extent.width, extent.height, 1);
+    pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, mViewportPanelSize.x(), mViewportPanelSize.y(), 1);
 
-    // copy image
+    // prepare image for imgui
+    ImageMemoryBarrier::Create(commandBuffer, rtImage, subresourceRange, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    /*
+        // copy image
+        ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        ImageMemoryBarrier::Create(commandBuffer, rtImage, subresourceRange, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    ImageMemoryBarrier::Create(commandBuffer, rtImage, subresourceRange, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        VkImageCopy copyRegion{};
+        copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        copyRegion.srcOffset      = { 0, 0, 0 };
+        copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        copyRegion.dstOffset      = { 0, 0, 0 };
+        copyRegion.extent         = { extent.width, extent.height, 1 };
+        vkCmdCopyImage(commandBuffer, rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-    VkImageCopy copyRegion{};
-    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copyRegion.srcOffset      = { 0, 0, 0 };
-    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copyRegion.dstOffset      = { 0, 0, 0 };
-    copyRegion.extent         = { extent.width, extent.height, 1 };
-    vkCmdCopyImage(commandBuffer, rtImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-    ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
+        ImageMemoryBarrier::Create(commandBuffer, swapchainImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    */
     mAccumulationFrame++;
 }
 
@@ -281,6 +294,47 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         ImGui::End();
     }
 
+    ImGuiDockNode* node = ImGui::DockBuilderGetCentralNode(ImGui::GetID("RayceDockSpace"));
+
+    ImGuiWindowClass centralAlways = {};
+    centralAlways.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingOverMe;
+    ImGui::SetNextWindowClass(&centralAlways);
+    ImGui::SetNextWindowDockID(node->ID, ImGuiCond_Always);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0, 0 });
+    ImGui::Begin("Viewport", nullptr);
+
+    ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+    if ((static_cast<uint32>(viewportPanelSize.x) != mViewportPanelSize.x() || static_cast<uint32>(viewportPanelSize.y) != mViewportPanelSize.y()) && getInput()->getMouseButton(EMouseButton::mouseButtonLeft) == EInputAction::release)
+    {
+        mViewportChange    = true;
+        mViewportPanelSize = uvec2(viewportPanelSize.x, viewportPanelSize.y);
+    }
+    else
+    {
+        mRecreateRTData = mViewportChange;
+        mViewportChange = false;
+        ImGui::Image(mImguiVkSet, viewportPanelSize);
+        // FIXME: Lets hope, that imgui gets fixed soon so input can be disabled for docked windows...
+        ImVec2 rectMin = ImGui::GetItemRectMin();
+        ImVec2 rectMax = ImGui::GetItemRectMax();
+        rectMin = ImVec2(rectMin.x + 6, rectMin.y + 6);
+        rectMax = ImVec2(rectMax.x - 6, rectMax.y - 6);
+        bool disableCapture = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(rectMin, rectMax);
+        ImGui::SetNextFrameWantCaptureMouse(!disableCapture);
+        ImGui::SetNextFrameWantCaptureKeyboard(!disableCapture);
+        if (disableCapture)
+        {
+            ImGui::SetWindowFocus(nullptr);
+        }
+        else
+        {
+            getInput()->clearInputState();
+        }
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+
     if (!ImGui::Begin("Raytracing", nullptr, 0))
     {
         ImGui::End();
@@ -294,26 +348,30 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::End();
 }
 
-void SimpleGUI::recreateSwapchain()
+void SimpleGUI::recreateRTData()
 {
-    RayceApp::recreateSwapchain();
-
-    mAccumulationFrame = 0;
-
     auto& swapchain   = getSwapchain();
     auto& device      = getDevice();
     auto& commandPool = getCommandPool();
 
+    pDefaultSampler = std::make_unique<Sampler>(device, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
+
     VkFormat format        = swapchain->getSurfaceFormat().format;
-    pRaytracingTargetImage = std::make_unique<Image>(device, swapchain->getSwapExtent(), format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    pRaytracingTargetImage = std::make_unique<Image>(device, VkExtent2D{ mViewportPanelSize.x(), mViewportPanelSize.y() }, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     pRaytracingTargetImage->allocateMemory(device, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
-    auto& textureViews    = pScene->getTextureViews();
-    auto& samplers        = pScene->getSamplers();
 
-    VkExtent2D extent = swapchain->getSwapExtent();
-    float aspect      = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    if (mRegisteredToImguiViewport)
+    {
+        ImGui_ImplVulkan_RemoveTexture(mImguiVkSet);
+    }
+    mImguiVkSet                = ImGui_ImplVulkan_AddTexture(pDefaultSampler->getVkSampler(), pRaytracingTargetView->getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    mRegisteredToImguiViewport = true;
+
+    auto& textureViews = pScene->getTextureViews();
+    auto& samplers     = pScene->getSamplers();
+
+    float aspect = static_cast<float>(mViewportPanelSize.x()) / static_cast<float>(mViewportPanelSize.y());
     pCamera->updateAspect(aspect);
     CameraDataRT cameraDataRT;
     cameraDataRT.inverseView       = pCamera->getInverseView();
@@ -321,6 +379,15 @@ void SimpleGUI::recreateSwapchain()
     pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, mSpheres, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);
+}
+
+void SimpleGUI::recreateSwapchain()
+{
+    RayceApp::recreateSwapchain();
+
+    mAccumulationFrame = 0;
+
+    recreateRTData();
 }
 
 int main(int argc, char** argv)

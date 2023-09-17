@@ -69,7 +69,7 @@
         <ref id="red" />
     </shape>
 
-    <shape type="ply">
+    <shape type="ply" id="bunny">
         <string name="filename" value="bunny.ply" />
         <transform name="to_world">
             <translate x="0.5" y="-0.03" z="0.5" />
@@ -77,7 +77,7 @@
         <ref id="glass" />
     </shape>
 
-    <shape type="sphere">
+    <shape type="sphere" id="light_source">
         <transform name="to_world">
             <scale x="0.25" y="0.25" z="0.25" />
             <translate x="0" y="3.6" z="-1.6" />
@@ -88,7 +88,7 @@
         <ref id="light" />
     </shape>
 
-    <shape type="sphere">
+    <shape type="sphere" id="small_sphere">
         <transform name="to_world">
             <scale x="0.5" y="0.5" z="0.5" />
             <translate x="-1" y="0.5" z="-0" />
@@ -96,7 +96,7 @@
         <ref id="light_gray" />
     </shape>
 
-    <shape type="sphere">
+    <shape type="sphere" id="large_sphere">
         <transform name="to_world">
             <scale x="0.75" y="0.75" z="0.75" />
             <translate x="1" y="0.75" z="-1" />

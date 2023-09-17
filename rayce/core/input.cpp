@@ -16,6 +16,7 @@ Input::Input()
     mInputState.modifierField  = EModifier::none;
     mInputState.cursorPosition = dvec2(0.0f, 0.0f);
     mInputState.scrollOffset   = dvec2(0.0f, 0.0f);
+    mInputState.hovered        = true;
 
     mSignals.inputKey.connect([this](EKeyCode key, EInputAction action, EModifier mods)
                               {
@@ -38,6 +39,14 @@ Input::Input()
                                  {
         mInputState.scrollOffset.x() = x_offset;
         mInputState.scrollOffset.y() = y_offset; });
+
+    mSignals.inputCursorEnter.connect([this](bool entered)
+                                      {
+        mInputState.hovered = entered;
+        if(!entered)
+        {
+            clearInputState();
+        } });
 }
 
 EInputAction Input::getKey(EKeyCode key)
@@ -63,6 +72,20 @@ dvec2 Input::getCursorPosition()
 dvec2 Input::getScrollOffset()
 {
     return mInputState.scrollOffset;
+}
+
+bool Input::isHovered()
+{
+    return mInputState.hovered;
+}
+
+void Input::clearInputState()
+{
+    mInputState.keys.fill(EInputAction::release);
+    mInputState.mouseButtons.fill(EInputAction::release);
+    mInputState.modifierField  = EModifier::none;
+    mInputState.cursorPosition = dvec2(0.0f, 0.0f);
+    mInputState.scrollOffset   = dvec2(0.0f, 0.0f);
 }
 
 void Input::registerWindowPositionCallback(WindowPositionCallback callback)
@@ -188,7 +211,6 @@ void Input::onWindowContentScale(float xScale, float yScale)
 void Input::onInputMouseButton(EMouseButton button, EInputAction action, EModifier mods)
 {
     ImGuiIO io = ImGui::GetIO();
-    // FIXME: Better event blocking?
     if (io.WantCaptureMouse)
     {
         return;
@@ -214,7 +236,6 @@ void Input::onInputScroll(double xOffset, double yOffset)
 void Input::onInputKey(EKeyCode key, EInputAction action, EModifier mods)
 {
     ImGuiIO io = ImGui::GetIO();
-    // FIXME: Better event blocking?
     if (io.WantCaptureKeyboard)
     {
         return;
