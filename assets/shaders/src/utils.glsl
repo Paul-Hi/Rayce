@@ -41,7 +41,8 @@ void createCoordinateSystem(in vec3 normal, out vec3 tangent, out vec3 bitangent
 }
 
 // beta = 2 - number samples = 1
-float powerHeuristic(in float fPdf, in float gPdf) {
+float powerHeuristic(in float fPdf, in float gPdf)
+{
     fPdf *= fPdf;
     gPdf *= gPdf;
     return fPdf / (fPdf + gPdf);

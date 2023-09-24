@@ -1,0 +1,121 @@
+// tangent space trigonometry
+float cosThetaTS(in float3 w) { return w.z; }
+float cos2ThetaTS(in float3 w) { return w.z * w.z; }
+float sin2ThetaTS(in float3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
+float sinThetaTS(in float3 w) { return sqrt(sin2ThetaTS(w)); }
+float tanThetaTS(in float3 w) { return sinThetaTS(w) / cosThetaTS(w); }
+float tan2ThetaTS(in float3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
+float cosPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
+float sinPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
+float cos2PhiTS(in float3 w) { return cosPhiTS(w) * cosPhiTS(w); }
+float sin2PhiTS(in float3 w) { return sinPhiTS(w) * sinPhiTS(w); }
+
+float3 reflectTS(in float3 w) { return float3(-w.x, -w.y, w.z); }
+float3 refractTS(in float3 w, in float cosThetaT, in float etaTI)
+{
+    return float3(-etaTI * w.x, -etaTI * w.y, cosThetaT);
+}
+
+#define MA_T(Type)                                   \
+Type multiplyAndAdd(in Type a, in Type b, in Type c) \
+{                                                    \
+    return a * b + c;                                \
+}
+
+#define NMA_T(Type)                                          \
+Type negativeMultiplyAndAdd(in Type a, in Type b, in Type c) \
+{                                                            \
+    return -a * b + c;                                       \
+}
+
+MA_T(float)
+MA_T(float2)
+MA_T(float3)
+MA_T(float4)
+NMA_T(float)
+NMA_T(float2)
+NMA_T(float3)
+NMA_T(float4)
+
+struct CoordinateSpace
+{
+    __init(const float3 normal, bool hasUV = false,
+                                      const float3 dfd1 = float3(0.0), const float3 dfd2 = float3(0.0),
+                                      const float2 uvd1 = float2(0.0), const float2 uvd2 = float2(0.0)
+                                      )
+    {
+        this.normal = normal;
+        if(hasUV && uvd1.x > 0.0)
+        {
+            float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
+            this.tangent    = normalize(t_ - normal * dot(normal, t_));
+            this.bitangent  = cross(normal, space.tangent);
+        }
+        else
+        {
+            // Building an Orthonormal Basis, Revisited, (JCGT), vol. 6, no. 1, 1-8, 2017
+            // Available online: http://jcgt.org/published/0006/01/01/
+            float normalSign = normal.z < 0.0 ? -1.0 : 1.0;
+            float a = -1.0 / (normalSign + normal.z);
+            float b = normal.x * normal.y * a;
+            this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
+            this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
+        }
+    }
+
+    CoordinateSpace flipped()
+    {
+        CoordinateSpace flippedSpace;
+        flippedSpace.normal = -this.normal;
+        flippedSpace.tangent = -this.tangent;
+        flippedSpace.bitangent = -this.bitangent;
+        return flippedSpace;
+    }
+
+    float3 tangentToWorld(const float3 p)
+    {
+        return multiplyAndAdd(float3(p.x), tangent, multiplyAndAdd(float3(p.y), bitangent, p.z * normal));
+    }
+
+    float3 worldToTangentFrame(in float3 p)
+    {
+        return float3(dot(p, tangent), dot(p, bitangent), dot(p, normal));
+    }
+
+    float3 normal;
+    float3 tangent;
+    float3 bitangent;
+};
+
+// beta = 2 - number samples = 1
+float powerHeuristic(float fPdf, float gPdf)
+{
+    fPdf *= fPdf;
+    gPdf *= gPdf;
+    return fPdf / (fPdf + gPdf);
+}
+
+const float GAMMA     = 2.2;
+const float INV_GAMMA = 1.0 / GAMMA;
+
+float3 sRGBToLinear(in float3 srgb)
+{
+    return pow(srgb.rgb, float3(GAMMA));
+}
+
+float3 linearTosRGB(in float3 linear)
+{
+    return pow(linear.rgb, float3(INV_GAMMA));
+}
+
+// ACES tone map
+// see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+float3 toneMapACES(in float3 color)
+{
+    float A = 2.51;
+    float B = 0.03;
+    float C = 2.43;
+    float D = 0.59;
+    float E = 0.14;
+    return saturate((color * (A * color + B)) / (color * (C * color + D) + E));
+}
