@@ -69,4 +69,5 @@ struct LightSample
     float3 radiance;
     float3 wi;
     float pdf;
+    bool valid;
 };

@@ -1,76 +1,9 @@
 import globals;
 import utils;
+import data;
 import random;
 import bsdf;
 import sampling;
-
-[[vk::binding(TLAS_BINDING, RT_SET)]]
-RaytracingAccelerationStructure gTLAS;
-// layout(set = RT_SET, binding = TLAS_BINDING) uniform accelerationStructureEXT TLAS;
-
-[[vk::binding(ACCUM_BINDING, RT_SET)]]
-RWTexture2D<float4> gAccumulationImage;
-// layout(set = RT_SET, binding = ACCUM_BINDING, rgba32f) uniform image2D accumulationImage;
-
-[[vk::binding(RESULT_BINDING, RT_SET)]]
-RWTexture2D<float4> gResultImage;
-// layout(set = RT_SET, binding = RESULT_BINDING, rgba8) uniform image2D resultImage;
-
-// layout(location = 0) rayPayloadEXT RayPayload pld;
-
-struct CameraBufferRT
-{
-    float4x4 inverseView;
-    float4x4 inverseProjection;
-};
-
-[[vk::binding(CAMERA_BINDING, CAMERA_SET)]]
-ConstantBuffer<CameraBufferRT> gCamera;
-
-// layout(set = CAMERA_SET, binding = CAMERA_BINDING, scalar) uniform CameraBufferRT
-// {
-//     mat4 inverseView;
-//     mat4 inverseProjection;
-// } camera;
-
-[[vk::binding(TEXTURE_BINDING, MODEL_SET)]]
-Texture2D gTextures[];
-
-[[vk::binding(SAMPLER_BINDING,MODEL_SET)]]
-SamplerState gDefaultSampler;
-// layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
-
-[[vk::binding(INSTANCE_BINDING,MODEL_SET)]]
-StructuredBuffer<InstanceData> gInstanceData;
-// layout(set = MODEL_SET, binding = INSTANCE_BINDING, scalar) buffer _InstanceInfo { InstanceData ref[]; };
-
-[[vk::binding(MATERIAL_BINDING,MODEL_SET)]]
-StructuredBuffer<Material> gMaterials;
-// layout(set = MODEL_SET, binding = MATERIAL_BINDING, scalar) buffer _MaterialInfo { Material materials[]; };
-
-[[vk::binding(LIGHT_BINDING,MODEL_SET)]]
-StructuredBuffer<Light> gLights;
-// layout(set = MODEL_SET, binding = LIGHT_BINDING, scalar) buffer _LightInfo { Light lights[]; };
-
-[[vk::binding(SPHERE_BINDING,MODEL_SET)]]
-StructuredBuffer<Sphere> gSpheres;
-// layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
-
-// FIXME: Is ConstBufferPointer stuff better here?
-[[vk::binding(VERTEX_BINDING,RT_SET)]]
-StructuredBuffer<Vertex> gVertices[];
-// layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
-[[vk::binding(INDEX_BINDING,RT_SET)]]
-StructuredBuffer<uint> gIndices[];
-// layout(buffer_reference, scalar) buffer Indices { uint i[]; };
-
-struct PushConstants
-{
-    int frame;
-    int lightCount;
-};
-
-[[vk::push_constant]] ConstantBuffer<PushConstants> gPushConstants;
 
 DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomIndex, const float2 hitAttributes, const float4x3 worldToObject, const float3 viewPosition, const float3 hitPosition)
 {
@@ -185,36 +118,44 @@ float3 tracePaths(in float2 uv)
         if(pld.hit)
         {
             int lightId = -1;
-            Material material;
+            IBxDF bxdf;
             if(pld.hitInfo.hitKind == EHitKind::triangleMesh)
             {
-                DeviceTriangle triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject, origin.xyz, pld.hitPoint);
-                material = materials[triangle.materialId];
-                populateSurfaceStateTriangle(material, triangle);
+                DeviceTriangle triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject, ray.origin.xyz, pld.hitPoint);
+                const Material mat = gMaterials[triangle.materialId];
+                bxdf = mat.createBxDF(triangle.interpolatedUV);
+
+                space = CoordinateSpace(triangle.interpolatedNormal, mat.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
             else if(pld.hitInfo.hitKind == EHitKind::proceduralSphere)
             {
                 DeviceSphere sphere = getSphere(pld.hitPoint, pld.hitInfo.instanceCustomIndex, pld.hitInfo.primitiveId, pld.hitInfo.hitAttributes);
-                material = materials[sphere.materialId];
-                populateSurfaceStateSphere(material, sphere);
+                const Material mat = gMaterials[sphere.materialId];
+                bxdf = mat.createBxDF(float2(0.0)); // FIXME: No Sphere UVs yet.
+
+                space = CoordinateSpace(sphere.normal);
                 lightId = sphere.lightId;
             }
 
             if(lightId >= 0)
             {
-                float lightPdf = (depth == 0 || bsdfSample.dirac) ? 1.0 : pdfLight(lightId, origin.xyz);
+                float lightPdf = (depth == 0 || bsdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin.xyz);
                 float miWeight = powerHeuristic(bsdfSample.pdf, lightPdf);
 
-                color += throughput * miWeight * lights[lightId].radiance;
+                color += throughput * miWeight * gLights[lightId].radiance;
             }
 
-            surfaceState.wo = worldToTangentFrame(-direction.xyz, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
+            const float3 wo = space.worldToTangentFrame(-ray.direction.xyz);
 
-            if(!hasDiracPdf(material) && sampleLights(pld.hitPoint, lightId, lightSample))
+            if(!bxdf.isDirac())
             {
-                float bsdfPdf = pdfBSDF(material);
-                float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                color += throughput * miWeight * evaluateBSDF(material) * lightSample.radiance / lightSample.pdf;
+                lightSample = sampleLights(pld.hitPoint, lightId, space);
+                if(lightSample.valid)
+                {
+                    float bsdfPdf = bxdf.pdf(wo, lightSample.wi);
+                    float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
+                    color += throughput * miWeight * bxdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf;
+                }
             }
 
             if(!sampleBSDF(material, bsdfSample))

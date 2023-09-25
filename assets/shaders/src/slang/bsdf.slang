@@ -1,6 +1,7 @@
 import globals;
 import utils;
 import random;
+import data;
 
 interface IBxDF
 {
@@ -246,3 +247,42 @@ struct SmoothThinDielectricBSDF : IBxDF
     float3 specularReflectance;
     float3 specularTransmittance;
 };
+
+extension Material
+{
+    IBxDF createBxDF(const float2 uv)
+    {
+        switch(this.bxdfType)
+        {
+            case EBxDFType::diffuse:
+                {
+                    DiffuseBRDF brdf;
+                    brdf.diffuseReflectance = this.diffuseReflectance;
+                    if (this.diffuseReflectanceTexture >= 0)
+                    {
+                        brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gDefaultSampler, uv).rgb;
+                    }
+                    return brdf;
+                }
+            case EBxDFType::smoothDielectric:
+            case EBxDFType::smoothDielectricThin:
+                {
+                    SmoothDielectricBSDF bsdf;
+                    bsdf.specularReflectance = this.specularReflectance;
+                    bsdf.specularTransmittance = this.specularTransmittance;
+                    if (this.specularReflectanceTexture >= 0)
+                    {
+                        bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gDefaultSampler, uv).rgb;
+                    }
+                    if (this.specularTransmittanceTexture >= 0)
+                    {
+                        bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gDefaultSampler, uv).rgb;
+                    }
+
+                    bsdf.interiorIor = this.interiorIor;
+                    bsdf.exteriorIor = this.exteriorIor;
+                    return bsdf;
+                }
+        }
+    }
+}

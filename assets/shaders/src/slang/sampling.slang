@@ -1,5 +1,6 @@
 import globals;
 import utils;
+import data;
 import random;
 
 struct GeometrySample
@@ -77,7 +78,7 @@ extension Sphere
 
 float pdfLight(const int lightId, const float3 surfacePoint)
 {
-    float pdf = 1.0 / gLightCount;
+    float pdf = 1.0 / gPushConstants.lightCount;
     const Light light = gLights[lightId];
 
     if(light.type == ELightType::area && light.sphereId >= 0)
@@ -88,13 +89,14 @@ float pdfLight(const int lightId, const float3 surfacePoint)
     return 0.0;
 }
 
-LightSample sampleLights(const float3 p, const int pLightId, const CoordinateSpace space)
+LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpace space)
 {
     LightSample lightSample;
-    if(pLightId >= 0 && gLightCount == 1)
+    if(lightId >= 0 && gPushConstants.lightCount == 1)
     {
         lightSample.pdf = 0.0;
         lightSample.radiance = float3(0.0);
+        lightSample.valid = false;
         return lightSample;
     }
 
@@ -102,8 +104,8 @@ LightSample sampleLights(const float3 p, const int pLightId, const CoordinateSpa
 
     do
     {
-        lightIndex = int(Random::rand() * gLightCount);
-    } while(lightIndex == pLightId);
+        lightIndex = int(Random::rand() * gPushConstants.lightCount);
+    } while(lightIndex == lightId);
 
     Light sampledLight = gLights[lightIndex];
 
@@ -125,6 +127,7 @@ LightSample sampleLights(const float3 p, const int pLightId, const CoordinateSpa
         {
             lightSample.pdf = 0.0;
             lightSample.radiance = float3(0.0);
+        lightSample.valid = false;
             return lightSample;
         }
 
@@ -150,15 +153,18 @@ LightSample sampleLights(const float3 p, const int pLightId, const CoordinateSpa
         {
             lightSample.pdf = 0.0;
             lightSample.radiance = float3(0.0);
+        lightSample.valid = false;
             return lightSample;
         }
 
-        lightSample.radiance = nDotL * gLightCount * sampledLight.radiance;
+        lightSample.radiance = nDotL * gPushConstants.lightCount * sampledLight.radiance;
 
+        lightSample.valid = true;
         return lightSample;
     }
 
     lightSample.pdf = 0.0;
     lightSample.radiance = float3(0.0);
+    lightSample.valid = false;
     return lightSample;
 };
