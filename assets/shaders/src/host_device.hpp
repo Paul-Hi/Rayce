@@ -113,7 +113,7 @@ namespace rayce
 #define ENUM(a) const uint
 #define ENUM_END()
 #define ELightType uint
-#define EBSDFType uint
+#define EBxDFType uint
 #endif
 
     ENUM(EShapeType)
@@ -133,7 +133,7 @@ namespace rayce
         lightTypeCount = 8
     ENUM_END();
 
-    ENUM(EBSDFType)
+    ENUM(EBxDFType)
         diffuse = 0,
         smoothDielectric = 1,
         smoothDielectricThin = 2,
@@ -172,7 +172,7 @@ namespace rayce
         int diffuseReflectanceTexture;
 
         uint twoSided;
-        EBSDFType bsdfType;
+        EBxDFType bsdfType;
 
         float interiorIor;
         float exteriorIor;
@@ -198,7 +198,7 @@ namespace rayce
         : diffuseReflectance(vec3(0.5, 0.5, 0.5))
         , diffuseReflectanceTexture(-1)
         , twoSided(0)
-        , bsdfType(EBSDFType::diffuse)
+        , bsdfType(EBxDFType::diffuse)
         , interiorIor(1.5046f)
         , exteriorIor(1.000277f)
         , specularReflectance(vec3(1.0, 1.0, 1.0))

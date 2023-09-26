@@ -44,11 +44,16 @@ bool SimpleGUI::onInitialize()
     auto& triangleMeshes    = geometry->getTriangleMeshes();
     auto& proceduralSpheres = geometry->getProceduralSpheres();
 
+    mVertexBuffers.clear();
+    mIndexBuffers.clear();
+
     std::vector<std::vector<std::pair<VkTransformMatrixKHR, uint32>>> instanceInfo(triangleMeshes.size() + 1);
 
     for (ptr_size i = 0; i < triangleMeshes.size(); ++i)
     {
-        const TriangleMeshGeometry& triMesh                   = triangleMeshes[i];
+        const TriangleMeshGeometry& triMesh = triangleMeshes[i];
+        mVertexBuffers.push_back(triMesh.vertexBuffer->getVkBuffer());
+        mIndexBuffers.push_back(triMesh.indexBuffer->getVkBuffer());
         accelerationStructureInitData.vertexDataDeviceAddress = triMesh.vertexBuffer->getDeviceAddress();
         accelerationStructureInitData.indexDataDeviceAddress  = triMesh.indexBuffer->getDeviceAddress();
         accelerationStructureInitData.maxVertex               = triMesh.maxVertex;
@@ -58,12 +63,11 @@ bool SimpleGUI::onInitialize()
 
         for (ptr_size j = 0; j < triMesh.transformationMatrices.size(); ++j)
         {
-            auto instance             = std::make_unique<InstanceData>();
-            instance->materialId      = triMesh.materialId;
-            instance->lightId         = -1; // triMesh.lightId;
-            instance->indexReference  = accelerationStructureInitData.indexDataDeviceAddress;
-            instance->vertexReference = accelerationStructureInitData.vertexDataDeviceAddress;
-            instance->sphereId        = -1;
+            auto instance         = std::make_unique<InstanceData>();
+            instance->materialId  = triMesh.materialId;
+            instance->lightId     = -1; // triMesh.lightId;
+            instance->objectIndex = j;
+            instance->sphereId    = -1;
             mInstances.push_back(std::move(instance));
 
             const auto& tr = triMesh.transformationMatrices[j];
@@ -118,12 +122,11 @@ bool SimpleGUI::onInitialize()
 
             for (ptr_size j = 0; j < sphere.transformationMatrices.size(); ++j)
             {
-                auto instance             = std::make_unique<InstanceData>();
-                instance->materialId      = sphere.materialId;
-                instance->lightId         = sphere.lightId;
-                instance->indexReference  = 0;
-                instance->vertexReference = 0;
-                instance->sphereId        = i;
+                auto instance         = std::make_unique<InstanceData>();
+                instance->materialId  = sphere.materialId;
+                instance->lightId     = sphere.lightId;
+                instance->objectIndex = -1;
+                instance->sphereId    = i;
                 mInstances.push_back(std::move(instance));
             }
         }
@@ -315,10 +318,10 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         mViewportChange = false;
         ImGui::Image(mImguiVkSet, viewportPanelSize);
         // FIXME: Lets hope, that imgui gets fixed soon so input can be disabled for docked windows...
-        ImVec2 rectMin = ImGui::GetItemRectMin();
-        ImVec2 rectMax = ImGui::GetItemRectMax();
-        rectMin = ImVec2(rectMin.x + 6, rectMin.y + 6);
-        rectMax = ImVec2(rectMax.x - 6, rectMax.y - 6);
+        ImVec2 rectMin      = ImGui::GetItemRectMin();
+        ImVec2 rectMax      = ImGui::GetItemRectMax();
+        rectMin             = ImVec2(rectMin.x + 6, rectMin.y + 6);
+        rectMax             = ImVec2(rectMax.x - 6, rectMax.y - 6);
         bool disableCapture = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(rectMin, rectMax);
         ImGui::SetNextFrameWantCaptureMouse(!disableCapture);
         ImGui::SetNextFrameWantCaptureKeyboard(!disableCapture);
@@ -376,7 +379,7 @@ void SimpleGUI::recreateRTData()
     CameraDataRT cameraDataRT;
     cameraDataRT.inverseView       = pCamera->getInverseView();
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
-    pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
+    pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, mVertexBuffers, mIndexBuffers, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, mSpheres, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);
 }

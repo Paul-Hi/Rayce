@@ -42,6 +42,8 @@ namespace rayce
         std::unique_ptr<class Buffer> mAABBBuffer;
         std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
         std::unique_ptr<class AccelerationStructure> pTLAS;
+        std::vector<VkBuffer> mVertexBuffers;
+        std::vector<VkBuffer> mIndexBuffers;
 
         std::vector<std::unique_ptr<struct InstanceData>> mInstances;
 

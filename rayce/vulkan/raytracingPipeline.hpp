@@ -22,8 +22,9 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(RaytracingPipeline)
 
-        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<class AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage,
-                           uint32 framesInFlight);
+        RaytracingPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain,
+                           const std::unique_ptr<class AccelerationStructure>& tlas, const std::vector<VkBuffer>& vertexBuffers, const std::vector<VkBuffer>& indexBuffers,
+                           CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<class ImageView>& outputImage, uint32 framesInFlight);
         ~RaytracingPipeline();
 
         VkPipelineLayout getVkPipelineLayout() const
@@ -45,17 +46,17 @@ namespace rayce
 
         std::pair<VkDeviceAddress, uint32> getRayGenAddress() const
         {
-            return {pShaderBindingTableBuffer->getDeviceAddress() + mRayGenOffset, mRayGenSize};
+            return { pShaderBindingTableBuffer->getDeviceAddress() + mRayGenOffset, mRayGenSize };
         }
 
         std::pair<VkDeviceAddress, uint32> getClosestHitAddress() const
         {
-            return {pShaderBindingTableBuffer->getDeviceAddress() + mCHitOffset, mCHitSize};
+            return { pShaderBindingTableBuffer->getDeviceAddress() + mCHitOffset, mCHitSize };
         }
 
         std::pair<VkDeviceAddress, uint32> getMissAddress() const
         {
-            return {pShaderBindingTableBuffer->getDeviceAddress() + mMissOffset, mMissSize};
+            return { pShaderBindingTableBuffer->getDeviceAddress() + mMissOffset, mMissSize };
         }
 
         uint32 getAlignedHandleSize() const

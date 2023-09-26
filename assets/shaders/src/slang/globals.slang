@@ -33,7 +33,7 @@ struct DeviceSphere
     int lightId;
 };
 
-enum EHitKind
+enum EHitKind : uint
 {
     triangleMesh = 0,
     proceduralSphere = 1
@@ -70,4 +70,9 @@ struct LightSample
     float3 wi;
     float pdf;
     bool valid;
+};
+
+struct SphereIntersectionAttributes
+{
+    bool inside;
 };

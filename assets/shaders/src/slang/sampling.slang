@@ -79,11 +79,11 @@ extension Sphere
 float pdfLight(const int lightId, const float3 surfacePoint)
 {
     float pdf = 1.0 / gPushConstants.lightCount;
-    const Light light = gLights[lightId];
+    const Light light = gLights.Load(lightId);
 
     if(light.type == ELightType::area && light.sphereId >= 0)
     {
-        return gSpheres[light.sphereId].samplePdf(surfacePoint);
+        return gSpheres.Load(light.sphereId).samplePdf(surfacePoint);
     }
 
     return 0.0;
@@ -107,11 +107,11 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
         lightIndex = int(Random::rand() * gPushConstants.lightCount);
     } while(lightIndex == lightId);
 
-    Light sampledLight = gLights[lightIndex];
+    Light sampledLight = gLights.Load(lightIndex);
 
     if(sampledLight.type == ELightType::area && sampledLight.sphereId >= 0)
     {
-        Sphere sphere = gSpheres[sampledLight.sphereId];
+        Sphere sphere = gSpheres.Load(sampledLight.sphereId);
 
         GeometrySample sample = sphere.sampleSolidAngle(p);
         lightSample.pdf = sample.pdf;

@@ -8,7 +8,7 @@
 #include <cctype>
 #include <filesystem>
 #include <functional>
-#include <host_device.hpp>
+#include <hostDeviceInterop.slang>
 #include <imgui.h>
 #include <scene/loadHelper.hpp>
 #include <scene/rayceScene.hpp>
@@ -33,7 +33,7 @@ namespace mp = TPM_NAMESPACE;
 using MitsubaRef = str;
 struct MitsubaBSDF
 {
-    EBSDFType type;
+    EBxDFType type;
     MitsubaRef id;
     Material possibleData;
     int32 materialId{ -1 };
@@ -69,43 +69,43 @@ RayceScene::~RayceScene()
     mImageCache.clear();
 }
 
-static EBSDFType bsdfFromPluginType(const str& pluginType)
+static EBxDFType bsdfFromPluginType(const str& pluginType)
 {
     if (pluginType == "diffuse")
     {
-        return EBSDFType::diffuse;
+        return EBxDFType::diffuse;
     }
     else if (pluginType == "dielectric")
     {
-        return EBSDFType::smoothDielectric;
+        return EBxDFType::smoothDielectric;
     }
     else if (pluginType == "thindielectric")
     {
-        return EBSDFType::smoothDielectricThin;
+        return EBxDFType::smoothDielectricThin;
     }
     else if (pluginType == "roughdielectric")
     {
-        return EBSDFType::roughDielectric;
+        return EBxDFType::roughDielectric;
     }
     else if (pluginType == "conductor")
     {
-        return EBSDFType::smoothConductor;
+        return EBxDFType::smoothConductor;
     }
     else if (pluginType == "roughconductor")
     {
-        return EBSDFType::roughConductor;
+        return EBxDFType::roughConductor;
     }
     else if (pluginType == "plastic")
     {
-        return EBSDFType::smoothPlastic;
+        return EBxDFType::smoothPlastic;
     }
     else if (pluginType == "roughplastic")
     {
-        return EBSDFType::roughPlastic;
+        return EBxDFType::roughPlastic;
     }
     else if (pluginType == "twosided")
     {
-        return EBSDFType::bsdfTypeCount;
+        return EBxDFType::bsdfTypeCount;
     }
     RAYCE_ASSERT(false, "Unknown BSDF Type");
 }
@@ -209,12 +209,12 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
     bsdf.id                    = bsdfObject->id();
     bsdf.type                  = bsdfFromPluginType(bsdfObject->pluginType());
     bsdf.possibleData.twoSided = twoSided;
-    bsdf.possibleData.bsdfType = bsdf.type;
+    bsdf.possibleData.bxdfType = bsdf.type;
 
     auto& props = bsdfObject->properties();
     switch (bsdf.type)
     {
-    case EBSDFType::bsdfTypeCount: // twosided adapter
+    case EBxDFType::bsdfTypeCount: // twosided adapter
     {
         for (const auto& bsdfChild : bsdfObject->anonymousChildren())
         {
@@ -234,7 +234,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         }
         break;
     }
-    case EBSDFType::diffuse:
+    case EBxDFType::diffuse:
     {
         if (props.contains("reflectance"))
         {
@@ -269,8 +269,8 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         }
         break;
     }
-    case EBSDFType::smoothDielectric:
-    case EBSDFType::smoothDielectricThin:
+    case EBxDFType::smoothDielectric:
+    case EBxDFType::smoothDielectricThin:
     {
         if (props.contains("int_ior"))
         {
@@ -543,7 +543,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
         switch (bsdf.type)
         {
-        case EBSDFType::diffuse:
+        case EBxDFType::diffuse:
         {
             if (bsdf.possibleData.diffuseReflectanceTexture >= 0)
             {
@@ -600,8 +600,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             }
             break;
         }
-        case EBSDFType::smoothDielectric:
-        case EBSDFType::smoothDielectricThin:
+        case EBxDFType::smoothDielectric:
+        case EBxDFType::smoothDielectricThin:
         {
             if (bsdf.possibleData.specularReflectanceTexture >= 0)
             {

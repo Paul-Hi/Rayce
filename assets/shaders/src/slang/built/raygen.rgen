@@ -1,0 +1,629 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_samplerless_texture_functions : require
+layout(row_major) uniform;
+layout(row_major) buffer;
+
+#line 63 0
+struct PushConstants_0
+{
+    int frame_0;
+    int lightCount_0;
+};
+
+layout(push_constant)
+layout(std140) uniform _S1
+{
+    int frame_0;
+    int lightCount_0;
+}gPushConstants_0;
+
+#line 8
+layout(rgba32f)
+layout(binding = 1)
+uniform image2D gAccumulationImage_0;
+
+
+#line 17
+struct CameraBufferRT_0
+{
+    mat4x4 inverseView_0;
+    mat4x4 inverseProjection_0;
+};
+
+
+layout(binding = 0, set = 1)
+layout(std140) uniform _S2
+{
+    mat4x4 inverseView_0;
+    mat4x4 inverseProjection_0;
+}gCamera_0;
+
+#line 4
+layout(binding = 0)
+uniform accelerationStructureEXT gTLAS_0;
+
+
+#line 92 1
+struct InstanceData_0
+{
+    uint objectIndex_0;
+    uint materialId_0;
+    int lightId_0;
+    int sphereId_0;
+};
+
+
+#line 40 0
+layout(std430, binding = 1, set = 2) readonly buffer StructuredBuffer_InstanceData_t_0 {
+    InstanceData_0 _data[];
+} gInstanceData_0;
+
+#line 60
+layout(std430, binding = 4) readonly buffer StructuredBuffer_uint_t_0 {
+    uint _data[];
+} gIndices_0[];
+
+#line 35 1
+struct Vertex_0
+{
+    vec3 position_0;
+    vec3 normal_0;
+    vec2 uv_0;
+};
+
+
+#line 57 0
+layout(std430, binding = 3) readonly buffer StructuredBuffer_Vertex_t_0 {
+    Vertex_0 _data[];
+} gVertices_0[];
+
+#line 161 1
+struct Material_0
+{
+    vec3 diffuseReflectance_0;
+    int diffuseReflectanceTexture_0;
+    uint twoSided_0;
+    uint bxdfType_0;
+    float interiorIor_0;
+    float exteriorIor_0;
+    vec3 specularReflectance_0;
+    int specularReflectanceTexture_0;
+    vec3 specularTransmittance_0;
+    int specularTransmittanceTexture_0;
+    vec2 alpha_0;
+    int alphaTexture_0;
+    int complexIorTexture_0;
+    vec2 complexIor_0;
+    uint nonlinear_0;
+    uint canUseUv_0;
+};
+
+
+#line 44 0
+layout(std430, binding = 2, set = 2) readonly buffer StructuredBuffer_Material_t_0 {
+    Material_0 _data[];
+} gMaterials_0;
+
+#line 86 1
+struct Sphere_0
+{
+    vec3 center_0;
+    float radius_0;
+};
+
+
+#line 52 0
+layout(std430, binding = 4, set = 2) readonly buffer StructuredBuffer_Sphere_t_0 {
+    Sphere_0 _data[];
+} gSpheres_0;
+
+#line 12
+layout(rgba32f)
+layout(binding = 2)
+uniform image2D gResultImage_0;
+
+
+#line 42 2
+struct Hit_0
+{
+    uint hitKind_0;
+    uint primitiveId_0;
+    uint instanceCustomIndex_0;
+    vec2 hitAttributes_0;
+    mat4x3 worldToObject_0;
+    mat4x3 objectToWorld_0;
+};
+
+struct RayPayload_0
+{
+    bool hit_0;
+    vec3 hitPoint_0;
+    Hit_0 hitInfo_0;
+};
+
+
+#line 7285 3
+layout(location = 0)
+rayPayloadEXT
+RayPayload_0 p_0;
+
+
+#line 3 4
+uvec4 state_0;
+
+void Random_init_0(uvec4 seed_0)
+{
+    state_0 = seed_0;
+    return;
+}
+
+uvec4 Random_pcg4d_0()
+{
+    uvec4 _S3 = state_0 * 1664525U + 1013904223U;
+
+#line 13
+    state_0 = _S3;
+
+    state_0[0] = _S3.x + _S3.y * _S3.w;
+    state_0[1] = state_0.y + state_0.z * state_0.x;
+    state_0[2] = state_0.z + state_0.x * state_0.y;
+    state_0[3] = state_0.w + state_0.y * state_0.z;
+
+    uvec4 _S4 = state_0 ^ state_0 >> 16U;
+
+#line 20
+    state_0 = _S4;
+
+    state_0[0] = _S4.x + _S4.y * _S4.w;
+    state_0[1] = state_0.y + state_0.z * state_0.x;
+    state_0[2] = state_0.z + state_0.x * state_0.y;
+    state_0[3] = state_0.w + state_0.y * state_0.z;
+
+    return state_0;
+}
+
+
+#line 51
+vec2 Random_rand2_0()
+{
+    uvec4 rInt_0 = Random_pcg4d_0();
+    state_0[3] = state_0.w + 1U;
+    return vec2(uintBitsToFloat(rInt_0.x >> 9 | 1065353216U) - 1.0, uintBitsToFloat(rInt_0.y >> 9 | 1065353216U) - 1.0);
+}
+
+
+#line 64 5
+struct Ray_0
+{
+    vec4 origin_0;
+    vec4 direction_0;
+};
+
+Ray_0 createRay_0(vec2 screenUV_0)
+{
+    Ray_0 ray_0;
+    ray_0.origin_0 = (((vec4(0.0, 0.0, 0.0, 1.0)) * (gCamera_0.inverseView_0)));
+
+    ray_0.direction_0 = normalize((((vec4(normalize((((vec4(screenUV_0.x, screenUV_0.y, 1.0, 1.0)) * (gCamera_0.inverseProjection_0))).xyz), 0.0)) * (gCamera_0.inverseView_0))));
+
+    return ray_0;
+}
+
+
+#line 7146 3
+struct RayDesc_0
+{
+    vec3 Origin_0;
+    float TMin_0;
+    vec3 Direction_0;
+    float TMax_0;
+};
+
+
+#line 7235
+void TraceRay_0(accelerationStructureEXT AccelerationStructure_0, uint RayFlags_0, uint InstanceInclusionMask_0, uint RayContributionToHitGroupIndex_0, uint MultiplierForGeometryContributionToHitGroupIndex_0, uint MissShaderIndex_0, RayDesc_0 Ray_1, inout RayPayload_0 Payload_0)
+{
+
+#line 7287
+    p_0 = Payload_0;
+    traceRayEXT(AccelerationStructure_0, RayFlags_0, InstanceInclusionMask_0, RayContributionToHitGroupIndex_0, MultiplierForGeometryContributionToHitGroupIndex_0, MissShaderIndex_0, Ray_1.Origin_0, Ray_1.TMin_0, Ray_1.Direction_0, Ray_1.TMax_0, (0));
+
+#line 7300
+    Payload_0 = p_0;
+    return;
+}
+
+
+#line 11 2
+struct DeviceTriangle_0
+{
+    Vertex_0  vertices_0[3];
+    vec3 barycentrics_0;
+    vec2 interpolatedUV_0;
+    vec3 geometryNormal_0;
+    vec3 interpolatedNormal_0;
+    vec3 dfd1_0;
+    vec3 dfd2_0;
+    vec2 uvd1_0;
+    vec2 uvd2_0;
+    uint materialId_1;
+    int lightId_1;
+};
+
+
+#line 8 5
+DeviceTriangle_0 getTriangle_0(uint primitiveIndex_0, uint instanceCustomIndex_1, vec2 hitAttributes_1, mat4x3 worldToObject_1, vec3 viewPosition_0, vec3 hitPosition_0)
+{
+
+    uint _S5 = primitiveIndex_0 * 3U;
+
+    int _S6 = int(instanceCustomIndex_1);
+
+#line 13
+    InstanceData_0 _S7 = gInstanceData_0._data[_S6];
+
+#line 10
+    DeviceTriangle_0 tri_0;
+
+#line 21
+    float _S8 = hitAttributes_1.x;
+
+#line 21
+    float _S9 = hitAttributes_1.y;
+
+#line 21
+    float _S10 = 1.0 - _S8 - _S9;
+
+#line 21
+    vec3 _S11 = vec3(_S10, _S8, _S9);
+
+#line 21
+    uint i_0 = 0U;
+
+#line 21
+    for(;;)
+    {
+
+#line 18
+        tri_0.vertices_0[i_0] = gVertices_0[_S7.objectIndex_0]._data[int(gIndices_0[_S7.objectIndex_0]._data[int(_S5 + i_0)])];
+
+#line 15
+        uint i_1 = i_0 + 1U;
+
+#line 15
+        if(i_1 < 3U)
+        {
+        }
+        else
+        {
+
+#line 15
+            break;
+        }
+
+#line 15
+        i_0 = i_1;
+
+#line 15
+    }
+
+#line 21
+    tri_0.barycentrics_0 = _S11;
+    tri_0.interpolatedUV_0 = tri_0.vertices_0[0].uv_0 * _S10 + tri_0.vertices_0[1].uv_0 * _S8 + tri_0.vertices_0[2].uv_0 * _S9;
+
+
+    tri_0.interpolatedNormal_0 = normalize((((tri_0.vertices_0[0].normal_0 * tri_0.barycentrics_0.x + tri_0.vertices_0[1].normal_0 * tri_0.barycentrics_0.y + tri_0.vertices_0[2].normal_0 * tri_0.barycentrics_0.z) * (worldToObject_1))).xyz);
+
+    tri_0.dfd1_0 = tri_0.vertices_0[1].position_0 - tri_0.vertices_0[0].position_0;
+    tri_0.dfd2_0 = tri_0.vertices_0[2].position_0 - tri_0.vertices_0[0].position_0;
+
+    tri_0.uvd1_0 = tri_0.vertices_0[1].uv_0 - tri_0.vertices_0[0].uv_0;
+    tri_0.uvd2_0 = tri_0.vertices_0[2].uv_0 - tri_0.vertices_0[0].uv_0;
+
+#line 38
+    tri_0.geometryNormal_0 = normalize((((vec3(tri_0.dfd1_0.y * tri_0.dfd2_0.z - tri_0.dfd1_0.z * tri_0.dfd2_0.y, tri_0.dfd1_0.z * tri_0.dfd2_0.x - tri_0.dfd1_0.x * tri_0.dfd2_0.z, tri_0.dfd1_0.x * tri_0.dfd2_0.y - tri_0.dfd1_0.y * tri_0.dfd2_0.x)) * (worldToObject_1))).xyz);
+
+    tri_0.materialId_1 = gInstanceData_0._data[_S6].materialId_0;
+
+    tri_0.lightId_1 = gInstanceData_0._data[_S6].lightId_0;
+
+    return tri_0;
+}
+
+
+#line 40 6
+struct CoordinateSpace_0
+{
+    vec3 normal_1;
+    vec3 tangent_0;
+    vec3 bitangent_0;
+};
+
+
+#line 42
+CoordinateSpace_0 CoordinateSpace_x24init_0(vec3 normal_2, bool hasUV_0, vec3 dfd1_1, vec3 dfd2_1, vec2 uvd1_1, vec2 uvd2_1)
+{
+
+#line 42
+    CoordinateSpace_0 _S12;
+
+#line 47
+    _S12.normal_1 = normal_2;
+    float _S13 = uvd1_1.x;
+
+#line 48
+    if(hasUV_0 && _S13 > 0.0)
+    {
+        float _S14 = uvd2_1.y;
+
+#line 50
+        float _S15 = uvd1_1.y;
+
+#line 50
+        vec3 t_0 = (_S14 * dfd1_1 - _S15 * dfd2_1) / (_S13 * _S14 - uvd2_1.x * _S15);
+        vec3 _S16 = normalize(t_0 - normal_2 * dot(normal_2, t_0));
+
+#line 51
+        _S12.tangent_0 = _S16;
+        _S12.bitangent_0 = cross(normal_2, _S16);
+
+#line 48
+    }
+    else
+    {
+
+#line 58
+        float _S17 = normal_2.z;
+
+#line 58
+        float normalSign_0;
+
+#line 58
+        if(_S17 < 0.0)
+        {
+
+#line 58
+            normalSign_0 = -1.0;
+
+#line 58
+        }
+        else
+        {
+
+#line 58
+            normalSign_0 = 1.0;
+
+#line 58
+        }
+        float a_0 = -1.0 / (normalSign_0 + _S17);
+        float _S18 = normal_2.x;
+
+#line 60
+        float _S19 = normal_2.y;
+
+#line 60
+        float b_0 = _S18 * _S19 * a_0;
+        _S12.tangent_0 = vec3(1.0 + normalSign_0 * _S18 * _S18 * a_0, normalSign_0 * b_0, - normalSign_0 * _S18);
+        _S12.bitangent_0 = vec3(b_0, normalSign_0 + _S19 * _S19 * a_0, - _S19);
+
+#line 48
+    }
+
+#line 42
+    return _S12;
+}
+
+
+#line 28 2
+struct DeviceSphere_0
+{
+    vec3 normal_3;
+    uint materialId_2;
+    int lightId_2;
+};
+
+
+#line 47 5
+DeviceSphere_0 getSphere_0(vec3 hitPoint_1, uint instanceCustomIndex_2, uint primitiveIndex_1, vec2 hitAttributes_2)
+{
+
+
+    int _S20 = int(instanceCustomIndex_2 + primitiveIndex_1);
+
+#line 49
+    DeviceSphere_0 sphere_0;
+
+#line 55
+    sphere_0.normal_3 = normalize(hitPoint_1 - gSpheres_0._data[gInstanceData_0._data[_S20].sphereId_0].center_0);
+
+    sphere_0.materialId_2 = gInstanceData_0._data[_S20].materialId_0;
+
+    sphere_0.lightId_2 = gInstanceData_0._data[_S20].lightId_0;
+
+    return sphere_0;
+}
+
+
+#line 59 2
+struct BxDFSample_0
+{
+    vec3 reflectance_0;
+    vec3 wi_0;
+    float pdf_0;
+    bool dirac_0;
+};
+
+
+#line 80 5
+vec3 tracePaths_0(vec2 uv_1)
+{
+
+#line 89
+    Ray_0 _S21 = createRay_0(uv_1);
+
+
+
+    BxDFSample_0 bxdfSample_0;
+    bxdfSample_0.pdf_0 = 1.0;
+    bxdfSample_0.dirac_0 = true;
+    CoordinateSpace_0 space_0;
+    const vec3 _S22 = vec3(0.0);
+
+#line 97
+    space_0.normal_1 = _S22;
+
+#line 102
+    RayDesc_0 rayDescriptor_0;
+    vec3 _S23 = _S21.origin_0.xyz;
+
+#line 103
+    rayDescriptor_0.Origin_0 = _S23 + _S22 * 0.00000099999999747524;
+    rayDescriptor_0.Direction_0 = _S21.direction_0.xyz;
+    rayDescriptor_0.TMin_0 = 0.00100000004749745131;
+    rayDescriptor_0.TMax_0 = 1000.0;
+
+#line 101
+    RayPayload_0 payload_0;
+
+#line 107
+    TraceRay_0(gTLAS_0, 1U, 255U, 0U, 0U, 0U, rayDescriptor_0, payload_0);
+
+#line 118
+    if(payload_0.hit_0)
+    {
+
+
+        if(payload_0.hitInfo_0.hitKind_0 == 0U)
+        {
+            DeviceTriangle_0 triangle_0 = getTriangle_0(payload_0.hitInfo_0.primitiveId_0, payload_0.hitInfo_0.instanceCustomIndex_0, payload_0.hitInfo_0.hitAttributes_0, payload_0.hitInfo_0.worldToObject_0, _S23, payload_0.hitPoint_0);
+
+
+
+            space_0 = CoordinateSpace_x24init_0(triangle_0.interpolatedNormal_0, gMaterials_0._data[triangle_0.materialId_1].canUseUv_0 == 1U, triangle_0.dfd1_0, triangle_0.dfd2_0, triangle_0.uvd1_0, triangle_0.uvd2_0);
+
+#line 122
+        }
+        else
+        {
+
+#line 130
+            if(payload_0.hitInfo_0.hitKind_0 == 1U)
+            {
+
+
+                const vec2 _S24 = vec2(0.0);
+                space_0 = CoordinateSpace_x24init_0(getSphere_0(payload_0.hitPoint_0, payload_0.hitInfo_0.instanceCustomIndex_0, payload_0.hitInfo_0.primitiveId_0, payload_0.hitInfo_0.hitAttributes_0).normal_3, false, _S22, _S22, _S24, _S24);
+
+#line 130
+            }
+
+#line 122
+        }
+
+#line 138
+        return space_0.normal_1 * 0.5 + 0.5;
+    }
+
+#line 184
+    const vec3 _S25 = vec3(0.01999999955296516418, 0.03999999910593032837, 0.07999999821186065674);
+
+#line 189
+    return _S25;
+}
+
+
+#line 4689 3
+vec3 saturate_0(vec3 x_0)
+{
+    return clamp(x_0, vec3(0.0), vec3(1.0));
+}
+
+
+#line 113 6
+vec3 toneMapACES_0(vec3 color_0)
+{
+
+#line 120
+    return saturate_0(color_0 * (2.50999999046325683594 * color_0 + 0.02999999932944774628) / (color_0 * (2.43000006675720214844 * color_0 + 0.58999997377395629883) + 0.14000000059604644775));
+}
+
+
+#line 106
+vec3 linearTosRGB_0(vec3 linear_0)
+{
+    return pow(linear_0.xyz, vec3(0.45454543828964233398));
+}
+
+
+#line 193 5
+void main()
+{
+    uvec3 _S26 = ((gl_LaunchIDEXT));
+
+#line 195
+    ivec2 pixelIndex_0 = ivec2(_S26.xy);
+    vec4 accumColor_0;
+
+#line 196
+    vec4 _S27;
+
+#line 196
+    if(gPushConstants_0.frame_0 > 0)
+    {
+
+#line 196
+        vec4 _S28 = (imageLoad((gAccumulationImage_0), (pixelIndex_0)));
+
+#line 196
+        _S27 = _S28;
+
+#line 196
+    }
+    else
+    {
+
+#line 196
+        _S27 = vec4(0.0, 0.0, 0.0, 0.0);
+
+#line 196
+    }
+
+#line 196
+    accumColor_0 = _S27;
+    accumColor_0.xyz = _S27.xyz * _S27.w;
+    uvec3 _S29 = ((gl_LaunchIDEXT));
+
+#line 198
+    vec2 pixelCorner_0 = vec2(_S29.xy);
+
+
+    uvec3 _S30 = ((gl_LaunchIDEXT));
+
+#line 201
+    Random_init_0(uvec4(_S30.xy, uint(gPushConstants_0.frame_0), 2907U));
+
+    vec2 _S31 = Random_rand2_0();
+
+#line 203
+    vec2 _S32 = pixelCorner_0 + _S31;
+
+#line 203
+    uvec3 _S33 = ((gl_LaunchSizeEXT));
+
+
+    vec3 _S34 = tracePaths_0(_S32 / vec2(_S33.xy) * 2.0 - 1.0);
+
+    accumColor_0.xyz = accumColor_0.xyz + _S34;
+    accumColor_0[3] = accumColor_0.w + 1.0;
+    accumColor_0.xyz = accumColor_0.xyz / accumColor_0.w;
+
+    uvec2 _S35 = uvec2(pixelIndex_0);
+
+#line 212
+    imageStore((gAccumulationImage_0), ivec2((_S35)), accumColor_0);
+
+    imageStore((gResultImage_0), ivec2((_S35)), vec4(linearTosRGB_0(toneMapACES_0(accumColor_0.xyz)), 1.0));
+    return;
+}
+

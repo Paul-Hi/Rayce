@@ -5,7 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include <core/utils.hpp>
-#include <host_device.hpp>
+#include <hostDeviceInterop.slang>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/commandPool.hpp>
@@ -23,8 +23,9 @@
 
 using namespace rayce;
 
-RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const std::unique_ptr<class Swapchain>& swapchain, const std::unique_ptr<AccelerationStructure>& tlas, CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage,
-                                       uint32 framesInFlight)
+RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const std::unique_ptr<Swapchain>& swapchain,
+                                       const std::unique_ptr<AccelerationStructure>& tlas, const std::vector<VkBuffer>& vertexBuffers, const std::vector<VkBuffer>& indexBuffers,
+                                       CameraDataRT& cameraData, uint32 requiredImageDescriptors, const std::unique_ptr<ImageView>& outputImage, uint32 framesInFlight)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
 {
@@ -54,7 +55,19 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorResultImage.descriptorCount = 1;
     layoutBindingDescriptorResultImage.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
-    std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorAccumulationImage, layoutBindingDescriptorResultImage };
+    VkDescriptorSetLayoutBinding layoutBindingVertexBuffer{};
+    layoutBindingVertexBuffer.binding         = VERTEX_BINDING;
+    layoutBindingVertexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingVertexBuffer.descriptorCount = vertexBuffers.size();
+    layoutBindingVertexBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    VkDescriptorSetLayoutBinding layoutBindingIndexBuffer{};
+    layoutBindingIndexBuffer.binding         = INDEX_BINDING;
+    layoutBindingIndexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindingIndexBuffer.descriptorCount = vertexBuffers.size();
+    layoutBindingIndexBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings = { layoutBindingDescriptorTLAS, layoutBindingDescriptorAccumulationImage, layoutBindingDescriptorResultImage, layoutBindingVertexBuffer, layoutBindingIndexBuffer };
 
     pDescriptorSetLayoutRT = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
@@ -194,9 +207,9 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     mCHitOffset                              = raygenBaseAlignedHandleSize;
     mMissOffset                              = mCHitOffset + cHitBaseAlignedHandleSize; // FIXME: This could be clearer
     // intersection shders are not included here?!
-    mRayGenSize                         = mAlignedHandleSize * 1;
-    mCHitSize                           = mAlignedHandleSize * 2;
-    mMissSize                           = mAlignedHandleSize * 1;
+    mRayGenSize = mAlignedHandleSize * 1;
+    mCHitSize   = mAlignedHandleSize * 2;
+    mMissSize   = mAlignedHandleSize * 1;
 
     const uint32 shaderBindingTableSize = raygenBaseAlignedHandleSize + cHitBaseAlignedHandleSize + missBaseAlignedHandleSize;
     pShaderBindingTableBuffer =
@@ -285,13 +298,50 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     cameraBufferWrite.descriptorCount = 1;
     cameraBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
+    VkDescriptorBufferInfo vertexBufferInfo{};
+    vertexBufferInfo.offset = 0;
+    vertexBufferInfo.range  = VK_WHOLE_SIZE;
+
+    std::vector<VkDescriptorBufferInfo> vertexBufferInfos;
+    for (auto& buf : vertexBuffers)
+    {
+        vertexBufferInfo.buffer = buf;
+        vertexBufferInfos.push_back(vertexBufferInfo);
+    }
+
+    VkDescriptorBufferInfo indexBufferInfo{};
+    indexBufferInfo.offset = 0;
+    indexBufferInfo.range  = VK_WHOLE_SIZE;
+    std::vector<VkDescriptorBufferInfo> indexBufferInfos;
+    for (auto& buf : indexBuffers)
+    {
+        indexBufferInfo.buffer = buf;
+        indexBufferInfos.push_back(indexBufferInfo);
+    }
+
+    VkWriteDescriptorSet vertexBufferWrite{};
+    vertexBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    vertexBufferWrite.dstBinding      = VERTEX_BINDING;
+    vertexBufferWrite.descriptorCount = vertexBuffers.size();
+    vertexBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    vertexBufferWrite.pBufferInfo     = vertexBufferInfos.data();
+
+    VkWriteDescriptorSet indexBufferWrite{};
+    indexBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    indexBufferWrite.dstBinding      = INDEX_BINDING;
+    indexBufferWrite.descriptorCount = vertexBuffers.size();
+    indexBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    indexBufferWrite.pBufferInfo     = indexBufferInfos.data();
+
     // uniform buffer update
     for (ptr_size i = 0; i < framesInFlight; ++i)
     {
         accelerationStructureWrite.dstSet                     = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
         accumImageWrite.dstSet                                = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
         resultImageWrite.dstSet                               = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, accumImageWrite, resultImageWrite };
+        vertexBufferWrite.dstSet                              = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
+        indexBufferWrite.dstSet                               = pDescriptorSetsRT->operator[](static_cast<uint32>(i));
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, accumImageWrite, resultImageWrite, vertexBufferWrite, indexBufferWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
         memcpy(mCameraBuffersMapped[i], &cameraData, bufferSize);

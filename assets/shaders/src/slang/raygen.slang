@@ -10,13 +10,12 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     DeviceTriangle tri;
     const uint triangleIndex = primitiveIndex * 3;
 
-    const StructuredBuffer<uint> indices = gIndices[gInstanceData[instanceCustomIndex].objectIndex];
-    const StructuredBuffer<Vertex> vertices = gVertices[gInstanceData[instanceCustomIndex].objectIndex];
+    const uint objIdx = gInstanceData.Load(instanceCustomIndex).objectIndex;
 
     for(uint i = 0; i < 3; ++i)
     {
-        const uint idx = indices[triangleIndex + i];
-        tri.vertices[i] = vertices[idx];
+        const uint idx = gIndices[objIdx].Load(triangleIndex + i);
+        tri.vertices[i] = gVertices[objIdx].Load(idx);
     }
 
     tri.barycentrics = float3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
@@ -38,9 +37,9 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     );
     tri.geometryNormal = normalize(mul(worldToObject, tri.geometryNormal).xyz);
 
-    tri.materialId = gInstanceData[instanceCustomIndex].materialId;
+    tri.materialId = gInstanceData.Load(instanceCustomIndex).materialId;
 
-    tri.lightId = gInstanceData[instanceCustomIndex].lightId;
+    tri.lightId = gInstanceData.Load(instanceCustomIndex).lightId;
 
     return tri;
 }
@@ -49,15 +48,15 @@ DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, co
 {
     DeviceSphere sphere;
 
-    int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
+    int sphereId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).sphereId;
 
-    Sphere pShere = gSpheres[sphereId];
+    Sphere pShere = gSpheres.Load(sphereId);
 
     sphere.normal = normalize(hitPoint - pShere.center);
 
-    sphere.materialId = gInstanceData[instanceCustomIndex + primitiveIndex].materialId;
+    sphere.materialId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).materialId;
 
-    sphere.lightId = gInstanceData[instanceCustomIndex + primitiveIndex].lightId;
+    sphere.lightId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).lightId;
 
     return sphere;
 }
@@ -91,14 +90,15 @@ float3 tracePaths(in float2 uv)
 
     LightSample lightSample;
     lightSample.pdf = 1.0;
-    BxDFSample bsdfSample;
-    bsdfSample.pdf = 1.0;
+    BxDFSample bxdfSample;
+    bxdfSample.pdf = 1.0;
+    bxdfSample.dirac = true;
     CoordinateSpace space;
     space.normal = float3(0.0);
 
     for(uint depth = 0; depth < maxDepth; ++depth)
     {
-        RayPayload pld;
+        RayPayload payload;
         RayDesc rayDescriptor;
         rayDescriptor.Origin = ray.origin.xyz + space.normal * EPSILON;
         rayDescriptor.Direction = ray.direction.xyz;
@@ -112,44 +112,45 @@ float3 tracePaths(in float2 uv)
             0,      // sbtRecordStride
             0,      // missIndex
             rayDescriptor,
-            pld
+            payload
         );
 
-        if(pld.hit)
+        if(payload.hit)
         {
             int lightId = -1;
             IBxDF bxdf;
-            if(pld.hitInfo.hitKind == EHitKind::triangleMesh)
+            if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
             {
-                DeviceTriangle triangle = getTriangle(pld.hitInfo.primitiveId, pld.hitInfo.instanceCustomIndex, pld.hitInfo.hitAttributes, pld.hitInfo.worldToObject, ray.origin.xyz, pld.hitPoint);
+                DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin.xyz, payload.hitPoint);
                 const Material mat = gMaterials[triangle.materialId];
                 bxdf = mat.createBxDF(triangle.interpolatedUV);
 
                 space = CoordinateSpace(triangle.interpolatedNormal, mat.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
-            else if(pld.hitInfo.hitKind == EHitKind::proceduralSphere)
+            else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
             {
-                DeviceSphere sphere = getSphere(pld.hitPoint, pld.hitInfo.instanceCustomIndex, pld.hitInfo.primitiveId, pld.hitInfo.hitAttributes);
+                DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes);
                 const Material mat = gMaterials[sphere.materialId];
                 bxdf = mat.createBxDF(float2(0.0)); // FIXME: No Sphere UVs yet.
-
                 space = CoordinateSpace(sphere.normal);
                 lightId = sphere.lightId;
             }
+            return space.normal * 0.5 + 0.5; // FIXME: Temporary
 
             if(lightId >= 0)
             {
-                float lightPdf = (depth == 0 || bsdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin.xyz);
-                float miWeight = powerHeuristic(bsdfSample.pdf, lightPdf);
+                // uses bxdfSample from last point
+                float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin.xyz);
+                float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
 
-                color += throughput * miWeight * gLights[lightId].radiance;
+                color += throughput * miWeight * gLights.Load(lightId).radiance;
             }
 
             const float3 wo = space.worldToTangentFrame(-ray.direction.xyz);
 
             if(!bxdf.isDirac())
             {
-                lightSample = sampleLights(pld.hitPoint, lightId, space);
+                lightSample = sampleLights(payload.hitPoint, lightId, space);
                 if(lightSample.valid)
                 {
                     float bsdfPdf = bxdf.pdf(wo, lightSample.wi);
@@ -158,28 +159,25 @@ float3 tracePaths(in float2 uv)
                 }
             }
 
-            if(!sampleBSDF(material, bsdfSample))
-            {
-                break;
-            }
+            bxdfSample = bxdf.sample(wo);
 
-            float nDotL = cosThetaTS(surfaceState.wi);
+            float nDotL = cosThetaTS(bxdfSample.wi);
 
-            throughput *= bsdfSample.reflectance * abs(nDotL) / bsdfSample.pdf;
+            throughput *= bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf;
 
             // russian roulette
             if (depth >= russianRouletteStart)
             {
                 float p = max(throughput.x, max(throughput.y, throughput.z));
-                if (rand() > p) {
+                if (Random::rand() > p) {
                     break;
                 }
 
                 throughput *= 1.0 / p;
             }
 
-            origin.xyz = pld.hitPoint;
-            direction.xyz = tangentToWorld(surfaceState.wi, surfaceState.tangent, surfaceState.bitangent, surfaceState.normal);
+            ray.origin.xyz = payload.hitPoint;
+            ray.direction.xyz = space.tangentToWorld(bxdfSample.wi);
             continue;
         }
 

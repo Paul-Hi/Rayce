@@ -62,6 +62,11 @@ namespace rayce
         /// @return The vulkan device address of the @a AccelerationStructure.
         VkDeviceAddress getDeviceAddress() const;
 
+        uint getInstanceCount() const
+        {
+            return mInstanceCount;
+        }
+
     private:
         /// @brief The underlying vulkan acceleration structure handle.
         VkAccelerationStructureKHR mVkAccelerationStructure;
@@ -73,6 +78,8 @@ namespace rayce
 
         /// @brief Loaded raytracing extension functions are stored there.
         std::unique_ptr<class RTFunctions> pRTF;
+
+        uint mInstanceCount;
     };
 } // namespace rayce
 

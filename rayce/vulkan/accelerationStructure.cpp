@@ -4,7 +4,7 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <host_device.hpp>
+#include <hostDeviceInterop.slang>
 #include <vulkan/accelerationStructure.hpp>
 #include <vulkan/buffer.hpp>
 #include <vulkan/device.hpp>
@@ -15,6 +15,7 @@ using namespace rayce;
 
 AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, const AccelerationStructureInitData initData)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
+    , mInstanceCount(initData.primitiveCount)
 {
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
     // bottom level
@@ -109,8 +110,8 @@ AccelerationStructure::AccelerationStructure(const std::unique_ptr<class Device>
             accelerationStructureInstance.mask                                   = 0xFF;
             accelerationStructureInstance.instanceShaderBindingTableRecordOffset = hitGroup;
             // FIXME: We should distinguish between objects with twosided bsdfs and onesided ones...
-            accelerationStructureInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; //hitGroup == 1 ? VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR : 0;
-            accelerationStructureInstance.accelerationStructureReference         = blasAddress;
+            accelerationStructureInstance.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // hitGroup == 1 ? VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR : 0;
+            accelerationStructureInstance.accelerationStructureReference = blasAddress;
             accelerationStructureInstances.push_back(accelerationStructureInstance);
         }
 

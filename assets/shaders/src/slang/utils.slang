@@ -49,7 +49,7 @@ struct CoordinateSpace
         {
             float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
             this.tangent    = normalize(t_ - normal * dot(normal, t_));
-            this.bitangent  = cross(normal, space.tangent);
+            this.bitangent  = cross(normal, this.tangent);
         }
         else
         {
@@ -95,8 +95,8 @@ float powerHeuristic(float fPdf, float gPdf)
     return fPdf / (fPdf + gPdf);
 }
 
-const float GAMMA     = 2.2;
-const float INV_GAMMA = 1.0 / GAMMA;
+static const float GAMMA     = 2.2;
+static const float INV_GAMMA = 1.0 / GAMMA;
 
 float3 sRGBToLinear(in float3 srgb)
 {

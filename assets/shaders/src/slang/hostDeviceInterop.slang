@@ -1,7 +1,7 @@
 #ifndef HOST_DEVICE_HPP
 #define HOST_DEVICE_HPP
 
-#ifdef HOST_CODE
+#ifdef __cplusplus
 #include <core/types.hpp>
 using uint     = rayce::uint32;
 using uint64_t = rayce::uint64;
@@ -25,12 +25,12 @@ namespace rayce
     static const int CAMERA_BINDING = 0;
 
     static const int MODEL_SET        = 2;
-    static const int TEXTURE_BINDING  = 0;
-    static const int SAMPLER_BINDING  = 1;
-    static const int INSTANCE_BINDING = 2;
-    static const int MATERIAL_BINDING = 3;
-    static const int LIGHT_BINDING    = 4;
-    static const int SPHERE_BINDING   = 5;
+    static const int TEXTURE_BINDING  = 0; // Combined Image Sampler
+    static const int SAMPLER_BINDING  = 0; // Combined Image Sampler
+    static const int INSTANCE_BINDING = 1;
+    static const int MATERIAL_BINDING = 2;
+    static const int LIGHT_BINDING    = 3;
+    static const int SPHERE_BINDING   = 4;
 
     struct RAYCE_API_EXPORT Vertex
     {
@@ -38,7 +38,7 @@ namespace rayce
         float3 normal;
         float2 uv;
 
-#ifdef HOST_CODE
+#ifdef __cplusplus
         static VkVertexInputBindingDescription getVertexInputBindingDescription()
         {
             VkVertexInputBindingDescription vertexInputBindingDescription{};
@@ -138,7 +138,7 @@ namespace rayce
         int radianceTexture;
         float3 radiance;
 
-#ifdef HOST_CODE
+#ifdef __cplusplus
         Light()
             : type(ELightType::area)
             , sphereId(0)
@@ -185,7 +185,7 @@ namespace rayce
 
         uint canUseUv;
 
-#ifdef HOST_CODE
+#ifdef __cplusplus
         Material()
             : diffuseReflectance(float3(0.5, 0.5, 0.5))
             , diffuseReflectanceTexture(-1)
@@ -254,7 +254,7 @@ namespace rayce
         */
     };
 
-#ifdef HOST_CODE
+#ifdef __cplusplus
 }
 #endif
 

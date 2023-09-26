@@ -260,7 +260,7 @@ extension Material
                     brdf.diffuseReflectance = this.diffuseReflectance;
                     if (this.diffuseReflectanceTexture >= 0)
                     {
-                        brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gDefaultSampler, uv).rgb;
+                        brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gSamplers[this.diffuseReflectanceTexture], uv).rgb;
                     }
                     return brdf;
                 }
@@ -272,16 +272,21 @@ extension Material
                     bsdf.specularTransmittance = this.specularTransmittance;
                     if (this.specularReflectanceTexture >= 0)
                     {
-                        bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gDefaultSampler, uv).rgb;
+                        bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
                     }
                     if (this.specularTransmittanceTexture >= 0)
                     {
-                        bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gDefaultSampler, uv).rgb;
+                        bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
                     }
 
                     bsdf.interiorIor = this.interiorIor;
                     bsdf.exteriorIor = this.exteriorIor;
                     return bsdf;
+                }
+            default:
+                {
+                    DiffuseBRDF defaultBrdf;
+                    return defaultBrdf;
                 }
         }
     }

@@ -33,7 +33,7 @@ ConstantBuffer<CameraBufferRT> gCamera;
 Texture2D gTextures[];
 
 [[vk::binding(SAMPLER_BINDING,MODEL_SET)]]
-SamplerState gDefaultSampler;
+SamplerState gSamplers[];
 // layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
 
 [[vk::binding(INSTANCE_BINDING,MODEL_SET)]]
@@ -55,7 +55,7 @@ StructuredBuffer<Sphere> gSpheres;
 // FIXME: Is ConstBufferPointer stuff better here?
 [[vk::binding(VERTEX_BINDING,RT_SET)]]
 StructuredBuffer<Vertex> gVertices[];
-// layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
+// layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };p
 [[vk::binding(INDEX_BINDING,RT_SET)]]
 StructuredBuffer<uint> gIndices[];
 // layout(buffer_reference, scalar) buffer Indices { uint i[]; };

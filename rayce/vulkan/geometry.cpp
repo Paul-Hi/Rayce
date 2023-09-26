@@ -4,7 +4,7 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <host_device.hpp>
+#include <hostDeviceInterop.slang>
 #include <vulkan/buffer.hpp>
 #include <vulkan/geometry.hpp>
 
