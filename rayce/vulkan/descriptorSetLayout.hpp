@@ -16,7 +16,7 @@ namespace rayce
     public:
         RAYCE_DISABLE_COPY_MOVE(DescriptorSetLayout)
 
-        DescriptorSetLayout(const std::unique_ptr<class Device>& logicalDevice, const std::vector<VkDescriptorSetLayoutBinding>& layoutBindings, const VkDescriptorSetLayoutCreateFlags createFlags);
+        DescriptorSetLayout(const std::unique_ptr<class Device>& logicalDevice, const std::vector<VkDescriptorSetLayoutBinding>& layoutBindings, const VkDescriptorSetLayoutCreateFlags createFlags, int32 variableBindingCount = 0);
         ~DescriptorSetLayout();
 
         VkDescriptorSetLayout getVkDescriptorLayout() const
@@ -24,8 +24,14 @@ namespace rayce
             return mVkDescriptorSetLayout;
         }
 
+        uint32 getVariableBindingCount() const
+        {
+            return mVariableBindingCount;
+        }
+
     private:
         VkDescriptorSetLayout mVkDescriptorSetLayout;
+        uint32 mVariableBindingCount;
         VkDevice mVkLogicalDeviceRef;
     };
 } // namespace rayce

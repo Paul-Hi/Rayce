@@ -26,14 +26,14 @@ struct RayPayload_0
 rayPayloadInEXT RayPayload_0 _S1;
 
 
-#line 7182 2
+#line 7230 2
 struct BuiltInTriangleIntersectionAttributes_0
 {
     vec2 barycentrics_0;
 };
 
 
-#line 7182
+#line 7230
 hitAttributeEXT BuiltInTriangleIntersectionAttributes_0 _S2;
 
 

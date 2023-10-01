@@ -131,7 +131,6 @@ struct DiffuseBRDF : IBxDF
         return EBxDFType::diffuse;
     }
 
-
     float3 diffuseReflectance;
 };
 
@@ -248,45 +247,144 @@ struct SmoothThinDielectricBSDF : IBxDF
     float3 specularTransmittance;
 };
 
+interface IMaterial
+{
+    associatedtype RealBxDF : IBxDF;
+    RealBxDF createBxDF(const float2 uv);
+};
+
+struct DiffuseMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.diffuseReflectance = materialData.diffuseReflectance;
+        this.diffuseReflectanceTexture = materialData.diffuseReflectanceTexture;
+    }
+
+    typedef DiffuseBRDF RealBxDF;
+
+    DiffuseBRDF createBxDF(const float2 uv)
+    {
+        DiffuseBRDF brdf;
+        brdf.diffuseReflectance = this.diffuseReflectance;
+        if (this.diffuseReflectanceTexture >= 0)
+        {
+            brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gSamplers[this.diffuseReflectanceTexture], uv).rgb;
+        }
+
+        return brdf;
+    }
+
+    float3 diffuseReflectance;
+    int diffuseReflectanceTexture;
+};
+
+struct SmoothDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.interiorIor = materialData.interiorIor;
+        this.exteriorIor = materialData.exteriorIor;
+    }
+
+    typedef SmoothDielectricBSDF RealBxDF;
+
+    SmoothDielectricBSDF createBxDF(const float2 uv)
+    {
+        SmoothDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
+        }
+
+        bsdf.interiorIor = this.interiorIor;
+        bsdf.exteriorIor = this.exteriorIor;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    float3 specularTransmittance;
+    int specularReflectanceTexture;
+    int specularTransmittanceTexture;
+    float interiorIor;
+    float exteriorIor;
+};
+
+struct SmoothThinDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.interiorIor = materialData.interiorIor;
+        this.exteriorIor = materialData.exteriorIor;
+    }
+
+    typedef SmoothThinDielectricBSDF RealBxDF;
+
+    SmoothThinDielectricBSDF createBxDF(const float2 uv)
+    {
+        SmoothThinDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
+        }
+
+        bsdf.interiorIor = this.interiorIor;
+        bsdf.exteriorIor = this.exteriorIor;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    float3 specularTransmittance;
+    int specularReflectanceTexture;
+    int specularTransmittanceTexture;
+    float interiorIor;
+    float exteriorIor;
+};
+
 extension Material
 {
-    IBxDF createBxDF(const float2 uv)
+    IMaterial getMaterial()
     {
         switch(this.bxdfType)
         {
             case EBxDFType::diffuse:
                 {
-                    DiffuseBRDF brdf;
-                    brdf.diffuseReflectance = this.diffuseReflectance;
-                    if (this.diffuseReflectanceTexture >= 0)
-                    {
-                        brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gSamplers[this.diffuseReflectanceTexture], uv).rgb;
-                    }
-                    return brdf;
+                    // FIXME: The Problem is creating something dynamic is not possible (conformances - where and how to add?)
+                    return createDynamicObject<IMaterial>(uint(EBxDFType::diffuse), DiffuseMaterial(this));
                 }
             case EBxDFType::smoothDielectric:
+                {
+                    return createDynamicObject<IMaterial>(uint(EBxDFType::smoothDielectric), SmoothDielectricMaterial(this));
+                }
             case EBxDFType::smoothDielectricThin:
                 {
-                    SmoothDielectricBSDF bsdf;
-                    bsdf.specularReflectance = this.specularReflectance;
-                    bsdf.specularTransmittance = this.specularTransmittance;
-                    if (this.specularReflectanceTexture >= 0)
-                    {
-                        bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
-                    }
-                    if (this.specularTransmittanceTexture >= 0)
-                    {
-                        bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
-                    }
-
-                    bsdf.interiorIor = this.interiorIor;
-                    bsdf.exteriorIor = this.exteriorIor;
-                    return bsdf;
+                    return createDynamicObject<IMaterial>(uint(EBxDFType::smoothDielectricThin), SmoothThinDielectricMaterial(this));
                 }
             default:
                 {
-                    DiffuseBRDF defaultBrdf;
-                    return defaultBrdf;
+                    return createDynamicObject<IMaterial>(uint(EBxDFType::diffuse), DiffuseMaterial(this));
                 }
         }
     }

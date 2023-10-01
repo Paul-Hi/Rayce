@@ -53,10 +53,10 @@ StructuredBuffer<Sphere> gSpheres;
 // layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
 // FIXME: Is ConstBufferPointer stuff better here?
-[[vk::binding(VERTEX_BINDING,RT_SET)]]
+[[vk::binding(VERTEX_BINDING,VERTEX_SET)]]
 StructuredBuffer<Vertex> gVertices[];
 // layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };p
-[[vk::binding(INDEX_BINDING,RT_SET)]]
+[[vk::binding(INDEX_BINDING,INDEX_SET)]]
 StructuredBuffer<uint> gIndices[];
 // layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 

@@ -78,11 +78,15 @@ namespace rayce
         std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutRT;
         std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutCamera;
         std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutModel;
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutIndex;
+        std::unique_ptr<class DescriptorSetLayout> pDescriptorSetLayoutVertex;
 
         uint32 mFramesInFlight;
         std::unique_ptr<class DescriptorSets> pDescriptorSetsRT;
         std::unique_ptr<class DescriptorSets> pDescriptorSetsCamera;
         std::unique_ptr<class DescriptorSets> pDescriptorSetsModel;
+        std::unique_ptr<class DescriptorSets> pDescriptorSetsIndex;
+        std::unique_ptr<class DescriptorSets> pDescriptorSetsVertex;
         std::vector<std::unique_ptr<class Buffer>> mCameraBuffers;
         std::vector<void*> mCameraBuffersMapped;
         std::vector<std::unique_ptr<class Buffer>> mInstanceBuffers;

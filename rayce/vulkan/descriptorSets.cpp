@@ -19,12 +19,21 @@ DescriptorSets::DescriptorSets(const std::unique_ptr<Device>& logicalDevice, con
 {
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts(number, descriptorSetLayout->getVkDescriptorLayout());
 
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
     descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.pNext              = nullptr;
     descriptorSetAllocateInfo.descriptorPool     = mVkDescriptorPoolRef;
     descriptorSetAllocateInfo.descriptorSetCount = number;
     descriptorSetAllocateInfo.pSetLayouts        = descriptorSetLayouts.data();
+
+    uint32 variableBindingCount = descriptorSetLayout->getVariableBindingCount();
+
+    std::vector<uint32> counts(number, variableBindingCount);
+    VkDescriptorSetVariableDescriptorCountAllocateInfo setCounts{};
+    setCounts.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    setCounts.descriptorSetCount = number;
+    setCounts.pDescriptorCounts  = counts.data();
+
+    descriptorSetAllocateInfo.pNext = variableBindingCount > 0 ? &setCounts : nullptr;
 
     mVkDescriptorSets.resize(number);
     RAYCE_CHECK_VK(vkAllocateDescriptorSets(mVkLogicalDeviceRef, &descriptorSetAllocateInfo, mVkDescriptorSets.data()), "Creating descriptor sets failed!");

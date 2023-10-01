@@ -118,24 +118,26 @@ float3 tracePaths(in float2 uv)
         if(payload.hit)
         {
             int lightId = -1;
-            IBxDF bxdf;
+            float2 uv;
+            IMaterial material;
             if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
             {
+                return float3(0.0, 0.0, 1.0); // FIXME: Temporary
                 DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin.xyz, payload.hitPoint);
-                const Material mat = gMaterials[triangle.materialId];
-                bxdf = mat.createBxDF(triangle.interpolatedUV);
+                material = gMaterials[triangle.materialId].getMaterial();
+                uv = triangle.interpolatedUV;
 
-                space = CoordinateSpace(triangle.interpolatedNormal, mat.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+                space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
             else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
             {
+                return float3(0.0, 1.0, 0.0); // FIXME: Temporary
                 DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes);
-                const Material mat = gMaterials[sphere.materialId];
-                bxdf = mat.createBxDF(float2(0.0)); // FIXME: No Sphere UVs yet.
+                material = gMaterials[sphere.materialId].getMaterial();
+                uv = float2(0.0); // FIXME: No Sphere UVs yet.
                 space = CoordinateSpace(sphere.normal);
                 lightId = sphere.lightId;
             }
-            return space.normal * 0.5 + 0.5; // FIXME: Temporary
 
             if(lightId >= 0)
             {
@@ -148,18 +150,18 @@ float3 tracePaths(in float2 uv)
 
             const float3 wo = space.worldToTangentFrame(-ray.direction.xyz);
 
-            if(!bxdf.isDirac())
+            if(!material.createBxDF(uv).isDirac())
             {
                 lightSample = sampleLights(payload.hitPoint, lightId, space);
                 if(lightSample.valid)
                 {
-                    float bsdfPdf = bxdf.pdf(wo, lightSample.wi);
+                    float bsdfPdf = material.createBxDF(uv).pdf(wo, lightSample.wi);
                     float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                    color += throughput * miWeight * bxdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf;
+                    color += throughput * miWeight * material.createBxDF(uv).evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf;
                 }
             }
 
-            bxdfSample = bxdf.sample(wo);
+            bxdfSample = material.createBxDF(uv).sample(wo);
 
             float nDotL = cosThetaTS(bxdfSample.wi);
 
