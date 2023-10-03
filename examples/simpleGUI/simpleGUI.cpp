@@ -66,7 +66,7 @@ bool SimpleGUI::onInitialize()
             auto instance         = std::make_unique<InstanceData>();
             instance->materialId  = triMesh.materialId;
             instance->lightId     = -1; // triMesh.lightId;
-            instance->objectIndex = j;
+            instance->objectIndex = i;
             instance->sphereId    = -1;
             mInstances.push_back(std::move(instance));
 

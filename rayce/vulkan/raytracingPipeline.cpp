@@ -313,7 +313,6 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkDescriptorBufferInfo vertexBufferInfo{};
     vertexBufferInfo.offset = 0;
     vertexBufferInfo.range  = VK_WHOLE_SIZE;
-
     std::vector<VkDescriptorBufferInfo> vertexBufferInfos;
     for (auto& buf : vertexBuffers)
     {
@@ -341,7 +340,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkWriteDescriptorSet indexBufferWrite{};
     indexBufferWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     indexBufferWrite.dstBinding      = INDEX_BINDING;
-    indexBufferWrite.descriptorCount = vertexBuffers.size();
+    indexBufferWrite.descriptorCount = indexBuffers.size();
     indexBufferWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     indexBufferWrite.pBufferInfo     = indexBufferInfos.data();
 
@@ -355,9 +354,9 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
         pDescriptorSetsRT->update(writeDescriptorSets);
 
         vertexBufferWrite.dstSet = pDescriptorSetsVertex->operator[](static_cast<uint32>(i));
-        indexBufferWrite.dstSet  = pDescriptorSetsIndex->operator[](static_cast<uint32>(i));
         writeDescriptorSets      = { vertexBufferWrite };
         pDescriptorSetsVertex->update(writeDescriptorSets);
+        indexBufferWrite.dstSet  = pDescriptorSetsIndex->operator[](static_cast<uint32>(i));
         writeDescriptorSets = { indexBufferWrite };
         pDescriptorSetsIndex->update(writeDescriptorSets);
 

@@ -372,19 +372,19 @@ extension Material
             case EBxDFType::diffuse:
                 {
                     // FIXME: The Problem is creating something dynamic is not possible (conformances - where and how to add?)
-                    return createDynamicObject<IMaterial>(uint(EBxDFType::diffuse), DiffuseMaterial(this));
+                    return DiffuseMaterial(this);
                 }
             case EBxDFType::smoothDielectric:
                 {
-                    return createDynamicObject<IMaterial>(uint(EBxDFType::smoothDielectric), SmoothDielectricMaterial(this));
+                    return SmoothDielectricMaterial(this);
                 }
             case EBxDFType::smoothDielectricThin:
                 {
-                    return createDynamicObject<IMaterial>(uint(EBxDFType::smoothDielectricThin), SmoothThinDielectricMaterial(this));
+                    return SmoothThinDielectricMaterial(this);
                 }
             default:
                 {
-                    return createDynamicObject<IMaterial>(uint(EBxDFType::diffuse), DiffuseMaterial(this));
+                    return DiffuseMaterial(this);
                 }
         }
     }

@@ -10,12 +10,14 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     DeviceTriangle tri;
     const uint triangleIndex = primitiveIndex * 3;
 
-    const uint objIdx = gInstanceData.Load(instanceCustomIndex).objectIndex;
+    const uint objIdx = NonUniformResourceIndex(gInstanceData[instanceCustomIndex].objectIndex); // seems to be correct
+    const let ib = gIndices[objIdx];
+    const let vb = gVertices[objIdx];
 
     for(uint i = 0; i < 3; ++i)
     {
-        const uint idx = gIndices[objIdx].Load(triangleIndex + i);
-        tri.vertices[i] = gVertices[objIdx].Load(idx);
+        const uint idx = ib[triangleIndex + i]; // FIXME: This is somehow not correct
+        tri.vertices[i] = vb[idx];
     }
 
     tri.barycentrics = float3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
@@ -37,9 +39,9 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     );
     tri.geometryNormal = normalize(mul(worldToObject, tri.geometryNormal).xyz);
 
-    tri.materialId = gInstanceData.Load(instanceCustomIndex).materialId;
+    tri.materialId = gInstanceData[instanceCustomIndex].materialId;
 
-    tri.lightId = gInstanceData.Load(instanceCustomIndex).lightId;
+    tri.lightId = gInstanceData[instanceCustomIndex].lightId;
 
     return tri;
 }
@@ -48,15 +50,15 @@ DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, co
 {
     DeviceSphere sphere;
 
-    int sphereId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).sphereId;
+    int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
 
-    Sphere pShere = gSpheres.Load(sphereId);
+    Sphere pShere = gSpheres[sphereId];
 
     sphere.normal = normalize(hitPoint - pShere.center);
 
-    sphere.materialId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).materialId;
+    sphere.materialId = gInstanceData[instanceCustomIndex + primitiveIndex].materialId;
 
-    sphere.lightId = gInstanceData.Load(instanceCustomIndex + primitiveIndex).lightId;
+    sphere.lightId = gInstanceData[instanceCustomIndex + primitiveIndex].lightId;
 
     return sphere;
 }
@@ -119,25 +121,25 @@ float3 tracePaths(in float2 uv)
         {
             int lightId = -1;
             float2 uv;
-            IMaterial material;
+            Material mat;
             if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
             {
-                return float3(0.0, 0.0, 1.0); // FIXME: Temporary
                 DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin.xyz, payload.hitPoint);
-                material = gMaterials[triangle.materialId].getMaterial();
+                mat = gMaterials[triangle.materialId];
                 uv = triangle.interpolatedUV;
-
-                space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+                space = CoordinateSpace(triangle.geometryNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
             else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
             {
-                return float3(0.0, 1.0, 0.0); // FIXME: Temporary
                 DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes);
-                material = gMaterials[sphere.materialId].getMaterial();
+                mat = gMaterials[sphere.materialId];
                 uv = float2(0.0); // FIXME: No Sphere UVs yet.
                 space = CoordinateSpace(sphere.normal);
                 lightId = sphere.lightId;
             }
+            // FIXME: Temporary
+            return space.normal * 0.5 + 0.5;
+            let material = mat.getMaterial();
 
             if(lightId >= 0)
             {
@@ -145,7 +147,7 @@ float3 tracePaths(in float2 uv)
                 float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin.xyz);
                 float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
 
-                color += throughput * miWeight * gLights.Load(lightId).radiance;
+                color += throughput * miWeight * gLights[lightId].radiance;
             }
 
             const float3 wo = space.worldToTangentFrame(-ray.direction.xyz);
@@ -195,7 +197,7 @@ float3 tracePaths(in float2 uv)
 void main()
 {
     int2 pixelIndex = int2(DispatchRaysIndex().xy);
-    float4 accumColor = gPushConstants.frame > 0 ? gAccumulationImage.Load(pixelIndex) : float4(0.0, 0.0, 0.0, 0.0);
+    float4 accumColor = gPushConstants.frame > 0 ? gAccumulationImage[pixelIndex] : float4(0.0, 0.0, 0.0, 0.0);
     accumColor.rgb *= accumColor.w;
     const float2 pixelCorner = float2(DispatchRaysIndex().xy);
 

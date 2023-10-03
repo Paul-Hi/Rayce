@@ -95,7 +95,7 @@ namespace rayce
 
     struct RAYCE_API_EXPORT InstanceData
     {
-        uint objectIndex;
+        int objectIndex;
         uint materialId;
         int lightId;
         int sphereId;
