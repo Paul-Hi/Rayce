@@ -7,6 +7,7 @@ using uint     = rayce::uint32;
 using uint64_t = rayce::uint64;
 using float3   = rayce::vec3;
 using float2   = rayce::vec2;
+using int2     = rayce::ivec2;
 namespace rayce
 {
 #else
@@ -39,8 +40,11 @@ namespace rayce
     struct RAYCE_API_EXPORT Vertex
     {
         float3 position;
+        uint pad0 = 0;
         float3 normal;
+        uint pad1 = 0;
         float2 uv;
+        int2 pad2;
 
 #ifdef __cplusplus
         static VkVertexInputBindingDescription getVertexInputBindingDescription()
@@ -140,6 +144,7 @@ namespace rayce
         //  area light
         uint sphereId;
         int radianceTexture;
+        uint pad0 = 0;
         float3 radiance;
 
 #ifdef __cplusplus

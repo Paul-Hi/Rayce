@@ -16,10 +16,10 @@ using namespace rayce;
 
 SimpleGUI::SimpleGUI(const RayceOptions& options)
     : RayceApp::RayceApp(options)
+    , mImguiVkSet(VK_NULL_HANDLE)
 {
-    mViewportPanelSize         = uvec2(1, 1);
-    mRegisteredToImguiViewport = false;
-    mMaxSamples                = 8192;
+    mViewportPanelSize = uvec2(1, 1);
+    mMaxSamples        = 8192;
 }
 
 bool SimpleGUI::onInitialize()
@@ -364,12 +364,12 @@ void SimpleGUI::recreateRTData()
     pRaytracingTargetImage->allocateMemory(device, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     pRaytracingTargetView = std::make_unique<ImageView>(device, *pRaytracingTargetImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    if (mRegisteredToImguiViewport)
+    if (mImguiVkSet)
     {
         ImGui_ImplVulkan_RemoveTexture(mImguiVkSet);
+        mImguiVkSet = VK_NULL_HANDLE;
     }
-    mImguiVkSet                = ImGui_ImplVulkan_AddTexture(pDefaultSampler->getVkSampler(), pRaytracingTargetView->getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    mRegisteredToImguiViewport = true;
+    mImguiVkSet = ImGui_ImplVulkan_AddTexture(pDefaultSampler->getVkSampler(), pRaytracingTargetView->getVkImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     auto& textureViews = pScene->getTextureViews();
     auto& samplers     = pScene->getSamplers();
@@ -386,6 +386,12 @@ void SimpleGUI::recreateRTData()
 
 void SimpleGUI::recreateSwapchain()
 {
+    if (mImguiVkSet)
+    {
+        ImGui_ImplVulkan_RemoveTexture(mImguiVkSet);
+        mImguiVkSet = VK_NULL_HANDLE;
+    }
+
     RayceApp::recreateSwapchain();
 
     mAccumulationFrame = 0;

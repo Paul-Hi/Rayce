@@ -31,7 +31,6 @@ namespace rayce
         std::unique_ptr<class Camera> pCamera;
         int32 mAccumulationFrame;
         int32 mMaxSamples;
-        bool mRegisteredToImguiViewport;
         bool mViewportChange;
         bool mRecreateRTData;
         uvec2 mViewportPanelSize;
