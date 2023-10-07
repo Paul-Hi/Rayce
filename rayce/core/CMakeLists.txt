@@ -3,7 +3,6 @@ message(STATUS "Adding rayce::core!")
 
 file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-list(APPEND SOURCES ../../assets/shaders/src/host_device.hpp)
 
 add_library(core
     STATIC

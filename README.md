@@ -4,7 +4,8 @@ A future pathtracer that supports Vulkan hardware ray tracing.
 
 ## Dependencies
 
-The Vulkan SDK must be installed. Everything else is loaded via CMake.
+The Vulkan SDK must be installed. To compile slang shaders NVIDIAS slang compiler has to be installed.
+Everything else is loaded via CMake.
 To build the documentation a Doxygen installation is also required.
 
 We use:
