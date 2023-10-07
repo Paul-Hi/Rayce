@@ -30,10 +30,10 @@ ConstantBuffer<CameraBufferRT> gCamera;
 // } camera;
 
 [[vk::binding(TEXTURE_BINDING, MODEL_SET)]]
-Texture2D gTextures[];
+Sampler2D gTextures[];
 
-[[vk::binding(SAMPLER_BINDING,MODEL_SET)]]
-SamplerState gSamplers[];
+// [[vk::binding(TEXTURE_BINDING,MODEL_SET)]]
+// SamplerState gSamplers[];
 // layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
 
 [[vk::binding(INSTANCE_BINDING,MODEL_SET)]]

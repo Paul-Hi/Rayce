@@ -10,7 +10,7 @@
 #define CORE_HPP
 
 #include "core/export.hpp"
-#include "../assets/shaders/src/slang/hostDeviceInterop.slang"
+#include "hostDeviceInterop.slang"
 #include "core/log.hpp"
 #include "core/macro.hpp"
 #include "core/types.hpp"

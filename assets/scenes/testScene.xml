@@ -22,6 +22,13 @@
         <rgb name="reflectance" value="0.8, 0.2, 0.2" />
     </bsdf>
 
+    <bsdf type="diffuse" id="rbTex">
+        <rgb name="reflectance" value="1.0, 1.0, 1.0" />
+        <texture type="bitmap" name="reflectance">
+            <string name="filename" value="rb_checkerboard.bmp"/>
+        </texture>
+    </bsdf>
+
     <bsdf type="diffuse" id="light">
         <rgb name="reflectance" value="0.1, 0.1, 0.1" />
     </bsdf>
@@ -30,7 +37,7 @@
         <transform name="to_world">
             <scale x="2" z="2" />
         </transform>
-        <ref id="light_gray" />
+        <ref id="rbTex" />
     </shape>
 
     <shape type="rectangle" id="ceiling">

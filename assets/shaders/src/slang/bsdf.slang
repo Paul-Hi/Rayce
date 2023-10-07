@@ -269,7 +269,7 @@ struct DiffuseMaterial : IMaterial
         brdf.diffuseReflectance = this.diffuseReflectance;
         if (this.diffuseReflectanceTexture >= 0)
         {
-            brdf.diffuseReflectance = gTextures[this.diffuseReflectanceTexture].Sample(gSamplers[this.diffuseReflectanceTexture], uv).rgb;
+            brdf.diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
         }
 
         return brdf;
@@ -300,11 +300,11 @@ struct SmoothDielectricMaterial : IMaterial
         bsdf.specularTransmittance = this.specularTransmittance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
         if (this.specularTransmittanceTexture >= 0)
         {
-            bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
 
         bsdf.interiorIor = this.interiorIor;
@@ -342,11 +342,11 @@ struct SmoothThinDielectricMaterial : IMaterial
         bsdf.specularTransmittance = this.specularTransmittance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[this.specularReflectanceTexture].Sample(gSamplers[this.specularReflectanceTexture], uv).rgb;
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
         if (this.specularTransmittanceTexture >= 0)
         {
-            bsdf.specularTransmittance = gTextures[this.specularTransmittanceTexture].Sample(gSamplers[this.specularTransmittanceTexture], uv).rgb;
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
 
         bsdf.interiorIor = this.interiorIor;

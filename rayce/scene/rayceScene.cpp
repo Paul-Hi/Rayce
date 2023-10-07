@@ -484,6 +484,11 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             {
                 if (child->type() == mp::OT_BSDF)
                 {
+                    if (mitsubaBSDFs.find(child->id()) != mitsubaBSDFs.end())
+                    {
+                        shape.bsdf = child->id();
+                        continue;
+                    }
                     MitsubaBSDF mbsdf = loadMitsubaBSDF(child, imagesToLoad);
 
                     if (mbsdf.id.empty())
@@ -509,7 +514,10 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         }
         case mp::OT_BSDF:
         {
-
+            if (mitsubaBSDFs.find(object->id()) != mitsubaBSDFs.end())
+            {
+                break;
+            }
             MitsubaBSDF mbsdf = loadMitsubaBSDF(object, imagesToLoad);
 
             if (mbsdf.id.empty())
@@ -532,9 +540,6 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     }
 
     pGeometry = std::make_unique<Geometry>();
-
-    std::unique_ptr<Sampler> defaultSampler = std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                        VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS);
 
     for (auto& [ref, bsdf] : mitsubaBSDFs)
     {
@@ -578,11 +583,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 width      = static_cast<uint32>(w);
                 uint32 height     = static_cast<uint32>(h);
-                uint32 components = static_cast<uint32>(c);
+                uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
-
-                mImageCache[name]    = new byte[imageSize];
-                mImageCache[name][0] = 0;
 
                 VkFormat format = getImageFormat(components, false);
 
@@ -596,7 +598,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
                 mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::move(defaultSampler));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
         }
@@ -636,11 +639,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 width      = static_cast<uint32>(w);
                 uint32 height     = static_cast<uint32>(h);
-                uint32 components = static_cast<uint32>(c);
+                uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
-
-                mImageCache[name]    = new byte[imageSize];
-                mImageCache[name][0] = 0;
 
                 VkFormat format = getImageFormat(components, false);
 
@@ -654,7 +654,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
                 mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::move(defaultSampler));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             if (bsdf.possibleData.specularTransmittanceTexture >= 0)
             {
@@ -689,11 +690,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 width      = static_cast<uint32>(w);
                 uint32 height     = static_cast<uint32>(h);
-                uint32 components = static_cast<uint32>(c);
+                uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
-
-                mImageCache[name]    = new byte[imageSize];
-                mImageCache[name][0] = 0;
 
                 VkFormat format = getImageFormat(components, false);
 
@@ -707,7 +705,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
                 mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::move(defaultSampler));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
         }
@@ -743,7 +742,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-    mImageSamplers.push_back(std::move(defaultSampler));
+    mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                       VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
 
     // emitters -> lights
     int32 emitterId = 0;
@@ -788,11 +788,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 width      = static_cast<uint32>(w);
                 uint32 height     = static_cast<uint32>(h);
-                uint32 components = static_cast<uint32>(c);
+                uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
-
-                mImageCache[name]    = new byte[imageSize];
-                mImageCache[name][0] = 0;
 
                 VkFormat format = getImageFormat(components, false);
 
@@ -806,7 +803,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
                 mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::move(defaultSampler));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
         }

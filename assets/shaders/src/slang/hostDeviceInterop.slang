@@ -31,7 +31,7 @@ namespace rayce
 
     static const int MODEL_SET        = 4;
     static const int TEXTURE_BINDING  = 0; // Combined Image Sampler
-    static const int SAMPLER_BINDING  = 0; // Combined Image Sampler
+    // static const int SAMPLER_BINDING  = 0; // Combined Image Sampler
     static const int INSTANCE_BINDING = 1;
     static const int MATERIAL_BINDING = 2;
     static const int LIGHT_BINDING    = 3;
@@ -146,6 +146,7 @@ namespace rayce
         int radianceTexture;
         uint pad0 = 0;
         float3 radiance;
+        uint pad1 = 0;
 
 #ifdef __cplusplus
         Light()

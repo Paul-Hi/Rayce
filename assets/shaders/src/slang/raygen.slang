@@ -11,6 +11,7 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     const uint triangleIndex = primitiveIndex * 3;
 
     const uint objIdx = NonUniformResourceIndex(gInstanceData[instanceCustomIndex].objectIndex);
+
     const let ib = gIndices[objIdx];
     const let vb = gVertices[objIdx];
 

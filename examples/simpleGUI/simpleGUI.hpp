@@ -37,7 +37,7 @@ namespace rayce
 
         std::unique_ptr<class Sampler> pDefaultSampler;
 
-        std::vector<class Sphere> mSpheres;
+        std::vector<struct Sphere> mSpheres;
         std::unique_ptr<class Buffer> mAABBBuffer;
         std::vector<std::unique_ptr<class AccelerationStructure>> mBLAS;
         std::unique_ptr<class AccelerationStructure> pTLAS;

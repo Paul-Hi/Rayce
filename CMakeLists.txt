@@ -21,8 +21,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/install/rayce/" CACHE PATH "Install path prefix" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-option(RAYCE_BUILD_DOC "Build Documentation" ON)
-option(RAYCE_MONOLYTHIC "Build Monolythic" OFF)
+option(RAYCE_BUILD_DOC "Build Documentation" OFF)
+option(RAYCE_MONOLYTHIC "Build Monolythic" ON)
 option(RAYCE_BUILD_TESTS "Build Unit Tests" OFF)
 
 set(VERSION_MAJOR 0 CACHE STRING "Project major version number.")
