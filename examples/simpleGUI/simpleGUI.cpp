@@ -149,7 +149,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, 0.1f, 8.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, 0.0f, 0.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
 
     mAccumulationFrame = 0;
 
@@ -282,6 +282,21 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     RayceApp::onImGuiRender(commandBuffer, imageIndex);
 
     pScene->onImGuiRender();
+
+    bool cameraChanged = pCamera->onImGuiRender();
+
+    if (cameraChanged)
+    {
+        CameraDataRT cameraDataRT;
+        cameraDataRT.inverseView       = pCamera->getInverseView();
+        cameraDataRT.inverseProjection = pCamera->getInverseProjection();
+        cameraDataRT.pbData.x()        = pCamera->getLensRadius();
+        cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
+
+        pRaytracingPipeline->updateCameraData(cameraDataRT);
+
+        mAccumulationFrame = 0;
+    }
 
     ImGuiWindowFlags window_flags = 0;
     window_flags |= ImGuiWindowFlags_NoTitleBar;

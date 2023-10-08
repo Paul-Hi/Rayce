@@ -77,16 +77,16 @@ Ray createRay(const float2 screenUV)
     const float4 imagePlane = mul(gCamera.inverseProjection, float4(screenUV.x, screenUV.y, 1.0, 1.0));
     ray.direction = normalize(imagePlane.xyz);
 
-    /*if(gCamera.pbData.x > 0.0)
+    if(gCamera.pbData.x > 0.0)
     {
         float2 pointOnLens = gCamera.pbData.x * mapToConcentricDisc(Random::rand2());
 
         float focalD = gCamera.pbData.y / ray.direction.z;
-        float3 focusPoint = ray.origin.xyz + focalD * ray.direction.xyz;
+        float3 focusPoint = ray.origin - focalD * ray.direction;
 
-        ray.origin.xyz = float3(pointOnLens, 0.0);
-        ray.direction.xyz = normalize(focusPoint - ray.origin.xyz);
-    }*/
+        ray.origin = float3(pointOnLens, 0.0);
+        ray.direction = normalize(focusPoint - ray.origin);
+    }
 
     ray.origin = mul(gCamera.inverseView, float4(ray.origin, 1.0)).xyz;
     ray.direction = normalize(mul(gCamera.inverseView, float4(ray.direction, 0.0)).xyz);

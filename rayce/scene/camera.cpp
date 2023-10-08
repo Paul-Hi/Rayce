@@ -5,6 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include <core/input.hpp>
+#include <imgui.h>
 #include <scene/camera.hpp>
 
 using namespace rayce;
@@ -143,6 +144,24 @@ void Camera::updateAspect(float aspect)
     mAspect            = aspect;
     mInverseView       = lookAt(mPosition, mTarget, vec3(0.0f, 1.0f, 0.0f)).inverse();
     mInverseProjection = perspective(deg_to_rad(mFovy), mAspect, mZNear, mZFar).inverse();
+}
+
+bool Camera::onImGuiRender()
+{
+    if (!ImGui::Begin("Camera Settings", nullptr, 0))
+    {
+        ImGui::End();
+        return false;
+    }
+
+    ImGui::Spacing();
+    bool changed = ImGui::SliderFloat("Lens Radius", &mLensRadius, 0.0f, 1.0f);
+    ImGui::Spacing();
+    changed |= ImGui::SliderFloat("Focal Distance", &mFocalDistance, mZNear, mZFar);
+
+    ImGui::End();
+
+    return changed;
 }
 
 bool Camera::update(float dt)

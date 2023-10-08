@@ -19,6 +19,7 @@ namespace rayce
 
         void updateAspect(float aspect);
 
+        bool onImGuiRender();
         bool update(float dt);
 
         mat4 getInverseView()
