@@ -83,7 +83,7 @@ float pdfLight(const int lightId, const float3 surfacePoint)
 
     if(light.type == ELightType::area && light.sphereId >= 0)
     {
-        return gSpheres.Load(light.sphereId).samplePdf(surfacePoint);
+        return gSpheres.Load(light.sphereId).samplePdf(surfacePoint) * pdf;
     }
 
     return 0.0;

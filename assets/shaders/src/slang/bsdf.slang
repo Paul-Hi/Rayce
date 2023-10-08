@@ -70,8 +70,8 @@ DielectricFresnelData FresnelDielectric(const float cosThetaI, const float eta)
     float absCosThetaI = abs(cosThetaI);
     data.cosThetaT = sqrt(cosThetaTSqrd);
 
-    float Rs = negativeMultiplyAndAdd(data.etaIT, data.cosThetaT, absCosThetaI) /  multiplyAndAdd(data.etaIT, data.cosThetaT, absCosThetaI);
-    float Rp =  negativeMultiplyAndAdd(data.etaIT, absCosThetaI, data.cosThetaT) /  multiplyAndAdd(data.etaIT, absCosThetaI, data.cosThetaT);
+    float Rs = negativeMultiplyAndAdd(data.etaIT, data.cosThetaT, absCosThetaI) /  max(multiplyAndAdd(data.etaIT, data.cosThetaT, absCosThetaI), EPSILON);
+    float Rp =  negativeMultiplyAndAdd(data.etaIT, absCosThetaI, data.cosThetaT) /  max(multiplyAndAdd(data.etaIT, absCosThetaI, data.cosThetaT), EPSILON);
 
     data.cosThetaT = !switchI ? -data.cosThetaT : data.cosThetaT;
 
@@ -143,13 +143,14 @@ struct SmoothDielectricBSDF : IBxDF
         const float cosThetaI = cosThetaTS(wo);
         const float eta = interiorIor / exteriorIor;
         const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+        const float absNDotL = cosThetaTS(abs(sample.wi));
 
         if (Random::rand() <= fresnelData.F)
         {
             sample.wi = reflectTS(wo);
             sample.pdf = fresnelData.F;
 
-            sample.reflectance = specularReflectance / cosThetaTS(abs(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? specularReflectance / absNDotL : float3(0.0);
 
             return sample;
         }
@@ -158,7 +159,7 @@ struct SmoothDielectricBSDF : IBxDF
             sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
             sample.pdf = 1.0 - fresnelData.F;
 
-            sample.reflectance = fresnelData.etaTI * fresnelData.etaTI * specularTransmittance / cosThetaTS(abs(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? fresnelData.etaTI * fresnelData.etaTI * specularTransmittance / absNDotL : float3(0.0);
 
             return sample;
         }
@@ -198,6 +199,7 @@ struct SmoothThinDielectricBSDF : IBxDF
         const float cosThetaI = cosThetaTS(wo);
         const float eta = interiorIor / exteriorIor;
         DielectricFresnelData fresnelData = FresnelDielectric(abs(cosThetaI), eta);
+        const float absNDotL = cosThetaTS(abs(sample.wi));
 
         // Account for internal reflections
         fresnelData.F *= 2.0 / (1.0 + fresnelData.F);
@@ -207,7 +209,7 @@ struct SmoothThinDielectricBSDF : IBxDF
             sample.wi = reflectTS(wo);
             sample.pdf = fresnelData.F;
 
-            sample.reflectance = specularReflectance / cosThetaTS(abs(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? specularReflectance / absNDotL : float3(0.0);
 
             return sample;
         }
@@ -216,7 +218,7 @@ struct SmoothThinDielectricBSDF : IBxDF
             sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
             sample.pdf = 1.0 - fresnelData.F;
 
-            sample.reflectance = specularTransmittance / cosThetaTS(abs(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? specularTransmittance / absNDotL : float3(0.0);
 
             return sample;
         }

@@ -95,7 +95,7 @@ float3 tracePaths(in float2 uv)
     lightSample.pdf = 1.0;
     BxDFSample bxdfSample;
     bxdfSample.pdf = 1.0;
-    bxdfSample.dirac = true;
+    bxdfSample.dirac = false;
     CoordinateSpace space;
     space.normal = float3(0.0);
 
@@ -159,7 +159,7 @@ float3 tracePaths(in float2 uv)
                 {
                     float bsdfPdf = bsdf.pdf(wo, lightSample.wi);
                     float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                    color += throughput * miWeight * bsdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf;
+                    color += lightSample.pdf > 0.0 ? throughput * miWeight * bsdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf : float3(0.0);
                 }
             }
 
@@ -167,13 +167,14 @@ float3 tracePaths(in float2 uv)
 
             float nDotL = cosThetaTS(bxdfSample.wi);
 
-            throughput *= bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf;
+            throughput *= bxdfSample.pdf > 0.0 ? bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf : 1.0;
 
             // russian roulette
             if (depth >= russianRouletteStart)
             {
-                float p = max(throughput.x, max(throughput.y, throughput.z));
-                if (Random::rand() > p) {
+                float p = max(max(throughput.x, max(throughput.y, throughput.z)), EPSILON);
+                if (Random::rand() > p)
+                {
                     break;
                 }
 
