@@ -6,8 +6,10 @@
 using uint     = rayce::uint32;
 using uint64_t = rayce::uint64;
 using float3   = rayce::vec3;
+using float4   = rayce::vec4;
 using float2   = rayce::vec2;
 using int2     = rayce::ivec2;
+using float4x4 = rayce::mat4;
 namespace rayce
 {
 #else
@@ -165,6 +167,13 @@ namespace rayce
             this.radiance = float3(0.0);
         }
 #endif
+    };
+
+    struct RAYCE_API_EXPORT CameraDataRT
+    {
+        float4x4 inverseView;
+        float4x4 inverseProjection;
+        float4 pbData; // lens radius, focal distance, zw unused
     };
 
     struct RAYCE_API_EXPORT Material

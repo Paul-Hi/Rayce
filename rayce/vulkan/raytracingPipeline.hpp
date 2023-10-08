@@ -11,12 +11,6 @@
 
 namespace rayce
 {
-
-    struct RAYCE_API_EXPORT CameraDataRT
-    {
-        mat4 inverseView;
-        mat4 inverseProjection;
-    };
     class RAYCE_API_EXPORT RaytracingPipeline
     {
     public:

@@ -1,3 +1,5 @@
+import globals;
+
 // tangent space trigonometry
 float cosThetaTS(in float3 w) { return w.z; }
 float cos2ThetaTS(in float3 w) { return w.z * w.z; }
@@ -93,6 +95,29 @@ float powerHeuristic(float fPdf, float gPdf)
     fPdf *= fPdf;
     gPdf *= gPdf;
     return fPdf / (fPdf + gPdf);
+}
+
+float2 mapToConcentricDisc(const float2 p)
+{
+    float2 offset = p * 2.0 - 1.0;
+
+    if(offset.x == 0 && offset.y == 0)
+    {
+        return float2(0.0);
+    }
+
+    float theta, r;
+    if (abs(offset.x) > abs(offset.y))
+    {
+        r = offset.x;
+        theta = QUARTER_PI * (offset.y / offset.x);
+    }
+    else
+    {
+        r = offset.y;
+        theta = HALF_PI - QUARTER_PI * (offset.x / offset.y);
+    }
+    return r * float2(cos(theta), sin(theta));
 }
 
 static const float GAMMA     = 2.2;

@@ -14,7 +14,7 @@ namespace rayce
     class RAYCE_API_EXPORT Camera
     {
     public:
-        Camera(float aspect, float fovy, float zNear, float zFar, const vec3& position, const vec3& target, const std::shared_ptr<class Input> input);
+        Camera(float aspect, float fovy, float zNear, float zFar, float lensRadius, float focalDistance, const vec3& position, const vec3& target, const std::shared_ptr<class Input> input);
         ~Camera();
 
         void updateAspect(float aspect);
@@ -31,6 +31,16 @@ namespace rayce
             return mInverseProjection;
         }
 
+        float getLensRadius()
+        {
+            return mLensRadius;
+        }
+
+        float getFocalDistance()
+        {
+            return mFocalDistance;
+        }
+
     private:
         float mAspect;
         float mFovy;
@@ -38,6 +48,9 @@ namespace rayce
         float mZFar;
         vec3 mPosition;
         vec3 mTarget;
+
+        float mLensRadius;
+        float mFocalDistance;
 
         mat4 mInverseView;
         mat4 mInverseProjection;

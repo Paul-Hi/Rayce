@@ -7,6 +7,7 @@ static const float PI = 3.1415926535897932384626433832795;
 static const float INV_PI = (1.0 / PI);
 static const float TWO_PI = (2.0 * PI);
 static const float HALF_PI = (0.5 * PI);
+static const float QUARTER_PI = (0.25 * PI);
 
 struct DeviceTriangle
 {

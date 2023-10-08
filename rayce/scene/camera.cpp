@@ -9,11 +9,13 @@
 
 using namespace rayce;
 
-Camera::Camera(float aspect, float fovy, float zNear, float zFar, const vec3& position, const vec3& target, const std::shared_ptr<class Input> input)
+Camera::Camera(float aspect, float fovy, float zNear, float zFar, float lensRadius, float focalDistance, const vec3& position, const vec3& target, const std::shared_ptr<class Input> input)
     : mAspect(aspect)
     , mFovy(fovy)
     , mZNear(zNear)
     , mZFar(zFar)
+    , mLensRadius(lensRadius)
+    , mFocalDistance(focalDistance)
     , mPosition(position)
     , mTarget(target)
 {

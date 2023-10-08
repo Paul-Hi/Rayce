@@ -149,7 +149,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, 0.1f, 8.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
 
     mAccumulationFrame = 0;
 
@@ -179,6 +179,8 @@ void SimpleGUI::onUpdate(float dt)
         CameraDataRT cameraDataRT;
         cameraDataRT.inverseView       = pCamera->getInverseView();
         cameraDataRT.inverseProjection = pCamera->getInverseProjection();
+        cameraDataRT.pbData.x()        = pCamera->getLensRadius();
+        cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
 
         pRaytracingPipeline->updateCameraData(cameraDataRT);
 
@@ -379,6 +381,8 @@ void SimpleGUI::recreateRTData()
     CameraDataRT cameraDataRT;
     cameraDataRT.inverseView       = pCamera->getInverseView();
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
+    cameraDataRT.pbData.x()        = pCamera->getLensRadius();
+    cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
     pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, mVertexBuffers, mIndexBuffers, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, mSpheres, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);

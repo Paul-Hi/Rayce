@@ -66,30 +66,41 @@ DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, co
 
 struct Ray
 {
-    float4 origin;
-    float4 direction;
+    float3 origin;
+    float3 direction;
 };
 
 Ray createRay(const float2 screenUV)
 {
     Ray ray;
-    ray.origin = mul(gCamera.inverseView, float4(0.0, 0.0, 0.0, 1.0));
-    float4 target = mul(gCamera.inverseProjection, float4(screenUV.x, screenUV.y, 1.0, 1.0));
-    ray.direction = normalize(mul(gCamera.inverseView, float4(normalize(target.xyz), 0.0)));
+    ray.origin = float3(0.0, 0.0, 0.0);
+    const float4 imagePlane = mul(gCamera.inverseProjection, float4(screenUV.x, screenUV.y, 1.0, 1.0));
+    ray.direction = normalize(imagePlane.xyz);
+
+    /*if(gCamera.pbData.x > 0.0)
+    {
+        float2 pointOnLens = gCamera.pbData.x * mapToConcentricDisc(Random::rand2());
+
+        float focalD = gCamera.pbData.y / ray.direction.z;
+        float3 focusPoint = ray.origin.xyz + focalD * ray.direction.xyz;
+
+        ray.origin.xyz = float3(pointOnLens, 0.0);
+        ray.direction.xyz = normalize(focusPoint - ray.origin.xyz);
+    }*/
+
+    ray.origin = mul(gCamera.inverseView, float4(ray.origin, 1.0)).xyz;
+    ray.direction = normalize(mul(gCamera.inverseView, float4(ray.direction, 0.0)).xyz);
 
     return ray;
 }
 
-float3 tracePaths(in float2 uv)
+float3 tracePaths(Ray ray)
 {
     const int maxDepth = 16; // hopyfully never reached
     const int russianRouletteStart = 3;
 
     float3 color = float3(0.0);
     float3 throughput = float3(1.0);
-
-    // create ray origin and direction from camera data.
-    Ray ray = createRay(uv);
 
     LightSample lightSample;
     lightSample.pdf = 1.0;
@@ -103,8 +114,8 @@ float3 tracePaths(in float2 uv)
     {
         RayPayload payload;
         RayDesc rayDescriptor;
-        rayDescriptor.Origin = ray.origin.xyz + space.normal * EPSILON;
-        rayDescriptor.Direction = ray.direction.xyz;
+        rayDescriptor.Origin = ray.origin + space.normal * EPSILON;
+        rayDescriptor.Direction = ray.direction;
         rayDescriptor.TMin = 0.001;
         rayDescriptor.TMax = 1000.0;
         TraceRay(
@@ -125,7 +136,7 @@ float3 tracePaths(in float2 uv)
             Material mat;
             if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
             {
-                DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin.xyz, payload.hitPoint);
+                DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin, payload.hitPoint);
                 mat = gMaterials[triangle.materialId];
                 uv = triangle.interpolatedUV;
                 space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
@@ -143,13 +154,13 @@ float3 tracePaths(in float2 uv)
             if(lightId >= 0)
             {
                 // uses bxdfSample from last point
-                float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin.xyz);
+                float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin);
                 float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
 
                 color += throughput * miWeight * gLights[lightId].radiance;
             }
 
-            const float3 wo = space.worldToTangentFrame(-ray.direction.xyz);
+            const float3 wo = space.worldToTangentFrame(-ray.direction);
 
             let bsdf = material.createBxDF(uv);
             if(!bsdf.isDirac())
@@ -181,8 +192,8 @@ float3 tracePaths(in float2 uv)
                 throughput *= 1.0 / p;
             }
 
-            ray.origin.xyz = payload.hitPoint;
-            ray.direction.xyz = space.tangentToWorld(bxdfSample.wi);
+            ray.origin = payload.hitPoint;
+            ray.direction = space.tangentToWorld(bxdfSample.wi);
             continue;
         }
 
@@ -205,10 +216,13 @@ void main()
     float3 color = float3(0.0);
     Random::init(uint4(DispatchRaysIndex().xy, gPushConstants.frame, 2907));
 
-    float2 uv = (pixelCorner + Random::rand2()) / float2(DispatchRaysDimensions().xy);
+    float2 uv = (pixelCorner + Random::rand()) / float2(DispatchRaysDimensions().xy - uint2(1));
     uv = uv * 2.0 - 1.0;
 
-    color += tracePaths(uv);
+    // create ray origin and direction from camera data.
+    Ray ray = createRay(uv);
+
+    color += tracePaths(ray);
 
     accumColor.rgb += color;
     accumColor.w += 1.0;

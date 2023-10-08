@@ -14,14 +14,8 @@ RWTexture2D<float4> gResultImage;
 
 // layout(location = 0) rayPayloadEXT RayPayload pld;
 
-struct CameraBufferRT
-{
-    float4x4 inverseView;
-    float4x4 inverseProjection;
-};
-
 [[vk::binding(CAMERA_BINDING, CAMERA_SET)]]
-ConstantBuffer<CameraBufferRT> gCamera;
+ConstantBuffer<CameraDataRT> gCamera;
 
 // layout(set = CAMERA_SET, binding = CAMERA_BINDING, scalar) uniform CameraBufferRT
 // {
