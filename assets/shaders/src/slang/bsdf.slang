@@ -251,6 +251,203 @@ struct SmoothThinDielectricBSDF : IBxDF
     float3 specularTransmittance;
 };
 
+struct GGXDistribution
+{
+    __init(float alphaU, float alphaV)
+    {
+        this.alphaU = alphaU;
+        this.alphaV = alphaV;
+    }
+
+    float evaluate(const float3 wm)
+    {
+        const float cos2Theta = cos2ThetaTS(wm);
+        const float cos2Phi = cos2PhiTS(wm);
+        const float sin2Phi = sin2PhiTS(wm);
+
+        float e = (cos2Phi / (alphaU * alphaU) + sin2Phi / (alphaV * alphaV)) / cos2Theta;
+
+        // GGX
+        float root = (1.0 + e) * cos2Theta;
+        float ggx =  1.0 / (PI * alphaU * alphaV * root * root);
+
+
+        // Should prevent potential numerical issues
+        if (ggx * cosThetaTS(wm) < 1e-20)
+        {
+            ggx = 0.0;
+        }
+
+        return ggx;
+    }
+
+    // based on pbr book and mitsuba
+    MicrofacetSample sample(const float3 wo)
+    {
+        // sample visible
+        MicrofacetSample sample;
+
+        // stretched wo
+        float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
+
+        float2 slope = sample11(cosThetaTS(stretchedWo));
+
+        // rotate
+        const float cosPhi = cosPhiTS(stretchedWo);
+        const float sinPhi = sinPhiTS(stretchedWo);
+
+        slope = float2(cosPhi * slope.x - sinPhi * slope.y, sinPhi * slope.x + cosPhi * slope.y);
+
+        // unstretch
+        slope.x *= alphaU;
+        slope.y *= alphaV;
+
+        sample.wm = normalize(float3(-slope.x, -slope.y, 1.0));
+
+        sample.pdf = pdf();
+
+        return sample;
+    }
+
+    float2 sample11(float cosTheta)
+    {
+        float2 result;
+        float2 rand = Random::rand2();
+
+        if(cosTheta > 0.9999)
+        {
+            // normal incidence
+            float r = sqrt(rand.x / (1.0 - rand.x)); // FIXME: Safe?
+            float phi = TWO_PI * rand.y;
+            return float2(r * cos(phi), r * sin(phi));
+        }
+
+        float sinTheta = max(sqrt(1.0 - cosTheta * cosTheta), 0.0);
+
+        float tanTheta = sinTheta / cosTheta;
+
+        float a = 1.0 / tanTheta;
+
+        float G1 = 2.0 / (1.0 + sqrt(1.0 + 1.0 / (a + a)));
+
+        // sample slope x
+        float A = 2.0 * rand.x / G1 - 1.0;
+        if (abs(A) == 1)
+        {
+            A -= sign(A) * EPSILON;
+        }
+
+        float tmp = 1.0 / (A * A - 1.0);
+
+        float B = tanTheta;
+        float D = sqrt(max(B * B * tmp * tmp - (A * A - B * B ) * tmp, 0.0));
+
+        float2 slopeX = float2(B * tmp - D, B * tmp + D);
+        result.x = (A < 0|| slopeX.y > 1.0 / tanTheta) ? slopeX.x : slopeX.y;
+
+        // sample slope y
+        float S;
+        if(rand.y > 0.5)
+        {
+            S = 1.0;
+            rand.y = 2.0 * (rand.y - 0.5);
+        }
+        else
+        {
+            S = -1.0;
+            rand.y = 2.0 * (0.5 - rand.y);
+        }
+
+        // improved fit from mitsuba
+        float z =
+            (rand.y * (rand.y * (rand.y * (-0.365728915865723) + 0.790235037209296)
+                        - 0.424965825137544) + 0.000152998850436920) /
+                        (rand.y * (rand.y * (rand.y * (rand.y * 0.169507819808272 - 0.397203533833404)
+                        - 0.232500544458471) + 1.0) - 0.539825872510702);
+
+        result.y = S * z * sqrt(1.0 + result.x * result.x);
+
+        return result;
+    }
+
+    float pdf(const float3 wo, const float3 wm)
+    {
+        const float cosTheta = cosThetaTS(wo);
+        if(cosTheta == 0.0)
+        {
+            return 0.0;
+        }
+
+        return smithG1(wi, m) * abs(dot(wo, wm)) * evaluate(wm) / cosTheta;
+    }
+
+    float alphaU, alphaV;
+};
+
+struct RoughDielectricBSDF : IBxDF
+{
+    BxDFSample sample(const float3 wo)
+    {
+        BxDFSample sample;
+        sample.dirac = isDirac();
+
+        GGXDistribution distr = GGXDistribution(this.alphaU, this.alphaV);
+
+        const float cosThetaI = cosThetaTS(wo);
+        const float eta = interiorIor / exteriorIor;
+        const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+
+        if (Random::rand() <= fresnelData.F)
+        {
+            sample.wi = reflectTS(wo);
+            sample.pdf = fresnelData.F;
+
+            const float absNDotL = abs(cosThetaTS(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? specularReflectance / absNDotL : float3(0.0);
+
+            return sample;
+        }
+        else
+        {
+            sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
+            sample.pdf = 1.0 - fresnelData.F;
+
+            const float absNDotL = abs(cosThetaTS(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? fresnelData.etaTI * fresnelData.etaTI * specularTransmittance / absNDotL : float3(0.0);
+
+            return sample;
+        }
+    }
+
+    float3 evaluate(const float3 wo, const float3 wi)
+    {
+        return float3(0.0);
+    }
+
+    float pdf(const float3 wo, const float3 wi)
+    {
+        return 0.0;
+    }
+
+    bool isDirac()
+    {
+        return false;
+    };
+
+    EBxDFType getType()
+    {
+        return EBxDFType::roughDielectric;
+    }
+
+    float interiorIor, exteriorIor;
+    float3 specularReflectance;
+    float3 specularTransmittance;
+
+    float alphaU, alphaV;
+    // bool sampleVisible = true; // FIXME: Add option?
+    // Distribution distribution = Distribution::GGX; // FIXME: Add option?
+};
+
 interface IMaterial
 {
     associatedtype RealBxDF : IBxDF;
@@ -367,6 +564,59 @@ struct SmoothThinDielectricMaterial : IMaterial
     float exteriorIor;
 };
 
+struct RoughDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.interiorIor = materialData.interiorIor;
+        this.exteriorIor = materialData.exteriorIor;
+        this.alpha = materialData.alpha;
+        this.alphaTexture = materialData.alphaTexture;
+    }
+
+    typedef RoughDielectricBSDF RealBxDF;
+
+    RoughDielectricBSDF createBxDF(const float2 uv)
+    {
+        RoughDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+        }
+        if (this.alphaTexture >= 0)
+        {
+            float2 alpha = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
+            bsdf.alphaU = alpha.x;
+            bsdf.alphaV = alpha.y;
+        }
+
+        bsdf.interiorIor = this.interiorIor;
+        bsdf.exteriorIor = this.exteriorIor;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    float3 specularTransmittance;
+    int specularReflectanceTexture;
+    int specularTransmittanceTexture;
+    float interiorIor;
+    float exteriorIor;
+
+    float2 alpha;
+    int alphaTexture;
+};
+
 extension Material
 {
     IMaterial getMaterial()
@@ -385,6 +635,10 @@ extension Material
             case EBxDFType::smoothDielectricThin:
                 {
                     return SmoothThinDielectricMaterial(this);
+                }
+            case EBxDFType::roughDielectric:
+                {
+                    return RoughDielectricMaterial(this);
                 }
             default:
                 {

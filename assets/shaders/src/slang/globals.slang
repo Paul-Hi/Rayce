@@ -65,6 +65,12 @@ struct BxDFSample
     bool dirac;
 };
 
+struct MicrofacetSample
+{
+    float3 wm;
+    float pdf;
+};
+
 struct LightSample
 {
     float3 radiance;

@@ -120,6 +120,27 @@ float2 mapToConcentricDisc(const float2 p)
     return r * float2(cos(theta), sin(theta));
 }
 
+float smithG1(const float3 w, const float3 wm)
+{
+    if(dot(w, wm) * cosThetaTS(w) <= 0.0)
+    {
+        return 0.0;
+    }
+
+    const float tanTheta = abs(tanThetaTS(w));
+    if(tanTheta == 0.0)
+    {
+        return 1.0;
+    }
+
+    float a = projectRoughness(w);
+
+    float root = a * tanTheta;
+
+    return 2.0 / (1.0 + hypot2(1.0, root));
+
+}
+
 static const float GAMMA     = 2.2;
 static const float INV_GAMMA = 1.0 / GAMMA;
 
