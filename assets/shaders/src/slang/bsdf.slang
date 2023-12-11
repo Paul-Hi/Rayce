@@ -304,9 +304,43 @@ struct GGXDistribution
 
         sample.wm = normalize(float3(-slope.x, -slope.y, 1.0));
 
-        sample.pdf = pdf();
+        sample.pdf = pdf(wo, sample.wm);
 
         return sample;
+    }
+
+    float smithG1(const float3 w, const float3 wm)
+    {
+        if(dot(w, wm) * cosThetaTS(w) <= 0.0)
+        {
+            return 0.0;
+        }
+
+        const float tanTheta = abs(tanThetaTS(w));
+        if(tanTheta == 0.0)
+        {
+            return 1.0;
+        }
+
+        float a = projectRoughness(w);
+
+        float root = a * tanTheta;
+
+        return 2.0 / (1.0 + hypot2(1.0, root));
+
+    }
+
+    float projectRoughness(const float3 w)
+    {
+        float invSin2Theta = 1.0 / sin2ThetaTS(w);
+
+        if (alphaU == alphaV || invSin2Theta <= 0)
+            return alphaU;
+
+        float cos2Phi = w.x * w.x * invSin2Theta; // To not compute invSin2Theta again
+        float sin2Phi = w.y * w.y * invSin2Theta; // To not compute invSin2Theta again
+
+        return sqrt(cos2Phi * alphaU * alphaU + sin2Phi * alphaV * alphaV);
     }
 
     float2 sample11(float cosTheta)
@@ -378,7 +412,7 @@ struct GGXDistribution
             return 0.0;
         }
 
-        return smithG1(wi, m) * abs(dot(wo, wm)) * evaluate(wm) / cosTheta;
+        return smithG1(wo, wm) * abs(dot(wo, wm)) * evaluate(wm) / cosTheta;
     }
 
     float alphaU, alphaV;
@@ -391,42 +425,126 @@ struct RoughDielectricBSDF : IBxDF
         BxDFSample sample;
         sample.dirac = isDirac();
 
-        GGXDistribution distr = GGXDistribution(this.alphaU, this.alphaV);
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
         const float cosThetaI = cosThetaTS(wo);
+        const MicrofacetSample mfSample = distr.sample(sign(cosThetaI) * wo);
+        if (mfSample.pdf == 0.0)
+        {
+            sample.wi = float3(0.0);
+            sample.reflectance = float3(0.0);
+            sample.pdf = 0.0;
+            return sample;
+        }
+
+        const float D = distr.evaluate(mfSample.wm);
+
+        if(D == 0.0)
+        {
+            sample.wi = float3(0.0);
+            sample.reflectance = float3(0.0);
+            sample.pdf = 0.0;
+            return sample;
+        }
+
         const float eta = interiorIor / exteriorIor;
-        const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+        const DielectricFresnelData fresnelData = FresnelDielectric(dot(wo, mfSample.wm), eta);
+
+        const float G = distr.smithG1(wo, mfSample.wm);
 
         if (Random::rand() <= fresnelData.F)
         {
             sample.wi = reflectTS(wo);
-            sample.pdf = fresnelData.F;
+            sample.pdf = mfSample.pdf * fresnelData.F / (4.0 * abs(dot(wo, mfSample.wm)));
 
-            const float absNDotL = abs(cosThetaTS(sample.wi));
-            sample.reflectance = absNDotL > 0.0 ? specularReflectance / absNDotL : float3(0.0);
+            sample.reflectance = specularReflectance * D * G * fresnelData.F / (4.0 * cosThetaTS(wo) * cosThetaTS(sample.wi));
 
             return sample;
         }
         else
         {
             sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
-            sample.pdf = 1.0 - fresnelData.F;
 
-            const float absNDotL = abs(cosThetaTS(sample.wi));
-            sample.reflectance = absNDotL > 0.0 ? fresnelData.etaTI * fresnelData.etaTI * specularTransmittance / absNDotL : float3(0.0);
+            float sqrtDenom = dot(sample.wi, mfSample.wm) + dot(wo, mfSample.wm) / eta;
+            float dwmDwi = abs(dot(wo, mfSample.wm)) / (sqrtDenom * sqrtDenom);
+
+            sample.pdf = mfSample.pdf * (1.0 - fresnelData.F) * dwmDwi;
+
+            sample.reflectance = specularTransmittance * D * G * (1.0 - fresnelData.F) * abs(fresnelData.etaTI * fresnelData.etaTI * dwmDwi);
 
             return sample;
         }
     }
 
+    // FIXME: All three functions "spread blackness" :D FIrst fix evaluate and pdf - we should be able to construct sample from them
     float3 evaluate(const float3 wo, const float3 wi)
     {
-        return float3(0.0);
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        bool isReflection = cosThetaI * cosThetaO > 0.0;
+
+        float eta = interiorIor / exteriorIor;
+        float etaP = isReflection ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
+
+        float3 wm = normalize(etaP * wi + wo);
+        wm *= sign(cosThetaTS(wm));
+
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
+
+        const float D = distr.evaluate(wm);
+
+        if(D == 0.0)
+        {
+            return float3(0.0);
+        }
+
+
+        const DielectricFresnelData fresnelData = FresnelDielectric(dot(wo, wm), eta);
+
+        const float G = distr.smithG1(wo, wm);
+
+        if (isReflection)
+        {
+            return specularReflectance * D * G * fresnelData.F / (4.0 * cosThetaO * cosThetaI);
+        }
+        else
+        {
+            float sqrtDenom = dot(wi, wm) + dot(wo, wm) / eta;
+            float dwmDwi = abs(dot(wi, wm) * dot(wo, wm) / (sqrtDenom * sqrtDenom));
+
+            return specularTransmittance * D * G * fresnelData.etaTI * fresnelData.etaTI * (1.0 - fresnelData.F) * dwmDwi;
+        }
     }
 
     float pdf(const float3 wo, const float3 wi)
     {
-        return 0.0;
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        bool isReflection = cosThetaI * cosThetaO > 0.0;
+
+        float eta = interiorIor / exteriorIor;
+        float etaP = isReflection ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
+
+        float3 wm = normalize(etaP * wi + wo);
+        wm *= sign(cosThetaTS(wm));
+
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
+
+        const DielectricFresnelData fresnelData = FresnelDielectric(dot(wo, wm), eta);
+
+        if (isReflection)
+        {
+            return distr.pdf(sign(cosThetaO) * wo, wm) * fresnelData.F / (4.0 * abs(cosThetaO));
+        }
+        else
+        {
+            float sqrtDenom = dot(wi, wm) + dot(wo, wm) / eta;
+            float dwmDwi = abs(dot(wo, wm)) / (sqrtDenom * sqrtDenom);
+
+            return distr.pdf(sign(cosThetaO) * wo, wm) * (1.0 - fresnelData.F) * dwmDwi;
+        }
     }
 
     bool isDirac()

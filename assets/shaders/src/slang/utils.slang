@@ -18,6 +18,28 @@ float3 refractTS(in float3 w, in float cosThetaT, in float etaTI)
     return float3(-etaTI * w.x, -etaTI * w.y, cosThetaT);
 }
 
+// similar to mitsuba
+float hypot2(float a, float b)
+{
+    float r;
+    if (abs(a) > abs(b))
+    {
+        r = b / a;
+        r = abs(a) * sqrt(1.0 + r * r);
+    }
+    else if (b != 0.0f)
+    {
+        r = a / b;
+        r = abs(b) * sqrt(1.0 + r * r);
+    }
+    else
+    {
+        r = 0.0;
+    }
+
+    return r;
+}
+
 #define MA_T(Type)                                   \
 Type multiplyAndAdd(in Type a, in Type b, in Type c) \
 {                                                    \
@@ -118,27 +140,6 @@ float2 mapToConcentricDisc(const float2 p)
         theta = HALF_PI - QUARTER_PI * (offset.x / offset.y);
     }
     return r * float2(cos(theta), sin(theta));
-}
-
-float smithG1(const float3 w, const float3 wm)
-{
-    if(dot(w, wm) * cosThetaTS(w) <= 0.0)
-    {
-        return 0.0;
-    }
-
-    const float tanTheta = abs(tanThetaTS(w));
-    if(tanTheta == 0.0)
-    {
-        return 1.0;
-    }
-
-    float a = projectRoughness(w);
-
-    float root = a * tanTheta;
-
-    return 2.0 / (1.0 + hypot2(1.0, root));
-
 }
 
 static const float GAMMA     = 2.2;
