@@ -40,31 +40,55 @@ float hypot2(float a, float b)
     return r;
 }
 
-float safe_sqrt(float v)
+func safe_sqrt<T : __BuiltinFloatingPointType>(T v) -> T
 {
-    return sqrt(max(0.0, v));
+    return sqrt(max(T(0.0), v));
 }
 
-#define MA_T(Type)                                   \
-Type multiplyAndAdd(in Type a, in Type b, in Type c) \
-{                                                    \
-    return a * b + c;                                \
+func safe_sqrt<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> v) -> vector<T, N>
+{
+    return sqrt(max(vector<T, N>(T(0.0)), v));
 }
 
-#define NMA_T(Type)                                          \
-Type negativeMultiplyAndAdd(in Type a, in Type b, in Type c) \
-{                                                            \
-    return -a * b + c;                                       \
+func safe_sqrt<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, M> v) -> matrix<T, N, M>
+{
+    return sqrt(max(matrix<T, N, M>(T(0.0)), v));
 }
 
-MA_T(float)
-MA_T(float2)
-MA_T(float3)
-MA_T(float4)
-NMA_T(float)
-NMA_T(float2)
-NMA_T(float3)
-NMA_T(float4)
+func multiplyAndAdd<T : __BuiltinFloatingPointType>(T a, T b, T c) -> T
+{
+    return a * b + c;
+}
+
+func multiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> a, vector<T, N> b, vector<T, N> c) -> vector<T, N>
+{
+    return a * b + c;
+}
+
+func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType>(T a, T b, T c) -> T
+{
+    return -a * b + c;
+}
+
+func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> a, vector<T, N> b, vector<T, N> c) -> vector<T, N>
+{
+    return -a * b + c;
+}
+
+float3 reflect(const float3 wi, const float3 n)
+{
+    return 2.0 * dot(wi, n) * n - wi;
+}
+
+float3 refract(const float3 wi, const float3 n, float cosThetaT, float eta)
+{
+    if (cosThetaT < 0.0)
+    {
+        eta = 1.0 / eta;
+    }
+
+    return n * (dot(wi, n) * eta + cosThetaT) - wi * eta;
+}
 
 struct CoordinateSpace
 {

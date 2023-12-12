@@ -110,6 +110,7 @@ namespace rayce
         return XYZtoRGBRec709(spectrumToXYZ(spectrum));
     }
 
+    // FIXME Next: First fix the fireflies occuring in rough materials (maybe some checks missing) - recheck reflect and refract, check anisotropy (only wrong for spheres?)
     // FIXME Next: To continue: support the stuff that falcor supports -> import spectrum -> convert to rgb -> load rgb to shader --- handle spectral rendering later :D
     // https://github.com/NVIDIAGameWorks/Falcor/blob/036a44b1d8a1ce0c8848883e114fedbdc30c78ec/Source/plugins/importers/PBRTImporter/PBRTImporter.cpp - getSpectrumAsRGB() and spectrumToRGB()
 };

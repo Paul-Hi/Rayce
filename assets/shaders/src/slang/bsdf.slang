@@ -407,7 +407,7 @@ struct RoughDielectricBSDF : IBxDF
 
         if (Random::rand() <= fresnelData.F)
         {
-            sample.wi = reflectTS(wo);
+            sample.wi = reflect(wo, mfSample.wm);
 
             sample.pdf = mfSample.pdf * fresnelData.F / (4.0 * abs(dot(wo, mfSample.wm)));
 
@@ -418,7 +418,7 @@ struct RoughDielectricBSDF : IBxDF
         }
         else
         {
-            sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
+            sample.wi = refract(wo, mfSample.wm, fresnelData.cosThetaT, fresnelData.etaTI);
 
             float sqrtDenom = dot(sample.wi, mfSample.wm) + dot(wo, mfSample.wm) / fresnelData.etaTI;
             float dwmDwi = abs(dot(sample.wi, mfSample.wm)) / (sqrtDenom * sqrtDenom);
@@ -567,7 +567,6 @@ struct SmoothConductorBSDF : IBxDF
 
         const float absNDotL = abs(cosThetaTS(sample.wi));
         sample.reflectance = absNDotL > 0.0 ? FresnelConductor(cosThetaI, eta, k) * specularReflectance / absNDotL : float3(0.0);
-        // FIXME Next: FresnelConductor(cosThetaI, eta, k) does result in blackness ...
 
         return sample;
     }
@@ -594,6 +593,117 @@ struct SmoothConductorBSDF : IBxDF
 
     float eta, k;
     float3 specularReflectance;
+};
+
+struct RoughConductorBSDF : IBxDF
+{
+    BxDFSample sample(const float3 wo)
+    {
+        BxDFSample sample;
+        sample.dirac = isDirac();
+
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
+
+        const float cosThetaI = abs(cosThetaTS(wo));
+        const MicrofacetSample mfSample = distr.sample(wo);
+        if (mfSample.pdf == 0.0)
+        {
+            sample.wi = float3(0.0);
+            sample.reflectance = float3(0.0);
+            sample.pdf = 0.0;
+            return sample;
+        }
+
+        const float D = distr.evaluate(mfSample.wm);
+
+        if(D == 0.0)
+        {
+            sample.wi = float3(0.0);
+            sample.reflectance = float3(0.0);
+            sample.pdf = 0.0;
+            return sample;
+        }
+
+        const float F = FresnelConductor(abs(dot(wo, mfSample.wm)), eta, k);
+
+        sample.wi = reflect(wo, mfSample.wm);
+
+        sample.pdf = mfSample.pdf / (4.0 * abs(dot(wo, mfSample.wm)));
+
+        const float G = distr.G(sample.wi, wo);
+        sample.reflectance = specularReflectance * D * G * F / (4.0 * abs(cosThetaTS(sample.wi)) * cosThetaI);
+
+        return sample;
+    }
+
+    float3 evaluate(const float3 wo, const float3 wi)
+    {
+        const float cosThetaI = abs(cosThetaTS(wi));
+        const float cosThetaO = abs(cosThetaTS(wo));
+
+        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        {
+            return float3(0.0);
+        }
+
+        float3 wm = wi + wo;
+
+        if(length(wm) * length(wm) < EPSILON)
+        {
+            return float3(0.0);
+        }
+
+        wm = normalize(wm);
+
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
+
+        const float D = distr.evaluate(wm);
+
+        if(D == 0.0)
+        {
+            return float3(0.0);
+        }
+
+        const float F = FresnelConductor(abs(dot(wo, wm)), eta, k);
+
+        const float G = distr.G(wi, wo);
+
+        return specularReflectance * D * G * F / (4.0 * cosThetaO * cosThetaI);
+    }
+
+    float pdf(const float3 wo, const float3 wi)
+    {
+        float3 wm = wi + wo;
+
+        if(length(wm) * length(wm) < EPSILON)
+        {
+            return 0.0;
+        }
+
+        wm = normalize(wm);
+        wm *= sign(cosThetaTS(wm));
+
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
+
+        return distr.pdf(wo, wm) / abs(4.0 * abs(dot(wo, wm)));
+    }
+
+    bool isDirac()
+    {
+        return false;
+    };
+
+    EBxDFType getType()
+    {
+        return EBxDFType::roughConductor;
+    }
+
+    float eta, k;
+    float3 specularReflectance;
+
+    float alphaU, alphaV;
+    // bool sampleVisible = true; // FIXME: Add option?
+    // Distribution distribution = Distribution::GGX; // FIXME: Add option?
 };
 
 interface IMaterial
@@ -742,8 +852,8 @@ struct RoughDielectricMaterial : IMaterial
             bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
 
-         bsdf.alphaU = alpha.x;
-         bsdf.alphaV = alpha.y;
+        bsdf.alphaU = alpha.x;
+        bsdf.alphaV = alpha.y;
         if (this.alphaTexture >= 0)
         {
             float2 alphaT = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
@@ -815,6 +925,66 @@ struct SmoothConductorMaterial : IMaterial
     int complexIorTexture;
 };
 
+struct RoughConductorMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.complexIorTexture = materialData.complexIorTexture;
+        this.eta = materialData.complexIor.x;
+        this.k = materialData.complexIor.y;
+        this.alpha = materialData.alpha;
+        this.alphaTexture = materialData.alphaTexture;
+    }
+
+    typedef RoughConductorBSDF RealBxDF;
+
+    RoughConductorBSDF createBxDF(const float2 uv)
+    {
+        RoughConductorBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.alphaU = alpha.x;
+        bsdf.alphaV = alpha.y;
+        if (this.alphaTexture >= 0)
+        {
+            float2 alphaT = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
+            bsdf.alphaU = alphaT.x;
+            bsdf.alphaV = alphaT.y;
+        }
+
+        bsdf.eta = this.eta;
+        bsdf.k = this.k;
+        if (this.complexIorTexture >= 0)
+        {
+            float2 complexIor = gTextures[NonUniformResourceIndex(this.complexIorTexture)].Sample(uv).rg;
+            bsdf.eta = complexIor.x;
+            bsdf.k = complexIor.y;
+        }
+
+        bsdf.eta = max(bsdf.eta, EPSILON); // FIXME: This could be handled better
+        bsdf.k = max(bsdf.k, EPSILON); // FIXME: This could be handled better
+
+        bsdf.alphaU = max(bsdf.alphaU, EPSILON); // FIXME: This could be handled better
+        bsdf.alphaV = max(bsdf.alphaV, EPSILON); // FIXME: This could be handled better
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+    float eta;
+    float k;
+    int complexIorTexture;
+
+    float2 alpha;
+    int alphaTexture;
+};
 extension Material
 {
     IMaterial getMaterial()
@@ -835,7 +1005,7 @@ extension Material
                 }
             case EBxDFType::roughDielectric:
                 {
-                    bool rough = (length(this.alpha) > 0.0) || this.alphaTexture >= 0;
+                    bool rough = (length(this.alpha) > EPSILON) || this.alphaTexture >= 0;
                     if(!rough)
                     {
                         return SmoothDielectricMaterial(this);
@@ -846,6 +1016,16 @@ extension Material
             case EBxDFType::smoothConductor:
                 {
                     return SmoothConductorMaterial(this);
+                }
+            case EBxDFType::roughConductor:
+                {
+                    bool rough = (length(this.alpha) > EPSILON) || this.alphaTexture >= 0;
+                    if(!rough)
+                    {
+                        return SmoothConductorMaterial(this);
+                    }
+
+                    return RoughConductorMaterial(this);
                 }
             default:
                 {
