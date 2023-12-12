@@ -12,12 +12,11 @@
     <bsdf type="roughdielectric" id="rough_glass">
         <string name="int_ior" value="bk7" />
         <string name="ext_ior" value="air" />
-        <float name="alpha" value="0.1"/>
+        <float name="alpha" value="0.25"/>
     </bsdf>
 
-    <bsdf type="dielectric" id="glass">
-        <string name="int_ior" value="bk7" />
-        <string name="ext_ior" value="air" />
+    <bsdf type="conductor" id="gold">
+        <string name="material" value="Au" />
     </bsdf>
 
     <bsdf type="diffuse" id="blue">

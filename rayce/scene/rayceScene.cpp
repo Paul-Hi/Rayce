@@ -203,6 +203,11 @@ static float iorFromString(str materialName)
     return 0.0f;
 }
 
+static vec2 conductorComplexIorFromString(str materialName)
+{
+    return vec2::Zero(); // FIXME
+}
+
 static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
 {
     MitsubaBSDF bsdf;
@@ -454,6 +459,70 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
         }
         break;
+    }
+    case EBxDFType::smoothConductor:
+    {
+        if (props.contains("material"))
+        {
+            auto material = props.at("material");
+
+            if (material.type() == mp::PT_STRING) // <string></string>
+            {
+                bsdf.possibleData.complexIor = conductorComplexIorFromString(material.getString());
+            }
+        }
+        if (props.contains("eta"))
+        {
+            auto eta = props.at("eta");
+
+            if (eta.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren()) // FIXME: This is probably not handled correctly!
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.complexIorTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        if (props.contains("k"))
+        {
+            auto k = props.at("k");
+
+            if (k.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren()) // FIXME: This is probably not handled correctly!
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.complexIorTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
     }
     default:
         RAYCE_LOG_WARN("Unsupported bsdf!");
