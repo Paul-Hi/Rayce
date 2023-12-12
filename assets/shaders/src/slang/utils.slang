@@ -40,6 +40,11 @@ float hypot2(float a, float b)
     return r;
 }
 
+float safe_sqrt(float v)
+{
+    return sqrt(max(0.0, v));
+}
+
 #define MA_T(Type)                                   \
 Type multiplyAndAdd(in Type a, in Type b, in Type c) \
 {                                                    \

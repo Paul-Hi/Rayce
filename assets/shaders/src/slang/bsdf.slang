@@ -88,8 +88,8 @@ float FresnelConductor(const float cosThetaI, const float eta, const float k)
     float sin4ThetaI = sin2ThetaI * sin2ThetaI;
 
     float tmp1 = eta * eta - k * k - sin2ThetaI;
-    float a2pb2 = sqrt(tmp1 * tmp1 + 4.0 * k * k * eta * eta);
-    float a     = sqrt(0.5 * (a2pb2 + tmp1));
+    float a2pb2 = safe_sqrt(tmp1 * tmp1 + 4.0 * k * k * eta * eta);
+    float a     = safe_sqrt(0.5 * (a2pb2 + tmp1));
 
     float term1 = a2pb2 + cos2ThetaI;
     float term2 = 2.0 * a * cosThetaI;
@@ -346,7 +346,7 @@ struct GGXDistribution
         float s = 0.5 * (1.0 + stretchedWo.z);
         t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
 
-        float3 proj = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * stretchedWo;
+        float3 proj = t1 * T1 + t2 * T2 + safe_sqrt(1.0 - t1 * t1 - t2 * t2) * stretchedWo;
 
         sample.wm = normalize(float3(alphaU * proj.x, alphaV * proj.y, max(0.0, proj.z)));
 
