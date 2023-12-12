@@ -205,7 +205,7 @@ static float iorFromString(str materialName)
 
 static vec2 conductorComplexIorFromString(str materialName)
 {
-    return vec2::Zero(); // FIXME
+    return vec2(0.0, 1.0); // FIXME
 }
 
 static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
@@ -462,6 +462,38 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
     }
     case EBxDFType::smoothConductor:
     {
+        if (props.contains("specular_reflectance"))
+        {
+            auto specularReflectance = props.at("specular_reflectance");
+
+            if (specularReflectance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                               = specularReflectance.getColor();
+                bsdf.possibleData.specularReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+
         if (props.contains("material"))
         {
             auto material = props.at("material");
@@ -926,6 +958,115 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                                                        VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
                 }
             }
+            break;
+        }
+        case EBxDFType::smoothConductor:
+        {
+
+            if (bsdf.possibleData.specularReflectanceTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_specularReflectance";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.specularReflectanceTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = STBI_rgb_alpha;
+                uint32 imageSize  = width * height * components;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages.back();
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+
+            if (bsdf.possibleData.complexIorTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_complexIor";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.complexIorTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.complexIorTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = STBI_rgb_alpha;
+                uint32 imageSize  = width * height * components;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages.back();
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+
             break;
         }
         default:

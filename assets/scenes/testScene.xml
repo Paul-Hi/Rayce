@@ -15,8 +15,9 @@
         <float name="alpha" value="0.25"/>
     </bsdf>
 
-    <bsdf type="conductor" id="gold">
+    <bsdf type="conductor" id="conduct">
         <string name="material" value="Au" />
+        <rgb name="specular_reflectance" value="0.6, 0.5, 0.1" />
     </bsdf>
 
     <bsdf type="diffuse" id="blue">
@@ -105,7 +106,7 @@
             <scale x="0.5" y="0.5" z="0.5" />
             <translate x="-1" y="0.5" z="-0" />
         </transform>
-        <ref id="light_gray" />
+        <ref id="conduct" />
     </shape>
 
     <shape type="sphere" id="large_sphere">

@@ -566,7 +566,8 @@ struct SmoothConductorBSDF : IBxDF
         sample.pdf = 1.0;
 
         const float absNDotL = abs(cosThetaTS(sample.wi));
-        sample.reflectance = absNDotL > 0.0 ? FresnelConductor(cosThetaTS(sample.wi), eta, k) * specularReflectance / absNDotL : float3(0.0);
+        sample.reflectance = absNDotL > 0.0 ? FresnelConductor(cosThetaI, eta, k) * specularReflectance / absNDotL : float3(0.0);
+        // FIXME Next: FresnelConductor(cosThetaI, eta, k) does result in blackness ...
 
         return sample;
     }
@@ -801,6 +802,9 @@ struct SmoothConductorMaterial : IMaterial
             bsdf.k = complexIor.y;
         }
 
+        bsdf.eta = max(bsdf.eta, EPSILON); // FIXME: This could be handled better
+        bsdf.k = max(bsdf.k, EPSILON); // FIXME: This could be handled better
+
         return bsdf;
     }
 
@@ -819,7 +823,6 @@ extension Material
         {
             case EBxDFType::diffuse:
                 {
-                    // FIXME: The Problem is creating something dynamic is not possible (conformances - where and how to add?)
                     return DiffuseMaterial(this);
                 }
             case EBxDFType::smoothDielectric:
