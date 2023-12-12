@@ -259,160 +259,91 @@ struct GGXDistribution
         this.alphaV = alphaV;
     }
 
+    // VNDF
     float evaluate(const float3 wm)
     {
-        const float cos2Theta = cos2ThetaTS(wm);
-        const float cos2Phi = cos2PhiTS(wm);
-        const float sin2Phi = sin2PhiTS(wm);
-
-        float e = (cos2Phi / (alphaU * alphaU) + sin2Phi / (alphaV * alphaV)) / cos2Theta;
-
-        // GGX
-        float root = (1.0 + e) * cos2Theta;
-        float ggx =  1.0 / (PI * alphaU * alphaV * root * root);
-
-
-        // Should prevent potential numerical issues
-        if (ggx * cosThetaTS(wm) < 1e-20)
+        float tan2Theta = tan2ThetaTS(wm);
+        if (isinf(tan2Theta))
         {
-            ggx = 0.0;
+            return 0.0;
+        }
+        float cos4Theta = cos2ThetaTS(wm);
+        cos4Theta *= cos4Theta;
+        if (cos4Theta < EPSILON)
+        {
+            return 0.0;
         }
 
-        return ggx;
+        float scldAlphaU = cosPhiTS(wm) / alphaU;
+        float scldAlphaV = sinPhiTS(wm) / alphaV;
+        float sqrdAlpha = scldAlphaU * scldAlphaU + scldAlphaV * scldAlphaV;
+        float e = tan2Theta * sqrdAlpha;
+
+        return 1.0 / (PI * alphaU * alphaV * cos4Theta * (1.0 + e) * (1.0 + e));
     }
 
-    // based on pbr book and mitsuba
+    float evaluate(const float3 wo, const float3 wm)
+    {
+        return G1(wo) / abs(cosThetaTS(wo)) * abs(dot(wo, wm)) * evaluate(wm);
+    }
+
+    float lambda(const float3 w)
+    {
+        float tan2Theta = tan2ThetaTS(w);
+        if (isinf(tan2Theta))
+        {
+            return 0.0;
+        }
+
+        float scldAlphaU = cosPhiTS(w) * alphaU;
+        float scldAlphaV = sinPhiTS(w) * alphaV;
+        float sqrdAlpha = scldAlphaU * scldAlphaU + scldAlphaV * scldAlphaV;
+        return (sqrt(1.0 + sqrdAlpha * tan2Theta) - 1.0) * 0.5;
+    }
+
+    // based on Sampling the GGX Distribution of Visible Normals https://jcgt.org/published/0007/04/01/
     MicrofacetSample sample(const float3 wo)
     {
         // sample visible
         MicrofacetSample sample;
 
-        // stretched wo
+        float2 rand = Random::rand2();
+
         float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
 
-        float2 slope = sample11(cosThetaTS(stretchedWo));
+        float sqrdLen = stretchedWo.x * stretchedWo.x + stretchedWo.y * stretchedWo.y;
+        float3 T1 = sqrdLen > 0 ? float3(-stretchedWo.y, stretchedWo.x, 0.0) * (1.0 / sqrt(sqrdLen)) : float3(1.0, 0.0, 0.0);
+        float3 T2 = cross(stretchedWo, T1);
 
-        // rotate
-        const float cosPhi = cosPhiTS(stretchedWo);
-        const float sinPhi = sinPhiTS(stretchedWo);
+        float r = sqrt(rand.x);
+        float phi = TWO_PI * rand.y;
+        float t1 = r * cos(phi);
+        float t2 = r * sin(phi);
+        float s = 0.5 * (1.0 + stretchedWo.z);
+        t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
 
-        slope = float2(cosPhi * slope.x - sinPhi * slope.y, sinPhi * slope.x + cosPhi * slope.y);
+        float3 proj = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * stretchedWo;
 
-        // unstretch
-        slope.x *= alphaU;
-        slope.y *= alphaV;
+        sample.wm = normalize(float3(alphaU * proj.x, alphaV * proj.y, max(0.0, proj.z)));
 
-        sample.wm = normalize(float3(-slope.x, -slope.y, 1.0));
-
-        sample.pdf = pdf(wo, sample.wm);
+        sample.pdf = pdf(stretchedWo, sample.wm);
 
         return sample;
     }
 
-    float smithG1(const float3 w, const float3 wm)
+    float G1(const float3 w)
     {
-        if(dot(w, wm) * cosThetaTS(w) <= 0.0)
-        {
-            return 0.0;
-        }
-
-        const float tanTheta = abs(tanThetaTS(w));
-        if(tanTheta == 0.0)
-        {
-            return 1.0;
-        }
-
-        float a = projectRoughness(w);
-
-        float root = a * tanTheta;
-
-        return 2.0 / (1.0 + hypot2(1.0, root));
-
+        return 1.0 / (1.0 + lambda(w));
     }
 
-    float projectRoughness(const float3 w)
+    float G(const float3 wi, const float3 wo)
     {
-        float invSin2Theta = 1.0 / sin2ThetaTS(w);
-
-        if (alphaU == alphaV || invSin2Theta <= 0)
-            return alphaU;
-
-        float cos2Phi = w.x * w.x * invSin2Theta; // To not compute invSin2Theta again
-        float sin2Phi = w.y * w.y * invSin2Theta; // To not compute invSin2Theta again
-
-        return sqrt(cos2Phi * alphaU * alphaU + sin2Phi * alphaV * alphaV);
-    }
-
-    float2 sample11(float cosTheta)
-    {
-        float2 result;
-        float2 rand = Random::rand2();
-
-        if(cosTheta > 0.9999)
-        {
-            // normal incidence
-            float r = sqrt(rand.x / (1.0 - rand.x)); // FIXME: Safe?
-            float phi = TWO_PI * rand.y;
-            return float2(r * cos(phi), r * sin(phi));
-        }
-
-        float sinTheta = max(sqrt(1.0 - cosTheta * cosTheta), 0.0);
-
-        float tanTheta = sinTheta / cosTheta;
-
-        float a = 1.0 / tanTheta;
-
-        float G1 = 2.0 / (1.0 + sqrt(1.0 + 1.0 / (a + a)));
-
-        // sample slope x
-        float A = 2.0 * rand.x / G1 - 1.0;
-        if (abs(A) == 1)
-        {
-            A -= sign(A) * EPSILON;
-        }
-
-        float tmp = 1.0 / (A * A - 1.0);
-
-        float B = tanTheta;
-        float D = sqrt(max(B * B * tmp * tmp - (A * A - B * B ) * tmp, 0.0));
-
-        float2 slopeX = float2(B * tmp - D, B * tmp + D);
-        result.x = (A < 0|| slopeX.y > 1.0 / tanTheta) ? slopeX.x : slopeX.y;
-
-        // sample slope y
-        float S;
-        if(rand.y > 0.5)
-        {
-            S = 1.0;
-            rand.y = 2.0 * (rand.y - 0.5);
-        }
-        else
-        {
-            S = -1.0;
-            rand.y = 2.0 * (0.5 - rand.y);
-        }
-
-        // improved fit from mitsuba
-        float z =
-            (rand.y * (rand.y * (rand.y * (-0.365728915865723) + 0.790235037209296)
-                        - 0.424965825137544) + 0.000152998850436920) /
-                        (rand.y * (rand.y * (rand.y * (rand.y * 0.169507819808272 - 0.397203533833404)
-                        - 0.232500544458471) + 1.0) - 0.539825872510702);
-
-        result.y = S * z * sqrt(1.0 + result.x * result.x);
-
-        return result;
+        return 1.0 / (1.0 + lambda(wi) + lambda(wo));
     }
 
     float pdf(const float3 wo, const float3 wm)
     {
-        const float cosTheta = cosThetaTS(wo);
-        if(cosTheta == 0.0)
-        {
-            return 0.0;
-        }
-
-        return smithG1(wo, wm) * abs(dot(wo, wm)) * evaluate(wm) / cosTheta;
+        return evaluate(wo, wm);
     }
 
     float alphaU, alphaV;
@@ -450,14 +381,14 @@ struct RoughDielectricBSDF : IBxDF
         const float eta = interiorIor / exteriorIor;
         const DielectricFresnelData fresnelData = FresnelDielectric(dot(wo, mfSample.wm), eta);
 
-        const float G = distr.smithG1(wo, mfSample.wm);
-
         if (Random::rand() <= fresnelData.F)
         {
             sample.wi = reflectTS(wo);
+
             sample.pdf = mfSample.pdf * fresnelData.F / (4.0 * abs(dot(wo, mfSample.wm)));
 
-            sample.reflectance = specularReflectance * D * G * fresnelData.F / (4.0 * cosThetaTS(wo) * cosThetaTS(sample.wi));
+            const float G = distr.G(sample.wi, wo);
+            sample.reflectance = specularReflectance * D * G * fresnelData.F / abs(4.0 * cosThetaTS(sample.wi) * cosThetaI);
 
             return sample;
         }
@@ -465,18 +396,20 @@ struct RoughDielectricBSDF : IBxDF
         {
             sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
 
-            float sqrtDenom = dot(sample.wi, mfSample.wm) + dot(wo, mfSample.wm) / eta;
-            float dwmDwi = abs(dot(wo, mfSample.wm)) / (sqrtDenom * sqrtDenom);
+            float sqrtDenom = dot(sample.wi, mfSample.wm) + dot(wo, mfSample.wm) / fresnelData.etaTI;
+            float dwmDwi = abs(dot(sample.wi, mfSample.wm)) / (sqrtDenom * sqrtDenom);
 
             sample.pdf = mfSample.pdf * (1.0 - fresnelData.F) * dwmDwi;
 
-            sample.reflectance = specularTransmittance * D * G * (1.0 - fresnelData.F) * abs(fresnelData.etaTI * fresnelData.etaTI * dwmDwi);
+            dwmDwi = abs(dot(sample.wi, mfSample.wm) * dot(wo, mfSample.wm) / (sqrtDenom * sqrtDenom * cosThetaTS(sample.wi) * cosThetaI));
+
+            const float G = distr.G(sample.wi, wo);
+            sample.reflectance = specularTransmittance * D * G * (1.0 - fresnelData.F) * dwmDwi / (fresnelData.etaTI * fresnelData.etaTI);
 
             return sample;
         }
     }
 
-    // FIXME: All three functions "spread blackness" :D FIrst fix evaluate and pdf - we should be able to construct sample from them
     float3 evaluate(const float3 wo, const float3 wi)
     {
         const float cosThetaI = cosThetaTS(wi);
@@ -487,8 +420,20 @@ struct RoughDielectricBSDF : IBxDF
         float eta = interiorIor / exteriorIor;
         float etaP = isReflection ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
 
-        float3 wm = normalize(etaP * wi + wo);
+        float3 wm = etaP * wi + wo;
+
+        if(length(wm) * length(wm) < EPSILON)
+        {
+            return float3(0.0);
+        }
+
+        wm = normalize(wm);
         wm *= sign(cosThetaTS(wm));
+
+        if (dot(wm, wi) * cosThetaI < 0.0 || dot(wm, wo) * cosThetaO < 0.0)
+        {
+            return float3(0.0);
+        }
 
         GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
@@ -499,21 +444,20 @@ struct RoughDielectricBSDF : IBxDF
             return float3(0.0);
         }
 
-
         const DielectricFresnelData fresnelData = FresnelDielectric(dot(wo, wm), eta);
 
-        const float G = distr.smithG1(wo, wm);
+        const float G = distr.G(wi, wo);
 
         if (isReflection)
         {
-            return specularReflectance * D * G * fresnelData.F / (4.0 * cosThetaO * cosThetaI);
+            return specularReflectance * D * G * fresnelData.F / abs(4.0 * cosThetaO * cosThetaI);
         }
         else
         {
-            float sqrtDenom = dot(wi, wm) + dot(wo, wm) / eta;
-            float dwmDwi = abs(dot(wi, wm) * dot(wo, wm) / (sqrtDenom * sqrtDenom));
+            float sqrtDenom = (dot(wi, wm) + dot(wo, wm) / etaP);
+            float dwmDwi = abs(dot(wi, wm) * dot(wo, wm) / (sqrtDenom * sqrtDenom * cosThetaO * cosThetaI));
 
-            return specularTransmittance * D * G * fresnelData.etaTI * fresnelData.etaTI * (1.0 - fresnelData.F) * dwmDwi;
+            return specularTransmittance * D * G * (1.0 - fresnelData.F) * dwmDwi / (etaP * etaP);
         }
     }
 
@@ -527,8 +471,20 @@ struct RoughDielectricBSDF : IBxDF
         float eta = interiorIor / exteriorIor;
         float etaP = isReflection ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
 
-        float3 wm = normalize(etaP * wi + wo);
+        float3 wm = etaP * wi + wo;
+
+        if(cosThetaO == 0.0 || cosThetaI == 0.0 || length(wm) * length(wm) < EPSILON)
+        {
+            return 0.0;
+        }
+
+        wm = normalize(wm);
         wm *= sign(cosThetaTS(wm));
+
+        if (dot(wm, wi) * cosThetaI < 0.0 || dot(wm, wo) * cosThetaO < 0.0)
+        {
+            return 0.0;
+        }
 
         GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
@@ -536,12 +492,12 @@ struct RoughDielectricBSDF : IBxDF
 
         if (isReflection)
         {
-            return distr.pdf(sign(cosThetaO) * wo, wm) * fresnelData.F / (4.0 * abs(cosThetaO));
+            return distr.pdf(sign(cosThetaO) * wo, wm) * fresnelData.F / abs(4.0 * abs(dot(wo, wm)));
         }
         else
         {
-            float sqrtDenom = dot(wi, wm) + dot(wo, wm) / eta;
-            float dwmDwi = abs(dot(wo, wm)) / (sqrtDenom * sqrtDenom);
+            float sqrtDenom = dot(wi, wm) + dot(wo, wm) / etaP;
+            float dwmDwi = abs(dot(wi, wm)) / (sqrtDenom * sqrtDenom);
 
             return distr.pdf(sign(cosThetaO) * wo, wm) * (1.0 - fresnelData.F) * dwmDwi;
         }
@@ -711,15 +667,21 @@ struct RoughDielectricMaterial : IMaterial
         {
             bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
+
+         bsdf.alphaU = alpha.x;
+         bsdf.alphaV = alpha.y;
         if (this.alphaTexture >= 0)
         {
-            float2 alpha = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
-            bsdf.alphaU = alpha.x;
-            bsdf.alphaV = alpha.y;
+            float2 alphaT = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
+            bsdf.alphaU = alphaT.x;
+            bsdf.alphaV = alphaT.y;
         }
 
         bsdf.interiorIor = this.interiorIor;
         bsdf.exteriorIor = this.exteriorIor;
+
+        bsdf.alphaU = max(bsdf.alphaU, EPSILON); // FIXME: This could be handled better
+        bsdf.alphaV = max(bsdf.alphaV, EPSILON); // FIXME: This could be handled better
 
         return bsdf;
     }
@@ -756,6 +718,12 @@ extension Material
                 }
             case EBxDFType::roughDielectric:
                 {
+                    bool rough = (length(this.alpha) > 0.0) || this.alphaTexture >= 0;
+                    if(!rough)
+                    {
+                        return SmoothDielectricMaterial(this);
+                    }
+
                     return RoughDielectricMaterial(this);
                 }
             default:

@@ -9,10 +9,10 @@
         <string name="ext_ior" value="air" />
     </bsdf>
 
-    <bsdf type="roughdielectric" id="rough glass">
+    <bsdf type="roughdielectric" id="rough_glass">
         <string name="int_ior" value="bk7" />
         <string name="ext_ior" value="air" />
-        <float name="alpha" value="0.5"/>
+        <float name="alpha" value="0.1"/>
     </bsdf>
 
     <bsdf type="dielectric" id="glass">
@@ -87,7 +87,7 @@
         <transform name="to_world">
             <translate x="0.5" y="-0.03" z="0.5" />
         </transform>
-        <ref id="rough glass" />
+        <ref id="rough_glass" />
     </shape>
 
     <shape type="sphere" id="light_source">
