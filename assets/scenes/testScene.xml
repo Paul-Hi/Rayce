@@ -18,7 +18,8 @@
     <bsdf type="roughconductor" id="gold">
         <string name="material" value="Au" />
         <rgb name="specular_reflectance" value="0.9, 0.8, 0.5" />
-        <float name="alpha" value="0.15"/>
+        <float name="alpha_u" value="0.1"/>
+        <float name="alpha_v" value="0.05"/>
     </bsdf>
 
     <bsdf type="diffuse" id="blue">
@@ -62,7 +63,7 @@
             <rotate x="1" angle="90" />
             <translate y="2" z="-2" />
         </transform>
-        <ref id="light_gray" />
+        <ref id="gold" />
     </shape>
 
     <shape type="rectangle" id="left">
@@ -107,7 +108,7 @@
             <scale x="0.5" y="0.5" z="0.5" />
             <translate x="-1" y="0.5" z="-0" />
         </transform>
-        <ref id="gold" />
+        <ref id="light_gray" />
     </shape>
 
     <shape type="sphere" id="large_sphere">

@@ -106,13 +106,21 @@ struct CoordinateSpace
         }
         else
         {
+            // Not consistent for spheres
             // Building an Orthonormal Basis, Revisited, (JCGT), vol. 6, no. 1, 1-8, 2017
             // Available online: http://jcgt.org/published/0006/01/01/
-            float normalSign = normal.z < 0.0 ? -1.0 : 1.0;
-            float a = -1.0 / (normalSign + normal.z);
-            float b = normal.x * normal.y * a;
-            this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
-            this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
+            // float normalSign = sign(normal.z);
+            // float a = -1.0 / (normalSign + normal.z);
+            // float b = normal.x * normal.y * a;
+            // this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
+            // this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
+
+            float3 a = (abs(normal.x) > 0.9999) ? float3(0,1,0) : float3(1,0,0);
+            this.bitangent = normalize(cross(normal, a));
+            this.tangent = cross(normal, this.bitangent);
+
+            // this.tangent = normalize(float3(-normal.y, normal.x, 0.0));
+            // this.bitangent = cross(normal, this.tangent);
         }
     }
 

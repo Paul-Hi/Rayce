@@ -291,6 +291,7 @@ struct GGXDistribution
         {
             return 0.0;
         }
+
         float cos4Theta = cos2ThetaTS(wm);
         cos4Theta *= cos4Theta;
         if (cos4Theta < EPSILON)
@@ -325,7 +326,7 @@ struct GGXDistribution
         return (sqrt(1.0 + sqrdAlpha * tan2Theta) - 1.0) * 0.5;
     }
 
-    // based on Sampling the GGX Distribution of Visible Normals https://jcgt.org/published/0007/04/01/
+    // based on Sampling Visible GGX Normals with Spherical Caps https://arxiv.org/pdf/2306.05044.pdf
     MicrofacetSample sample(const float3 wo)
     {
         // sample visible
@@ -335,22 +336,18 @@ struct GGXDistribution
 
         float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
 
-        float sqrdLen = stretchedWo.x * stretchedWo.x + stretchedWo.y * stretchedWo.y;
-        float3 T1 = sqrdLen > 0 ? float3(-stretchedWo.y, stretchedWo.x, 0.0) * (1.0 / sqrt(sqrdLen)) : float3(1.0, 0.0, 0.0);
-        float3 T2 = cross(stretchedWo, T1);
+        float phi = TWO_PI * rand.x;
+        float z = multiplyAndAdd((1.0 - rand.y), (1.0 + stretchedWo.z), -stretchedWo.z);
+        float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
+        float x = sinTheta * cos(phi);
+        float y = sinTheta * sin(phi);
+        float3 c = float3(x, y, z);
 
-        float r = sqrt(rand.x);
-        float phi = TWO_PI * rand.y;
-        float t1 = r * cos(phi);
-        float t2 = r * sin(phi);
-        float s = 0.5 * (1.0 + stretchedWo.z);
-        t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+        float3 h = c + stretchedWo;
 
-        float3 proj = t1 * T1 + t2 * T2 + safe_sqrt(1.0 - t1 * t1 - t2 * t2) * stretchedWo;
+        sample.wm = normalize(float3(alphaU * h.x, alphaV * h.y, max(0.0, h.z)));
 
-        sample.wm = normalize(float3(alphaU * proj.x, alphaV * proj.y, max(0.0, proj.z)));
-
-        sample.pdf = pdf(stretchedWo, sample.wm);
+        sample.pdf = pdf(wo, sample.wm);
 
         return sample;
     }
@@ -379,6 +376,10 @@ struct RoughDielectricBSDF : IBxDF
     {
         BxDFSample sample;
         sample.dirac = isDirac();
+        sample.dirac = isDirac();
+        sample.wi = float3(0.0);
+        sample.reflectance = float3(0.0);
+        sample.pdf = 0.0;
 
         GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
@@ -386,9 +387,6 @@ struct RoughDielectricBSDF : IBxDF
         const MicrofacetSample mfSample = distr.sample(sign(cosThetaI) * wo);
         if (mfSample.pdf == 0.0)
         {
-            sample.wi = float3(0.0);
-            sample.reflectance = float3(0.0);
-            sample.pdf = 0.0;
             return sample;
         }
 
@@ -396,9 +394,6 @@ struct RoughDielectricBSDF : IBxDF
 
         if(D == 0.0)
         {
-            sample.wi = float3(0.0);
-            sample.reflectance = float3(0.0);
-            sample.pdf = 0.0;
             return sample;
         }
 
@@ -552,13 +547,15 @@ struct SmoothConductorBSDF : IBxDF
     {
         BxDFSample sample;
         sample.dirac = isDirac();
+        sample.dirac = isDirac();
+        sample.wi = float3(0.0);
+        sample.reflectance = float3(0.0);
+        sample.pdf = 0.0;
+
         const float cosThetaI = cosThetaTS(wo);
 
         if(cosThetaI <= 0.0)
         {
-            sample.wi = float3(0.0);
-            sample.reflectance = float3(0.0);
-            sample.pdf = 0.0;
             return sample;
         }
 
@@ -601,16 +598,22 @@ struct RoughConductorBSDF : IBxDF
     {
         BxDFSample sample;
         sample.dirac = isDirac();
+        sample.wi = float3(0.0);
+        sample.reflectance = float3(0.0);
+        sample.pdf = 0.0;
 
         GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
-        const float cosThetaI = abs(cosThetaTS(wo));
+        const float cosThetaI = cosThetaTS(wo);
+
+        if(cosThetaI < 0.0)
+        {
+            return sample;
+        }
+
         const MicrofacetSample mfSample = distr.sample(wo);
         if (mfSample.pdf == 0.0)
         {
-            sample.wi = float3(0.0);
-            sample.reflectance = float3(0.0);
-            sample.pdf = 0.0;
             return sample;
         }
 
@@ -618,9 +621,6 @@ struct RoughConductorBSDF : IBxDF
 
         if(D == 0.0)
         {
-            sample.wi = float3(0.0);
-            sample.reflectance = float3(0.0);
-            sample.pdf = 0.0;
             return sample;
         }
 
@@ -638,10 +638,10 @@ struct RoughConductorBSDF : IBxDF
 
     float3 evaluate(const float3 wo, const float3 wi)
     {
-        const float cosThetaI = abs(cosThetaTS(wi));
-        const float cosThetaO = abs(cosThetaTS(wo));
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
 
-        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        if(cosThetaI <= 0.0 || cosThetaO <= 0.0)
         {
             return float3(0.0);
         }
@@ -673,6 +673,14 @@ struct RoughConductorBSDF : IBxDF
 
     float pdf(const float3 wo, const float3 wi)
     {
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        if(cosThetaI <= 0.0 || cosThetaO <= 0.0)
+        {
+            return 0.0;
+        }
+
         float3 wm = wi + wo;
 
         if(length(wm) * length(wm) < EPSILON)
