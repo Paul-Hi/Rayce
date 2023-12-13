@@ -178,7 +178,7 @@ float3 tracePaths(Ray ray)
 
             float nDotL = cosThetaTS(bxdfSample.wi);
 
-            throughput *= bxdfSample.pdf > 0.0 ? bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf : 1.0;
+            throughput *= bxdfSample.pdf > 0.0 ? bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf : 0.0;
 
             // russian roulette
             if (depth >= russianRouletteStart)

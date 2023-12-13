@@ -254,24 +254,25 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
+        }
 
-            for (const auto& textureChild : bsdfObject->namedChildren())
+        for (const auto& textureChild : bsdfObject->namedChildren())
+        {
+            // texture
+            if (textureChild.first != "reflectance" || textureChild.second->type() != mp::OT_TEXTURE)
             {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
+                continue;
+            }
+            for (const auto& textureProperty : textureChild.second->properties())
+            {
+                if (textureProperty.first == "filename")
                 {
-                    continue;
-                }
-                for (const auto& textureProperty : textureChild.second->properties())
-                {
-                    if (textureProperty.first == "filename")
-                    {
-                        bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
-                        imagesToLoad.push_back(textureProperty.second.getString());
-                    }
+                    bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
+                    imagesToLoad.push_back(textureProperty.second.getString());
                 }
             }
         }
+
         break;
     }
     case EBxDFType::smoothDielectric:
@@ -317,23 +318,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
-
-            for (const auto& textureChild : bsdfObject->namedChildren())
-            {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
-                {
-                    continue;
-                }
-                for (const auto& textureProperty : textureChild.second->properties())
-                {
-                    if (textureProperty.first == "filename")
-                    {
-                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
-                        imagesToLoad.push_back(textureProperty.second.getString());
-                    }
-                }
-            }
         }
         if (props.contains("specular_transmittance"))
         {
@@ -348,14 +332,27 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
-
-            for (const auto& textureChild : bsdfObject->namedChildren())
+        }
+        for (const auto& textureChild : bsdfObject->namedChildren())
+        {
+            // texture
+            if (textureChild.second->type() != mp::OT_TEXTURE)
             {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
+                continue;
+            }
+            if (textureChild.first == "specular_reflectance")
+            {
+                for (const auto& textureProperty : textureChild.second->properties())
                 {
-                    continue;
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
                 }
+            }
+            if (textureChild.first == "specular_transmittance")
+            {
                 for (const auto& textureProperty : textureChild.second->properties())
                 {
                     if (textureProperty.first == "filename")
@@ -382,22 +379,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 {
                     bsdf.possibleData.alpha = vec2(1.0, 1.0);
                 }
-                for (const auto& textureChild : bsdfObject->namedChildren())
-                {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
-                    {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
-                    }
-                }
             }
             if (props.contains("alpha_u"))
             {
@@ -410,22 +391,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 else
                 {
                     bsdf.possibleData.alpha.x() = 1.0;
-                }
-                for (const auto& textureChild : bsdfObject->namedChildren())
-                {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
-                    {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
-                    }
                 }
             }
             if (props.contains("alpha_v"))
@@ -440,20 +405,20 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 {
                     bsdf.possibleData.alpha.y() = 1.0;
                 }
-                for (const auto& textureChild : bsdfObject->namedChildren())
+            }
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.first != "alpha" || textureChild.second->type() != mp::OT_TEXTURE)
                 {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
                     {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
+                        bsdf.possibleData.alphaTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
                     }
                 }
             }
@@ -476,23 +441,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
-
-            for (const auto& textureChild : bsdfObject->namedChildren())
-            {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
-                {
-                    continue;
-                }
-                for (const auto& textureProperty : textureChild.second->properties())
-                {
-                    if (textureProperty.first == "filename")
-                    {
-                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
-                        imagesToLoad.push_back(textureProperty.second.getString());
-                    }
-                }
-            }
         }
 
         if (props.contains("material"))
@@ -512,23 +460,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
-
-            for (const auto& textureChild : bsdfObject->namedChildren()) // FIXME: This is probably not handled correctly!
-            {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
-                {
-                    continue;
-                }
-                for (const auto& textureProperty : textureChild.second->properties())
-                {
-                    if (textureProperty.first == "filename")
-                    {
-                        bsdf.possibleData.complexIorTexture = imagesToLoad.size();
-                        imagesToLoad.push_back(textureProperty.second.getString());
-                    }
-                }
-            }
         }
         if (props.contains("k"))
         {
@@ -538,23 +469,38 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             {
                 RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
             }
-
-            for (const auto& textureChild : bsdfObject->namedChildren()) // FIXME: This is probably not handled correctly!
+        }
+        for (const auto& textureChild : bsdfObject->namedChildren())
+        {
+            // texture
+            if (textureChild.second->type() != mp::OT_TEXTURE)
             {
-                // texture
-                if (textureChild.second->type() != mp::OT_TEXTURE)
-                {
-                    continue;
-                }
+                continue;
+            }
+            if (textureChild.first == "specular_reflectance")
+            {
                 for (const auto& textureProperty : textureChild.second->properties())
                 {
                     if (textureProperty.first == "filename")
                     {
-                        bsdf.possibleData.complexIorTexture = imagesToLoad.size();
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
                         imagesToLoad.push_back(textureProperty.second.getString());
                     }
                 }
             }
+            /*
+            if (textureChild.first == "") // eta and k
+            {
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularTransmittanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+            */
         }
 
         if (bsdf.type == EBxDFType::roughConductor)
@@ -572,22 +518,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 {
                     bsdf.possibleData.alpha = vec2(1.0, 1.0);
                 }
-                for (const auto& textureChild : bsdfObject->namedChildren())
-                {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
-                    {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
-                    }
-                }
             }
             if (props.contains("alpha_u"))
             {
@@ -600,22 +530,6 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 else
                 {
                     bsdf.possibleData.alpha.x() = 1.0;
-                }
-                for (const auto& textureChild : bsdfObject->namedChildren())
-                {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
-                    {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
-                    }
                 }
             }
             if (props.contains("alpha_v"))
@@ -630,20 +544,61 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                 {
                     bsdf.possibleData.alpha.y() = 1.0;
                 }
-                for (const auto& textureChild : bsdfObject->namedChildren())
+            }
+
+            // alpha, alpha_u, alpha_v
+            if (props.contains("alpha"))
+            {
+                auto alpha = props.at("alpha");
+
+                if (alpha.type() == mp::PT_NUMBER) // <float></float>
                 {
-                    // texture
-                    if (textureChild.second->type() != mp::OT_TEXTURE)
+                    bsdf.possibleData.alpha = vec2(alpha.getNumber(), alpha.getNumber());
+                }
+                else
+                {
+                    bsdf.possibleData.alpha = vec2(1.0, 1.0);
+                }
+            }
+            if (props.contains("alpha_u"))
+            {
+                auto alphaU = props.at("alpha_u");
+
+                if (alphaU.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.x() = alphaU.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.x() = 1.0;
+                }
+            }
+            if (props.contains("alpha_v"))
+            {
+                auto alphaV = props.at("alpha_v");
+
+                if (alphaV.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.y() = alphaV.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.y() = 1.0;
+                }
+            }
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.first != "alpha" || textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
                     {
-                        continue;
-                    }
-                    for (const auto& textureProperty : textureChild.second->properties())
-                    {
-                        if (textureProperty.first == "filename")
-                        {
-                            bsdf.possibleData.alphaTexture = imagesToLoad.size();
-                            imagesToLoad.push_back(textureProperty.second.getString());
-                        }
+                        bsdf.possibleData.alphaTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
                     }
                 }
             }
@@ -724,7 +679,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
     std::vector<MitsubaShape> mitsubaShapes;
     std::vector<MitsubaEmitter> mitsubaEmitters;
-    std::unordered_map<str, MitsubaBSDF> mitsubaBSDFs;
+    std::map<str, MitsubaBSDF> mitsubaBSDFs;
     std::vector<str> imagesToLoad;
     uint32 inlineBSDFId = 0;
 
@@ -829,6 +784,10 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
     pGeometry = std::make_unique<Geometry>();
 
+    mImages.resize(imagesToLoad.size());
+    mImageViews.resize(imagesToLoad.size());
+    mImageSamplers.resize(imagesToLoad.size());
+
     for (auto& [ref, bsdf] : mitsubaBSDFs)
     {
         RAYCE_LOG_INFO("Creating material from %s.", ref.c_str());
@@ -877,16 +836,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[bsdf.possibleData.diffuseReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
@@ -934,16 +893,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[bsdf.possibleData.specularReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             if (bsdf.possibleData.specularTransmittanceTexture >= 0)
@@ -985,16 +944,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[bsdf.possibleData.specularTransmittanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
 
@@ -1039,16 +998,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     VkFormat format = getImageFormat(components, false);
 
                     VkExtent2D extent{ width, height };
-                    mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                    auto& addedImage = mImages.back();
+                    mImages[bsdf.possibleData.alphaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                    auto& addedImage = mImages[bsdf.possibleData.alphaTexture];
                     addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                     VkExtent3D extent3D{ width, height, 1 };
                     Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                    mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                    mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                    mImageViews[bsdf.possibleData.alphaTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                    mImageSamplers[bsdf.possibleData.alphaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                        VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
                 }
             }
@@ -1097,16 +1056,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[bsdf.possibleData.specularReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             if (bsdf.possibleData.complexIorTexture >= 0)
@@ -1148,16 +1107,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[bsdf.possibleData.complexIorTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[bsdf.possibleData.complexIorTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.complexIorTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.complexIorTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
 
@@ -1202,16 +1161,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     VkFormat format = getImageFormat(components, false);
 
                     VkExtent2D extent{ width, height };
-                    mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                    auto& addedImage = mImages.back();
+                    mImages[bsdf.possibleData.alphaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                    auto& addedImage = mImages[bsdf.possibleData.alphaTexture];
                     addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                     VkExtent3D extent3D{ width, height, 1 };
                     Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                    mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                    mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                    mImageViews[bsdf.possibleData.alphaTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                    mImageSamplers[bsdf.possibleData.alphaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                        VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
                 }
             }
@@ -1301,16 +1260,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages.push_back(std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages.back();
+                mImages[emitter.possibleData.radianceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage = mImages[emitter.possibleData.radianceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews.push_back(std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers.push_back(std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[emitter.possibleData.radianceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[emitter.possibleData.radianceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                    VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
