@@ -80,28 +80,41 @@ DielectricFresnelData FresnelDielectric(const float cosThetaI, const float eta)
     return data;
 }
 
-// Simliar to mitsuba
-float FresnelConductor(const float cosThetaI, const float eta, const float k)
+// Simliar to https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/#more-1921
+float3 FresnelConductorExact(const float cosThetaI, const float3 eta, const float3 k)
 {
     float cos2ThetaI = cosThetaI * cosThetaI;
     float sin2ThetaI = 1.0 - cos2ThetaI;
     float sin4ThetaI = sin2ThetaI * sin2ThetaI;
 
-    float tmp1 = eta * eta - k * k - sin2ThetaI;
-    float a2pb2 = safe_sqrt(tmp1 * tmp1 + 4.0 * k * k * eta * eta);
-    float a     = safe_sqrt(0.5 * (a2pb2 + tmp1));
+    float3 t0 = eta * eta - k * k - sin2ThetaI;
+    float3 a2pb2 = safe_sqrt(t0 * t0 + 4.0 * k * k * eta * eta);
+    float3 a     = safe_sqrt(0.5 * (a2pb2 + t0));
 
-    float term1 = a2pb2 + cos2ThetaI;
-    float term2 = 2.0 * a * cosThetaI;
+    float3 term1 = a2pb2 + cos2ThetaI;
+    float3 term2 = 2.0 * a * cosThetaI;
 
-    float Rs2 = (term1 - term2) / (term1 + term2);
+    float3 Rs2 = (term1 - term2) / (term1 + term2);
 
-    float term3 = a2pb2 * cos2ThetaI + sin4ThetaI;
-    float term4 = term2 * sin2ThetaI;
+    float3 term3 = a2pb2 * cos2ThetaI + sin4ThetaI;
+    float3 term4 = term2 * sin2ThetaI;
 
-    float Rp2 = Rs2 * (term3 - term4) / (term3 + term4);
+    float3 Rp2 = Rs2 * (term3 - term4) / (term3 + term4);
 
     return 0.5 * (Rp2 + Rs2);
+} // FIXME: Exact introduces fireflies :/
+
+float3 FresnelConductorApprox(const float cosThetaI, const float3 eta, const float3 k)
+{
+    float cos2ThetaI = cosThetaI * cosThetaI;
+    float3 twoEtaCos2ThetaI = 2.0 * eta * cos2ThetaI;
+
+    float3 t0 = eta * eta + k * k;
+    float3 t1 = t0 * cos2ThetaI;
+    float3 Rs = (t0 - twoEtaCos2ThetaI + cos2ThetaI) / (t0 + twoEtaCos2ThetaI + cos2ThetaI);
+    float3 Rp = (t1 - twoEtaCos2ThetaI + 1.0) / (t1 + twoEtaCos2ThetaI + 1.0);
+
+    return 0.5* (Rp + Rs);
 }
 
 struct DiffuseBRDF : IBxDF
@@ -337,7 +350,7 @@ struct GGXDistribution
         float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
 
         float phi = TWO_PI * rand.x;
-        float z = multiplyAndAdd((1.0 - rand.y), (1.0 + stretchedWo.z), -stretchedWo.z);
+        float z = 1.0 - (rand.y * (1.0 + stretchedWo.z));
         float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
         float x = sinTheta * cos(phi);
         float y = sinTheta * sin(phi);
@@ -563,7 +576,7 @@ struct SmoothConductorBSDF : IBxDF
         sample.pdf = 1.0;
 
         const float absNDotL = abs(cosThetaTS(sample.wi));
-        sample.reflectance = absNDotL > 0.0 ? FresnelConductor(cosThetaI, eta, k) * specularReflectance / absNDotL : float3(0.0);
+        sample.reflectance = absNDotL > 0.0 ? FresnelConductorApprox(cosThetaI, eta, k) * specularReflectance / absNDotL : float3(0.0);
 
         return sample;
     }
@@ -624,7 +637,7 @@ struct RoughConductorBSDF : IBxDF
             return sample;
         }
 
-        const float F = FresnelConductor(abs(dot(wo, mfSample.wm)), eta, k);
+        const float3 F = FresnelConductorApprox(dot(wo, mfSample.wm), eta, k);
 
         sample.wi = reflect(wo, mfSample.wm);
 
@@ -664,11 +677,11 @@ struct RoughConductorBSDF : IBxDF
             return float3(0.0);
         }
 
-        const float F = FresnelConductor(abs(dot(wo, wm)), eta, k);
+        const float3 F = FresnelConductorApprox(dot(wo, wm), eta, k);
 
         const float G = distr.G(wi, wo);
 
-        return specularReflectance * D * G * F / (4.0 * cosThetaO * cosThetaI);
+        return specularReflectance * D * G * F / (4.0 * abs(cosThetaO) * abs(cosThetaI));
     }
 
     float pdf(const float3 wo, const float3 wi)
