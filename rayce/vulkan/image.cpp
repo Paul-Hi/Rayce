@@ -8,6 +8,7 @@
 #include <vulkan/device.hpp>
 #include <vulkan/deviceMemory.hpp>
 #include <vulkan/image.hpp>
+#include <vulkan/imageMemoryBarrier.hpp>
 #include <vulkan/immediateSubmit.hpp>
 
 using namespace rayce;
@@ -15,15 +16,17 @@ using namespace rayce;
 Image::Image(const std::unique_ptr<class Device>& logicalDevice, VkExtent2D extent, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mOwned(true)
+    , mExtent(extent)
+    , mFormat(format)
     , mVkImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 {
     VkImageCreateInfo imageCreateInfo{};
     imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.extent        = { extent.width, extent.height, 1 };
+    imageCreateInfo.extent        = { mExtent.width, mExtent.height, 1 };
     imageCreateInfo.mipLevels     = 1;
     imageCreateInfo.arrayLayers   = 1;
-    imageCreateInfo.format        = format;
+    imageCreateInfo.format        = mFormat;
     imageCreateInfo.tiling        = tiling;
     imageCreateInfo.initialLayout = mVkImageLayout;
     imageCreateInfo.usage         = usage;
@@ -69,9 +72,9 @@ void Image::adaptImageLayout(const std::unique_ptr<Device>& logicalDevice, const
                                  barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
                                  barrier.image                           = mVkImage;
                                  barrier.subresourceRange.baseMipLevel   = 0;
-                                 barrier.subresourceRange.levelCount     = 1;
+                                 barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
                                  barrier.subresourceRange.baseArrayLayer = 0;
-                                 barrier.subresourceRange.layerCount     = 1;
+                                 barrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
                                  if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                                  {
@@ -170,4 +173,82 @@ VkMemoryRequirements Image::getMemoryRequirements() const
     vkGetImageMemoryRequirements(mVkLogicalDeviceRef, mVkImage, &memoryRequirements);
 
     return memoryRequirements;
+}
+
+std::vector<byte> Image::downloadImage(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool)
+{
+    Image tmpImage(logicalDevice, mExtent, mFormat, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    tmpImage.allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkImage srcImage = getVkImage();
+    VkImage dstImage = tmpImage.getVkImage();
+
+    ImmediateSubmit::Execute(logicalDevice, commandPool,
+                             [&](VkCommandBuffer commandBuffer)
+                             {
+                                 VkImageSubresourceRange subresourceRange{};
+                                 subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                                 subresourceRange.baseMipLevel   = 0;
+                                 subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+                                 subresourceRange.baseArrayLayer = 0;
+                                 subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+                                 ImageMemoryBarrier::Create(commandBuffer, srcImage, subresourceRange, 0, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                                 ImageMemoryBarrier::Create(commandBuffer, dstImage, subresourceRange, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+                                 // FIXME: Copy kills the device...
+                                 VkImageCopy copyRegion{};
+                                 copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+                                 copyRegion.srcOffset      = { 0, 0, 0 };
+                                 copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+                                 copyRegion.dstOffset      = { 0, 0, 0 };
+                                 copyRegion.extent         = { mExtent.width, mExtent.height, 1 };
+
+                                 vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+                                 ImageMemoryBarrier::Create(commandBuffer, srcImage, subresourceRange, VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+                                 ImageMemoryBarrier::Create(commandBuffer, dstImage, subresourceRange, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+                             });
+
+    VkImageSubresource subResource{};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResourceLayout;
+
+    vkGetImageSubresourceLayout(logicalDevice->getVkDevice(), dstImage, &subResource, &subResourceLayout);
+
+    const byte* tmpData;
+    vkMapMemory(logicalDevice->getVkDevice(), tmpImage.getDeviceMemory()->getVkDeviceMemory(), 0, VK_WHOLE_SIZE, 0, (void**)&tmpData);
+    tmpData += subResourceLayout.offset;
+
+    std::vector<byte> result;
+    result.reserve(subResourceLayout.size);
+
+    std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
+    const bool colorSwizzle          = (std::find(formatsBGR.begin(), formatsBGR.end(), mFormat) != formatsBGR.end());
+
+    for (int32 y = 0; y < mExtent.height; ++y)
+    {
+        uint32* row = (uint32*)tmpData;
+        for (int32 x = 0; x < mExtent.width; ++x)
+        {
+            if (colorSwizzle)
+            {
+                result.push_back(*((byte*)row + 2));
+                result.push_back(*((byte*)row + 1));
+                result.push_back(*((byte*)row));
+            }
+            else
+            {
+                result.push_back(*((byte*)row));
+                result.push_back(*((byte*)row + 1));
+                result.push_back(*((byte*)row + 2));
+            }
+            row++;
+        }
+        tmpData += subResourceLayout.rowPitch;
+    }
+
+    vkUnmapMemory(logicalDevice->getVkDevice(), tmpImage.getDeviceMemory()->getVkDeviceMemory());
+
+    return result;
 }

@@ -39,13 +39,13 @@ namespace rayce
         void fillFromBuffer(const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, const std::unique_ptr<Buffer>& buffer, VkExtent3D extent);
 
         template <class T>
-        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Image& dstImage, const std::vector<T>& data, VkExtent3D extent)
+        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, Image& dstImage, const std::vector<T>& data, VkExtent3D extent)
         {
             Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, dstImage, data.data(), sizeof(data[0]) * data.size(), extent);
         }
 
         template <class T>
-        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, Image& dstImage, const T* data, uint32 size, VkExtent3D extent)
+        static void uploadImageDataWithStagingBuffer(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool, Image& dstImage, const T* data, uint32 size, VkExtent3D extent)
         {
             if (size == 0)
             {
@@ -65,10 +65,14 @@ namespace rayce
             stagingBuffer.reset();
         }
 
+        std::vector<byte> downloadImage(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class CommandPool>& commandPool);
+
     private:
         VkDevice mVkLogicalDeviceRef;
 
         bool mOwned;
+        VkExtent2D mExtent;
+        VkFormat mFormat;
         VkImage mVkImage;
         VkImageLayout mVkImageLayout;
 

@@ -12,7 +12,31 @@
 #include <scene.hpp>
 #include <vulkan.hpp>
 
+#include <fstream>
+
 using namespace rayce;
+
+void storeImageAsPPM(const std::vector<byte> image, uint32 width, uint32 height)
+{
+    const char* filename = "image.ppm";
+
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+
+    // ppm header
+    file << "P6\n"
+         << width << "\n"
+         << height << "\n"
+         << 255 << "\n";
+
+    for (int32 y = 0; y < height; ++y)
+    {
+        for (int32 x = 0; x < width; ++x)
+        {
+            file.write((const char*)&(image[y * width * 3 + x * 3]), 3); // FIXME: This is one of the worst solutions ever!
+        }
+    }
+    file.close();
+}
 
 SimpleGUI::SimpleGUI(const RayceOptions& options)
     : RayceApp::RayceApp(options)
@@ -364,6 +388,19 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::Text("Accumulated Frames: %d", mAccumulationFrame);
     ImGui::Separator();
     ImGui::SliderInt("Max. Samples", &mMaxSamples, 4, 65536);
+
+    // ImGui::InputText("Filename");
+    if (ImGui::Button("Store Snapshot"))
+    {
+        // download image from device and store as bmp
+
+        auto& device      = getDevice();
+        auto& commandPool = getCommandPool();
+
+        std::vector<byte> image = pRaytracingTargetImage->downloadImage(device, commandPool);
+
+        storeImageAsPPM(image, mViewportPanelSize.x(), mViewportPanelSize.y());
+    }
 
     ImGui::End();
 }
