@@ -32,7 +32,7 @@ void storeImageAsPPM(const std::vector<byte> image, uint32 width, uint32 height)
     {
         for (int32 x = 0; x < width; ++x)
         {
-            file.write((const char*)&(image[y * width * 3 + x * 3]), 3); // FIXME: This is one of the worst solutions ever!
+            file.write((const char*)&(image[y * width * 4 + x * 4]), 3); // FIXME: This is one of the worst solutions ever!
         }
     }
     file.close();
@@ -56,7 +56,7 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str testScene = ".\\assets\\scenes\\testScene.xml";
+    const str testScene = ".\\assets\\scenes\\testScene\\testScene.xml";
 
     pScene->loadFromMitsubaFile(testScene, device, commandPool, 1.0f);
 

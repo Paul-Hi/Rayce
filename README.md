@@ -19,3 +19,4 @@ We use:
 * TinyParser-Mitsuba to parse mitsuba scene xmls
 * TinyXML-2 for TinyParser-Mitsuba to work
 * miniply to load *.ply files
+* tinyobjloader to load *.obj files

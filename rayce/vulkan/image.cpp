@@ -236,12 +236,14 @@ std::vector<byte> Image::downloadImage(const std::unique_ptr<Device>& logicalDev
                 result.push_back(*((byte*)row + 2));
                 result.push_back(*((byte*)row + 1));
                 result.push_back(*((byte*)row));
+                result.push_back(*((byte*)row + 3));
             }
             else
             {
                 result.push_back(*((byte*)row));
                 result.push_back(*((byte*)row + 1));
                 result.push_back(*((byte*)row + 2));
+                result.push_back(*((byte*)row + 3));
             }
             row++;
         }

@@ -21,6 +21,8 @@
 #include <vulkan/sampler.hpp>
 
 #include <scene/miniply.h>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
 #include <scene/tinyparser-mitsuba.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -700,14 +702,19 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             if (pluginType == "rectangle")
             {
                 shape.type     = EShapeType::triangleMesh;
-                shape.filename = fs::path(filename).parent_path().concat("\\rectangle.ply").string();
+                shape.filename = "assets\\scenes\\rectangle.ply";
             }
             for (const auto& prop : object->properties())
             {
                 if (pluginType == "ply" && prop.first == "filename")
                 {
                     shape.type     = EShapeType::triangleMesh;
-                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string(); // FIXME: absolute? relative?
+                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string();
+                }
+                if (pluginType == "obj" && prop.first == "filename")
+                {
+                    shape.type     = EShapeType::triangleMesh;
+                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string();
                 }
                 else if (prop.first == "to_world")
                 {
@@ -837,16 +844,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[bsdf.possibleData.diffuseReflectanceTexture];
+                auto& addedImage                                     = mImages[bsdf.possibleData.diffuseReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[bsdf.possibleData.diffuseReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                         VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
         }
@@ -894,16 +901,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[bsdf.possibleData.specularReflectanceTexture];
+                auto& addedImage                                      = mImages[bsdf.possibleData.specularReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[bsdf.possibleData.specularReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                          VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             if (bsdf.possibleData.specularTransmittanceTexture >= 0)
             {
@@ -945,16 +952,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[bsdf.possibleData.specularTransmittanceTexture];
+                auto& addedImage                                        = mImages[bsdf.possibleData.specularTransmittanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[bsdf.possibleData.specularTransmittanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                            VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
 
             if (bsdf.type == EBxDFType::roughDielectric)
@@ -999,16 +1006,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     VkExtent2D extent{ width, height };
                     mImages[bsdf.possibleData.alphaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                    auto& addedImage = mImages[bsdf.possibleData.alphaTexture];
+                    auto& addedImage                        = mImages[bsdf.possibleData.alphaTexture];
                     addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                     VkExtent3D extent3D{ width, height, 1 };
                     Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                    mImageViews[bsdf.possibleData.alphaTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                    mImageViews[bsdf.possibleData.alphaTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                     mImageSamplers[bsdf.possibleData.alphaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                       VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
                 }
             }
             break;
@@ -1057,16 +1064,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[bsdf.possibleData.specularReflectanceTexture];
+                auto& addedImage                                      = mImages[bsdf.possibleData.specularReflectanceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[bsdf.possibleData.specularReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                          VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             if (bsdf.possibleData.complexIorTexture >= 0)
             {
@@ -1108,16 +1115,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.complexIorTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[bsdf.possibleData.complexIorTexture];
+                auto& addedImage                             = mImages[bsdf.possibleData.complexIorTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.complexIorTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[bsdf.possibleData.complexIorTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.complexIorTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                 VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
 
             if (bsdf.type == EBxDFType::roughConductor)
@@ -1162,16 +1169,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     VkExtent2D extent{ width, height };
                     mImages[bsdf.possibleData.alphaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                    auto& addedImage = mImages[bsdf.possibleData.alphaTexture];
+                    auto& addedImage                        = mImages[bsdf.possibleData.alphaTexture];
                     addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                     VkExtent3D extent3D{ width, height, 1 };
                     Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                     addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                    mImageViews[bsdf.possibleData.alphaTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                    mImageViews[bsdf.possibleData.alphaTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                     mImageSamplers[bsdf.possibleData.alphaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                       VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
                 }
             }
             break;
@@ -1261,16 +1268,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 VkExtent2D extent{ width, height };
                 mImages[emitter.possibleData.radianceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage = mImages[emitter.possibleData.radianceTexture];
+                auto& addedImage                              = mImages[emitter.possibleData.radianceTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[emitter.possibleData.radianceTexture] = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageViews[emitter.possibleData.radianceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[emitter.possibleData.radianceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                                                                                                  VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
             break;
         }
@@ -1385,6 +1392,115 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
 
                     plyReader.next_element();
+                }
+
+                if (!(hasPositions && hasIndices))
+                {
+                    RAYCE_LOG_ERROR("%s has no positions or indices!", shape.filename.c_str());
+                    continue;
+                }
+
+                std::vector<Vertex> vertices(positions.size());
+                for (ptr_size v = 0; v < positions.size(); ++v)
+                {
+                    Vertex vertex;
+
+                    vertex.position = positions[v];
+                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
+                    vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
+
+                    vertices[v] = vertex;
+                }
+
+                std::unique_ptr<Buffer> vertexBuffer = std::make_unique<Buffer>(logicalDevice, sizeof(Vertex) * vertices.size(),
+                                                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(logicalDevice, sizeof(uint32) * indices.size(),
+                                                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+                vertexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                indexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+                Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *vertexBuffer, vertices);
+                Buffer::uploadDataWithStagingBuffer(logicalDevice, commandPool, *indexBuffer, indices);
+
+                uint32 maxVertex      = static_cast<uint32>(vertices.size() - 1);
+                uint32 primitiveCount = static_cast<uint32>(indices.size() / 3);
+                mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
+
+                // materialId is filled before
+                uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
+                mMaterials[materialId]->canUseUv = hasUVs;
+                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
+            }
+
+            if (ext == "obj")
+            {
+                RAYCE_LOG_INFO("Loading: %s.", shape.filename.c_str());
+                tinyobj::ObjReader objReader;
+                tinyobj::ObjReaderConfig config;
+                config.triangulate = true;
+                bool success       = objReader.ParseFromFile(shape.filename.c_str(), config);
+
+                if (!success)
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s!", shape.filename.c_str());
+                    continue;
+                }
+
+                if (!objReader.Warning().empty())
+                {
+                    RAYCE_LOG_WARN("TinyObjReader: %s", objReader.Warning().c_str());
+                }
+
+                auto& attrib    = objReader.GetAttrib();
+                auto& shapes    = objReader.GetShapes();
+
+                bool hasPositions = !attrib.vertices.empty(), hasIndices = hasPositions, hasNormals = !attrib.normals.empty(), hasUVs = !attrib.texcoords.empty();
+                std::vector<uint32> indices;
+                std::vector<vec3> positions(attrib.vertices.size());
+                std::vector<vec3> normals(attrib.vertices.size());
+                std::vector<vec2> uvs(attrib.vertices.size());
+
+                for (size_t s = 0; s < shapes.size(); ++s)
+                {
+                    size_t indexOffset = 0;
+                    for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f)
+                    {
+                        size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+
+                        for (size_t v = 0; v < fv; v++)
+                        {
+                            tinyobj::index_t idx = shapes[s].mesh.indices[indexOffset + v];
+
+                            indices.push_back(idx.vertex_index);
+
+                            tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
+                            tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
+                            tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
+
+                            positions[idx.vertex_index] = vec3(vx, vy, vz);
+
+                            if (idx.normal_index >= 0)
+                            {
+                                tinyobj::real_t nx = attrib.normals[3 * size_t(idx.normal_index) + 0];
+                                tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
+                                tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
+
+                                normals[idx.vertex_index] = vec3(nx, ny, nz);
+                            }
+
+                            if (idx.texcoord_index >= 0)
+                            {
+                                tinyobj::real_t tx = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
+                                tinyobj::real_t ty = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+
+                                uvs[idx.vertex_index] = vec2(tx, ty);
+                            }
+                        }
+                        indexOffset += fv;
+                    }
                 }
 
                 if (!(hasPositions && hasIndices))
