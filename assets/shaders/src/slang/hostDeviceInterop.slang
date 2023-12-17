@@ -110,7 +110,8 @@ namespace rayce
     enum RAYCE_API_EXPORT EShapeType : uint
     {
         triangleMesh = 0,
-        sphere       = 1
+        sphere       = 1,
+        rectangle    = 2,
     };
 
     enum RAYCE_API_EXPORT ELightType : uint

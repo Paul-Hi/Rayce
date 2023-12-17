@@ -10,7 +10,7 @@
 
 using namespace rayce;
 
-void Geometry::add(std::unique_ptr<Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const std::vector<mat4>& transformationMatrices)
+void Geometry::add(std::unique_ptr<Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices)
 {
     TriangleMeshGeometry geom;
     geom.vertexBuffer   = std::move(vertexBuffer);
@@ -18,6 +18,7 @@ void Geometry::add(std::unique_ptr<Buffer>&& vertexBuffer, uint32 maxVertex, std
     geom.maxVertex      = maxVertex;
     geom.primitiveCount = primitiveCount;
     geom.materialId     = materialId;
+    geom.lightId = lightId;
     geom.transformationMatrices.insert(geom.transformationMatrices.end(), transformationMatrices.begin(), transformationMatrices.end());
 
     mTriangleMeshes.push_back(std::move(geom));

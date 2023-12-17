@@ -708,7 +708,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             }
             if (pluginType == "rectangle")
             {
-                shape.type     = EShapeType::triangleMesh;
+                shape.type     = EShapeType::rectangle;
                 shape.filename = "assets\\scenes\\rectangle.ply";
             }
             for (const auto& prop : object->properties())
@@ -1305,7 +1305,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     uint32 sphereId = 0;
     for (auto& shape : mitsubaShapes)
     {
-        if (shape.type == EShapeType::triangleMesh)
+        if (shape.type == EShapeType::triangleMesh || shape.type == EShapeType::rectangle)
         {
             str ext = shape.filename.substr(shape.filename.find_last_of(".") + 1);
 
@@ -1439,8 +1439,29 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 // materialId is filled before
                 uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
+                int32 lightId     = -1;
+                if (shape.emitter >= 0 && shape.type == EShapeType::rectangle)
+                {
+                    lightId = mitsubaEmitters[shape.emitter].lightId;
+
+                    // convert light data to our type
+                    std::unique_ptr<Light>& lightData = mLights[lightId];
+
+                    assert(emitter.type == ELightType::area); // atm analytic rectangle
+
+                    if (shape.type == EShapeType::rectangle)
+                    {
+                        lightData->type = ELightType::analyticRectangle;
+
+                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
+                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
+                        lightData->surfaceArea  = std::abs(tmp.x() * tmp.z());
+                        lightData->lightToWorld = shape.transformationMatrix;
+                        lightData->worldToLight = shape.transformationMatrix.inverse();
+                    }
+                }
                 mMaterials[materialId]->canUseUv = hasUVs;
-                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
+                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 
             if (ext == "obj")
@@ -1547,9 +1568,30 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
 
                 // materialId is filled before
-                uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
+                uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
+                int32 lightId     = -1;
+                if (shape.emitter >= 0 && shape.type == EShapeType::rectangle)
+                {
+                    lightId = mitsubaEmitters[shape.emitter].lightId;
+
+                    // convert light data to our type
+                    std::unique_ptr<Light>& lightData = mLights[lightId];
+
+                    assert(lightData->type == ELightType::area); // atm analytic rectangle
+
+                    if (shape.type == EShapeType::rectangle)
+                    {
+                        lightData->type = ELightType::analyticRectangle;
+
+                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
+                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
+                        lightData->surfaceArea  = std::abs(tmp.x() * tmp.z());
+                        lightData->lightToWorld = shape.transformationMatrix;
+                        lightData->worldToLight = shape.transformationMatrix.inverse();
+                    }
+                }
                 mMaterials[materialId]->canUseUv = hasUVs;
-                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, { shape.transformationMatrix });
+                pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 
             meshId++;
@@ -1563,7 +1605,6 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             boundingBox->minimum                                = sphere->center - vec3(sphere->radius, sphere->radius, sphere->radius);
             boundingBox->maximum                                = sphere->center + vec3(sphere->radius, sphere->radius, sphere->radius);
             // materialId is filled before
-            // lightId is filled before
             uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
             int32 lightId     = -1;
             if (shape.emitter >= 0)
@@ -1573,7 +1614,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 // convert light data to our type
                 std::unique_ptr<Light>& lightData = mLights[lightId];
 
-                assert(emitter.type == ELightType::area); // atm analytic sphere
+                assert(lightData->type == ELightType::area); // atm analytic sphere
 
                 if (shape.type == EShapeType::sphere)
                 {

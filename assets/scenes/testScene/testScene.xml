@@ -98,13 +98,14 @@
         <ref id="rough_glass" />
     </shape>
 
-    <shape type="sphere" id="light_source">
+    <shape type="rectangle" id="main_light_source">
         <transform name="to_world">
-            <scale x="0.25" y="0.25" z="0.25" />
-            <translate x="0" y="3.6" z="-1.6" />
+            <scale x="0.5" z="0.5" />
+            <rotate z="1" angle="180" />
+            <translate x="0" y="3.99"/>
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="52.0, 51.0, 50.0" />
+            <rgb name="radiance" value="40.0, 35.0, 30.0" />
         </emitter>
         <ref id="light" />
     </shape>

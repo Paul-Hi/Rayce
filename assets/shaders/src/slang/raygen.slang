@@ -139,6 +139,7 @@ float3 tracePaths(Ray ray)
                 DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, ray.origin, payload.hitPoint);
                 mat = gMaterials[triangle.materialId];
                 uv = triangle.interpolatedUV;
+                lightId = triangle.lightId;
                 space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
             else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
@@ -153,11 +154,15 @@ float3 tracePaths(Ray ray)
 
             if(lightId >= 0)
             {
-                // uses bxdfSample from last point
-                float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin);
-                float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
 
-                color += throughput * miWeight * gLights[lightId].radiance;
+                // uses bxdfSample from last point
+                float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin, payload.hitPoint);
+                if(lightPdf > 0.0)
+                {
+                    float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
+
+                    color += throughput * miWeight * gLights[lightId].radiance;
+                }
             }
 
             const float3 wo = space.worldToTangentFrame(-ray.direction);

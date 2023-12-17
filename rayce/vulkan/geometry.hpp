@@ -20,7 +20,7 @@ namespace rayce
         uint32 primitiveCount;
 
         uint32 materialId;
-        // int32 lightId;
+        int32 lightId;
 
         std::vector<mat4> transformationMatrices;
     };
@@ -38,7 +38,7 @@ namespace rayce
     class RAYCE_API_EXPORT Geometry
     {
     public:
-        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, const std::vector<mat4>& transformationMatrices);
+        void add(std::unique_ptr<class Buffer>&& vertexBuffer, uint32 maxVertex, std::unique_ptr<class Buffer>&& indexBuffer, uint32 primitiveCount, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices);
         void add(std::unique_ptr<struct Sphere>&& sphere, std::unique_ptr<class AxisAlignedBoundingBox>&& boundingBox, uint32 materialId, int32 lightId, const std::vector<mat4>& transformationMatrices);
 
         const std::vector<TriangleMeshGeometry>& getTriangleMeshes() const

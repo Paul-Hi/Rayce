@@ -80,7 +80,45 @@ struct SphereSampler
     }
 }
 
-float pdfLight(const int lightId, const float3 surfacePoint)
+struct RectangleSampler
+{
+    static GeometrySample sampleSolidAngle(const float3 point, const Light lightData)
+    {
+        GeometrySample sample;
+        const float3 wDir = lightData.wCenter - point;
+
+        // sample in -1, 1
+        const float2 uv = Random::rand2() * 2.0 - 1.0;
+        sample.point = mul(lightData.lightToWorld, float4(uv.x, 0.0, uv.y, 1.0)).xyz;
+
+        float distSqrd = max(dot(wDir, wDir), EPSILON);
+        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
+        float cosTheta = dot(normal, normalize(point - sample.point));
+        if(cosTheta <= 0.0)
+        {
+            sample.pdf = 0.0;
+            return sample;
+        }
+        sample.pdf = distSqrd / (cosTheta * lightData.surfaceArea);
+
+        return sample;
+    }
+
+    static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint)
+    {
+        const float3 wDir = lightData.wCenter - point;
+        float distSqrd = max(dot(wDir, wDir), EPSILON);
+        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
+        float cosTheta = dot(normal, normalize(point - samplePoint));
+        if(cosTheta <= 0.0)
+        {
+            return 0.0;
+        }
+        return distSqrd / (cosTheta * lightData.surfaceArea);
+    }
+}
+
+float pdfLight(const int lightId, const float3 surfacePoint, const float3 samplePoint)
 {
     float pdf = 1.0 / gPushConstants.lightCount;
     const Light light = gLights.Load(lightId);
@@ -88,6 +126,10 @@ float pdfLight(const int lightId, const float3 surfacePoint)
     if(light.type == ELightType::analyticSphere)
     {
         return SphereSampler::samplePdf(surfacePoint, light) * pdf;
+    }
+    else if(light.type == ELightType::analyticRectangle)
+    {
+        return RectangleSampler::samplePdf(surfacePoint, light, samplePoint) * pdf;
     }
 
     return 0.0;
@@ -112,61 +154,68 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
     } while(lightIndex == lightId);
 
     Light sampledLight = gLights.Load(lightIndex);
-
+GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
     {
-        GeometrySample sample = SphereSampler::sampleSolidAngle(p, sampledLight);
+        sample = SphereSampler::sampleSolidAngle(p, sampledLight);
         lightSample.pdf = sample.pdf;
-
-        float3 wDir = sample.point - p;
-        float pointDistance = length(wDir);
-        wDir = normalize(wDir);
-
-        lightSample.wi = space.worldToTangentFrame(wDir);
-        float nDotL = cosThetaTS(lightSample.wi);
-
-        if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
-        {
-            lightSample.pdf = 0.0;
-            lightSample.radiance = float3(0.0);
+    }
+    else if(sampledLight.type == ELightType::analyticRectangle)
+    {
+        sample = RectangleSampler::sampleSolidAngle(p, sampledLight);
+        lightSample.pdf = sample.pdf;
+    }
+    else
+    {
+        lightSample.pdf = 0.0;
+        lightSample.radiance = float3(0.0);
         lightSample.valid = false;
-            return lightSample;
-        }
-
-        RayPayload pld;
-        pld.hit = true;
-        RayDesc rayDescriptor;
-        rayDescriptor.Origin = p + space.normal * EPSILON;
-        rayDescriptor.Direction = wDir;
-        rayDescriptor.TMin = 0.001;
-        rayDescriptor.TMax = (pointDistance - EPSILON) * 0.99;
-        TraceRay(
-            gTLAS,
-            RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE, // FIXME: | RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
-            0xff,   // cullMask
-            0,      // sbtRecordOffset
-            0,      // sbtRecordStride
-            0,      // missIndex
-            rayDescriptor,
-            pld
-        );
-
-        if(pld.hit)
-        {
-            lightSample.pdf = 0.0;
-            lightSample.radiance = float3(0.0);
-        lightSample.valid = false;
-            return lightSample;
-        }
-
-        lightSample.radiance = nDotL * gPushConstants.lightCount * sampledLight.radiance;
-
-        lightSample.valid = true;
         return lightSample;
     }
 
-    lightSample.pdf = 0.0;
-    lightSample.radiance = float3(0.0);
-    lightSample.valid = false;
+    float3 wDir = sample.point - p;
+    float pointDistance = length(wDir);
+    wDir = normalize(wDir);
+
+    lightSample.wi = space.worldToTangentFrame(wDir);
+    float nDotL = cosThetaTS(lightSample.wi);
+
+    if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
+    {
+        lightSample.pdf = 0.0;
+        lightSample.radiance = float3(0.0);
+        lightSample.valid = false;
+        return lightSample;
+    }
+
+    RayPayload pld;
+    pld.hit = true;
+    RayDesc rayDescriptor;
+    rayDescriptor.Origin = p + space.normal * EPSILON;
+    rayDescriptor.Direction = wDir;
+    rayDescriptor.TMin = 0.001;
+    rayDescriptor.TMax = (pointDistance - EPSILON) * 0.99;
+    TraceRay(
+        gTLAS,
+        RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE, // FIXME: | RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        0xff,   // cullMask
+        0,      // sbtRecordOffset
+        0,      // sbtRecordStride
+        0,      // missIndex
+        rayDescriptor,
+        pld
+    );
+
+    if(pld.hit)
+    {
+        lightSample.pdf = 0.0;
+        lightSample.radiance = float3(0.0);
+        lightSample.valid = false;
+        return lightSample;
+    }
+
+    lightSample.radiance = nDotL * gPushConstants.lightCount * sampledLight.radiance;
+
+    lightSample.valid = true;
     return lightSample;
 };
