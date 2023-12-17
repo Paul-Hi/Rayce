@@ -120,31 +120,38 @@ static ELightType lightFromPluginType(const str& pluginType)
     }
     else if (pluginType == "point")
     {
-        return ELightType::point;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "constant")
     {
-        return ELightType::constant;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "envmap")
     {
-        return ELightType::envmap;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "spot")
     {
-        return ELightType::spot;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "projector")
     {
-        return ELightType::projector;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "directional")
     {
-        return ELightType::directional;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     else if (pluginType == "directionalarea")
     {
-        return ELightType::directionalArea;
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
     }
     RAYCE_ASSERT(false, "Unknown BSDF Type");
 }
@@ -753,9 +760,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (child->type() == mp::OT_EMITTER)
                 {
-                    MitsubaEmitter memitter = loadMitsubaEmitter(child, imagesToLoad);
-                    shape.emitter           = mitsubaEmitters.size();
-                    mitsubaEmitters.push_back(memitter);
+                    MitsubaEmitter emitter = loadMitsubaEmitter(child, imagesToLoad);
+                    shape.emitter          = mitsubaEmitters.size();
+                    mitsubaEmitters.push_back(emitter);
                     continue;
                 }
             }
@@ -1279,6 +1286,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 mImageSamplers[emitter.possibleData.radianceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
+
             break;
         }
         default:
@@ -1454,8 +1462,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     RAYCE_LOG_WARN("TinyObjReader: %s", objReader.Warning().c_str());
                 }
 
-                auto& attrib    = objReader.GetAttrib();
-                auto& shapes    = objReader.GetShapes();
+                auto& attrib = objReader.GetAttrib();
+                auto& shapes = objReader.GetShapes();
 
                 bool hasPositions = !attrib.vertices.empty(), hasIndices = hasPositions, hasNormals = !attrib.normals.empty(), hasUVs = !attrib.texcoords.empty();
                 std::vector<uint32> indices;
@@ -1560,8 +1568,22 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             int32 lightId     = -1;
             if (shape.emitter >= 0)
             {
-                lightId                    = mitsubaEmitters[shape.emitter].lightId;
-                mLights[lightId]->sphereId = sphereId;
+                lightId = mitsubaEmitters[shape.emitter].lightId;
+
+                // convert light data to our type
+                std::unique_ptr<Light>& lightData = mLights[lightId];
+
+                assert(emitter.type == ELightType::area); // atm analytic sphere
+
+                if (shape.type == EShapeType::sphere)
+                {
+                    lightData->type = ELightType::analyticSphere;
+
+                    lightData->wCenter      = sphere->center;
+                    lightData->surfaceArea  = (2.0 * TWO_PI * sphere->radius * sphere->radius);
+                    lightData->lightToWorld = shape.transformationMatrix;
+                    lightData->worldToLight = shape.transformationMatrix.inverse();
+                }
             }
             mMaterials[materialId]->canUseUv = false;
             pGeometry->add(std::move(sphere), std::move(boundingBox), materialId, lightId, { mat4::Identity() });

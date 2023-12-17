@@ -115,15 +115,17 @@ namespace rayce
 
     enum RAYCE_API_EXPORT ELightType : uint
     {
-        area            = 0,
-        point           = 1,
-        constant        = 2,
-        envmap          = 3,
-        spot            = 4,
-        projector       = 5,
-        directional     = 6,
-        directionalArea = 7,
-        lightTypeCount  = 8
+        area              = 0,
+        analyticSphere    = 1,
+        analyticRectangle = 2,
+        // point           = 2,
+        // constant        = 3,
+        // envmap          = 4,
+        // spot            = 5,
+        // projector       = 6,
+        // directional     = 7,
+        // directionalArea = 8,
+        lightTypeCount = 3
     };
 
     enum RAYCE_API_EXPORT EBxDFType : uint
@@ -139,32 +141,74 @@ namespace rayce
         bsdfTypeCount        = 8
     };
 
+    struct RAYCE_API_EXPORT LightData
+    {
+        float3   center;
+        // float3   direction;
+        // float    openingAngle;
+        // float    cosOpeningAngle;
+        // float    cosSubtendedAngle;
+        // float    penumbraAngle;
+
+        // analytic area lights
+        float3   tangent;
+        float    surfaceArea;
+        float3   bitangent;
+        float    pad0;
+        float4x4 lightToWorld;
+        float4x4 worldToLight;
+    };
+
     struct RAYCE_API_EXPORT Light
     {
+        float3     wCenter;
         ELightType type;
 
-        //  area light
-        uint sphereId;
-        int radianceTexture;
-        uint pad0 = 0;
         float3 radiance;
-        uint pad1 = 0;
+        int    radianceTexture;
+
+        // float3   direction;
+        // float    openingAngle;
+        // float    cosOpeningAngle;
+        // float    cosSubtendedAngle;
+        // float    penumbraAngle;
+
+        // analytic area lights
+        float3   tangent;
+        float    surfaceArea;
+        float3   bitangent;
+        float    pad0;
+        float4x4 lightToWorld;
+        float4x4 worldToLight;
+
 
 #ifdef __cplusplus
         Light()
-            : type(ELightType::area)
-            , sphereId(0)
+            : wCenter(float3::Zero())
+            , type(ELightType::analyticSphere)
+            , radiance(float3::Zero())
             , radianceTexture(-1)
-            , radiance(float3(0.0, 0.0, 0.0))
+            , tangent(float3::Zero())
+            , surfaceArea(0.0)
+            , bitangent(float3::Zero())
+            , pad0(0)
+            , lightToWorld(float4x4::Zero())
+            , worldToLight(float4x4::Zero())
         {
         }
 #else
         __init()
         {
-            this.type = ELightType::area;
-            this.sphereId = 0;
+            this.wCenter = float3(0.0);
+            this.type = ELightType::analyticSphere;
+            this.radiance = float3(0.0, 0.0, 0.0);
             this.radianceTexture = -1;
-            this.radiance = float3(0.0);
+            this.tangent = float3(0.0, 0.0, 0.0);
+            this.surfaceArea = 0.0;
+            this.bitangent = float3(0.0, 0.0, 0.0);
+            this.pad0 = 0;
+            this.lightToWorld = float4x4(0.0);
+            this.worldToLight = float4x4(0.0);
         }
 #endif
     };

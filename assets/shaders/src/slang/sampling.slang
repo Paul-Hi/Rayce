@@ -9,9 +9,9 @@ struct GeometrySample
     float pdf;
 };
 
-extension Sphere
+struct SphereSampler
 {
-    GeometrySample sampleUniform()
+    static GeometrySample sampleUniform(const float3 center, const float radius, const float surfaceArea)
     {
         GeometrySample sample;
         float2 uv = Random::rand2();
@@ -19,26 +19,28 @@ extension Sphere
         float r = sqrt(max(0.0, 1.0 - z * z));
         float phi = TWO_PI * uv.y;
         float3 unitPoint = float3(r * cos(phi), r * sin(phi), z);
-        sample.point = this.center + unitPoint * this.radius;
-        sample.pdf = 1.0 / (2.0 * TWO_PI * this.radius * this.radius);
+        sample.point = center + unitPoint * radius;
+        sample.pdf = 1.0 / surfaceArea;
         return sample;
     }
 
-    GeometrySample sampleSolidAngle(const float3 point)
+    static GeometrySample sampleSolidAngle(const float3 point, const Light lightData)
     {
         GeometrySample sample;
-        float3 wDir = this.center - point;
+        float3 wDir = lightData.wCenter - point;
         const float dist = length(wDir);
         wDir = normalize(wDir);
         let space = CoordinateSpace(wDir);
 
-        if(dist <= this.radius) // inside
+        const float radius = (mul(lightData.lightToWorld, float4(1.0, 0.0, 0.0, 1.0)).xyz - lightData.wCenter).x;
+
+        if(dist <= radius) // inside
         {
-            return this.sampleUniform();
+            return SphereSampler::sampleUniform(lightData.wCenter, radius, lightData.surfaceArea);
         }
 
         // max cone angles
-        const float sinThetaMaxSqrd = this.radius * this.radius / (dist * dist);
+        const float sinThetaMaxSqrd = radius * radius / (dist * dist);
         const float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
         sample.pdf = 1.0 / (TWO_PI * (1.0 - cosThetaMax));
         // random in cone
@@ -47,29 +49,31 @@ extension Sphere
         const float sinThetaSqrd = max(0.0, 1.0 - cosTheta * cosTheta);
         const float phi = TWO_PI * uv.y;
         // project to sphere surface
-        const float cosAlpha = dist / this.radius * sinThetaSqrd + cosTheta * sqrt(max(0.0, 1.0 - dist * dist / (this.radius * this.radius) * sinThetaSqrd));
+        const float cosAlpha = dist / radius * sinThetaSqrd + cosTheta * sqrt(max(0.0, 1.0 - dist * dist / (radius * radius) * sinThetaSqrd));
         const float sinAlpha = sqrt(max(0.0, 1.0 - cosAlpha * cosAlpha));
         float3 samplePoint = float3(sinAlpha * cos(phi), sinAlpha * sin(phi), cosAlpha);
         samplePoint = space.flipped().tangentToWorld(samplePoint);
 
-        sample.point = this.center + samplePoint * this.radius;
+        sample.point = lightData.wCenter + samplePoint * radius;
 
         return sample;
     }
 
-    float samplePdf(const float3 point)
+    static float samplePdf(const float3 point, const Light lightData)
     {
-        const float3 wDir = this.center - point;
+        const float3 wDir = lightData.wCenter - point;
         const float dist = length(wDir);
 
-        const bool inside = (dist <= this.radius);
+        const float radius = (mul(lightData.lightToWorld, float4(1.0, 0.0, 0.0, 1.0)).xyz - lightData.wCenter).x;
+
+        const bool inside = (dist <= radius);
 
         if(inside)
         {
-            return 1.0 / (2.0 * TWO_PI * this.radius * this.radius);
+            return 1.0 / lightData.surfaceArea;
         }
 
-        const float sinThetaMaxSqrd = this.radius * this.radius / (dist * dist);
+        const float sinThetaMaxSqrd = radius * radius / (dist * dist);
         const float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
 
         return 1.0 / (TWO_PI * (1.0 - cosThetaMax));
@@ -81,9 +85,9 @@ float pdfLight(const int lightId, const float3 surfacePoint)
     float pdf = 1.0 / gPushConstants.lightCount;
     const Light light = gLights.Load(lightId);
 
-    if(light.type == ELightType::area && light.sphereId >= 0)
+    if(light.type == ELightType::analyticSphere)
     {
-        return gSpheres.Load(light.sphereId).samplePdf(surfacePoint) * pdf;
+        return SphereSampler::samplePdf(surfacePoint, light) * pdf;
     }
 
     return 0.0;
@@ -109,11 +113,9 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
 
     Light sampledLight = gLights.Load(lightIndex);
 
-    if(sampledLight.type == ELightType::area && sampledLight.sphereId >= 0)
+    if(sampledLight.type == ELightType::analyticSphere)
     {
-        Sphere sphere = gSpheres.Load(sampledLight.sphereId);
-
-        GeometrySample sample = sphere.sampleSolidAngle(p);
+        GeometrySample sample = SphereSampler::sampleSolidAngle(p, sampledLight);
         lightSample.pdf = sample.pdf;
 
         float3 wDir = sample.point - p;
