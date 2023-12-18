@@ -676,7 +676,6 @@ static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<tinyparser_mitsub
 
 void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<Device>& logicalDevice, const std::unique_ptr<CommandPool>& commandPool, float scale)
 {
-
     mp::SceneLoader sceneLoader;
 
     mp::Scene scene = sceneLoader.loadFromFile(filename.c_str());
@@ -1600,7 +1599,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         {
             std::unique_ptr<Sphere> sphere                      = std::make_unique<Sphere>();
             sphere->center                                      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>();
-            sphere->radius                                      = ((shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).head<3>() - sphere->center).x();
+            sphere->radius                                      = ((shape.transformationMatrix * vec4(1.0, 0.0, 0.0, 1.0)).head<3>() - sphere->center).norm();
             std::unique_ptr<AxisAlignedBoundingBox> boundingBox = std::make_unique<AxisAlignedBoundingBox>();
             boundingBox->minimum                                = sphere->center - vec3(sphere->radius, sphere->radius, sphere->radius);
             boundingBox->maximum                                = sphere->center + vec3(sphere->radius, sphere->radius, sphere->radius);

@@ -29,8 +29,9 @@ struct DeviceTriangle
 struct DeviceSphere
 {
     float3 normal;
-
     uint materialId;
+
+    float2 uv;
     int lightId;
 };
 

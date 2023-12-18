@@ -70,6 +70,9 @@ bool SimpleGUI::onInitialize()
 
     mVertexBuffers.clear();
     mIndexBuffers.clear();
+    mBLAS.clear();
+    mInstances.clear();
+    mSpheres.clear();
 
     std::vector<std::vector<std::pair<VkTransformMatrixKHR, uint32>>> instanceInfo(triangleMeshes.size() + 1);
 
@@ -189,6 +192,13 @@ bool SimpleGUI::onShutdown()
 void SimpleGUI::onUpdate(float dt)
 {
     RayceApp::onUpdate(dt);
+
+    if (mReInitialize)
+    {
+        onInitialize();
+        mReInitialize   = false;
+        mRecreateRTData = true;
+    }
 
     if (mRecreateRTData)
     {
@@ -401,6 +411,11 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
 
         storeImageAsPPM(image, mViewportPanelSize.x(), mViewportPanelSize.y());
     }
+
+    //if (ImGui::Button("Reload (DO NOT SPAM)"))
+    //{
+    //    mReInitialize = true;
+    //}
 
     ImGui::End();
 }

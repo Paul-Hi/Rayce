@@ -253,7 +253,7 @@ struct SmoothThinDielectricBSDF : IBxDF
         }
         else
         {
-            sample.wi = refractTS(wo, fresnelData.cosThetaT, fresnelData.etaTI);
+            sample.wi = -wo;
             sample.pdf = 1.0 - fresnelData.F;
 
             const float absNDotL = abs(cosThetaTS(sample.wi));

@@ -47,20 +47,30 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     return tri;
 }
 
-DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, const uint primitiveIndex, const float2 hitAttributes)
+DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, const uint primitiveIndex, const float2 hitAttributes, const float4x3 worldToObject)
 {
     DeviceSphere sphere;
 
     int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
 
-    Sphere pShere = gSpheres[sphereId];
+    Sphere pSphere = gSpheres[sphereId];
 
-    sphere.normal = normalize(hitPoint - pShere.center);
+    const float3 p = hitPoint - pSphere.center;
+    sphere.normal = normalize(p);
 
     sphere.materialId = gInstanceData[instanceCustomIndex + primitiveIndex].materialId;
 
     sphere.lightId = gInstanceData[instanceCustomIndex + primitiveIndex].lightId;
 
+    const float3 local = mul(worldToObject, hitPoint - pSphere.center).xyz;
+
+    float theta = acos(local.y / pSphere.radius);
+    float phi = atan2(local.x, local.z);
+
+    if (phi < 0.0)
+        phi += TWO_PI;
+
+    sphere.uv = float2(0.5 * phi, theta) * INV_PI;
     return sphere;
 }
 
@@ -144,10 +154,10 @@ float3 tracePaths(Ray ray)
             }
             else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
             {
-                DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes);
+                DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject);
                 mat = gMaterials[sphere.materialId];
-                uv = float2(0.0); // FIXME: No Sphere UVs yet.
-                space = CoordinateSpace(sphere.normal);
+                uv = sphere.uv;
+                space = CoordinateSpace(sphere.normal, true);
                 lightId = sphere.lightId;
             }
             let material = mat.getMaterial();

@@ -92,35 +92,55 @@ float3 refract(const float3 wi, const float3 n, float cosThetaT, float eta)
 
 struct CoordinateSpace
 {
-    __init(const float3 normal, bool hasUV = false,
-                                      const float3 dfd1 = float3(0.0), const float3 dfd2 = float3(0.0),
-                                      const float2 uvd1 = float2(0.0), const float2 uvd2 = float2(0.0)
-                                      )
+    __init(const float3 normal, bool sphere = false)
     {
         this.normal = normal;
-        if(hasUV && uvd1.x > 0.0)
+
+        if(sphere)
         {
-            float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
-            this.tangent    = normalize(t_ - normal * dot(normal, t_));
-            this.bitangent  = cross(normal, this.tangent);
+            // two ugly points but kind of consistent with uvs ...
+            this.tangent = normalize(float3(-normal.z, 0.0, normal.x));
+            this.bitangent = cross(normal, this.tangent);
         }
         else
         {
             // Not consistent for spheres
             // Building an Orthonormal Basis, Revisited, (JCGT), vol. 6, no. 1, 1-8, 2017
             // Available online: http://jcgt.org/published/0006/01/01/
-            // float normalSign = sign(normal.z);
-            // float a = -1.0 / (normalSign + normal.z);
-            // float b = normal.x * normal.y * a;
-            // this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
-            // this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
+            float normalSign = normal.z < 0.0 ? -1.0 : 1.0;
+            float a = -1.0 / (normalSign + normal.z);
+            float b = normal.x * normal.y * a;
+            this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
+            this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
 
-            float3 a = (abs(normal.x) > 0.9999) ? float3(0,1,0) : float3(1,0,0);
-            this.bitangent = normalize(cross(normal, a));
-            this.tangent = cross(normal, this.bitangent);
+            // has ugly inconsistent point on spheres
+            // Frisvad https://backend.orbit.dtu.dk/ws/portalfiles/portal/126824972/onb_frisvad_jgt2012_v2.pdf
+            //if(normal.z < -0.9999)
+            //{
+            //    this.tangent = float3(0.0, -1.0, 0.0);
+            //    this.bitangent = float3(-1.0, 0.0, 0.0);
+            //    return this;
+            //}
+            //float a = 1.0 / (1.0 + normal.z);
+            //float b = -normal.x * normal.y * a;
+            //this.tangent = float3(1.0 - normal.x * normal.x * a, b, -normal.x);
+            //this.bitangent = float3(b, 1.0 - normal.y * normal.y * a, -normal.y);
+        }
+    }
 
-            // this.tangent = normalize(float3(-normal.y, normal.x, 0.0));
-            // this.bitangent = cross(normal, this.tangent);
+    __init(const float3 normal, bool canUsePartials, const float3 dfd1, const float3 dfd2, const float2 uvd1, const float2 uvd2)
+    {
+        this.normal = normal;
+        if(canUsePartials && uvd1.x > 0.0)
+        {
+            float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
+            this.tangent    = normalize(t_ - normal * dot(normal, t_));
+            this.bitangent  = cross(normal, this.tangent);
+            return this;
+        }
+        else
+        {
+            return CoordinateSpace(normal);
         }
     }
 

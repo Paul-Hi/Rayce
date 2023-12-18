@@ -18,8 +18,8 @@
     <bsdf type="roughconductor" id="gold">
         <string name="material" value="Au" />
         <rgb name="specular_reflectance" value="0.944, 0.776, 0.373" />
-        <float name="alpha_v" value="0.25" />
-        <float name="alpha_u" value="0.01" />
+        <float name="alpha_u" value="0.2" />
+        <float name="alpha_v" value="0.05" />
     </bsdf>
 
     <bsdf type="diffuse" id="blue">
@@ -115,7 +115,7 @@
             <scale x="0.75" y="0.75" z="0.75" />
             <translate x="1" y="0.75" z="-1" />
         </transform>
-        <ref id="light_gray" />
+        <ref id="gold" />
     </shape>
 
     <shape type="obj" id="teapot_lid">
@@ -125,7 +125,7 @@
             <rotate y="1" angle="55" />
             <translate x="-1.2" y="-0.69" z="1" />
         </transform>
-        <ref id="gold" />
+        <ref id="acrylic_glass" />
     </shape>
     <shape type="obj" id="teapot_kettle">
         <string name="filename" value="teapot1.obj" />
@@ -134,7 +134,7 @@
             <rotate y="1" angle="55" />
             <translate x="-1" z="0.25" />
         </transform>
-        <ref id="gold" />
+        <ref id="acrylic_glass" />
     </shape>
 
 </scene>

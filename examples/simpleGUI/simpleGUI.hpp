@@ -32,6 +32,7 @@ namespace rayce
         int32 mAccumulationFrame;
         int32 mMaxSamples;
         bool mViewportChange;
+        bool mReInitialize;
         bool mRecreateRTData;
         uvec2 mViewportPanelSize;
 
