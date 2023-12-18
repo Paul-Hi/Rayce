@@ -9,6 +9,19 @@ struct GeometrySample
     float pdf;
 };
 
+bool finalizeSolidAngleSampling(inout float pdf, const float3 normal, const float3 point, const float3 samplePoint)
+{
+    float3 dir = point - samplePoint;
+    float distSqrd = max(dot(dir, dir), EPSILON);
+    float cosTheta = dot(normal, normalize(dir));
+    if(cosTheta <= 0.0)
+    {
+        return false;
+    }
+    pdf *= distSqrd / (cosTheta);
+    return true;
+}
+
 struct SphereSampler
 {
     static GeometrySample sampleUniform(const float3 center, const float radius, const float surfaceArea)
@@ -85,36 +98,35 @@ struct RectangleSampler
     static GeometrySample sampleSolidAngle(const float3 point, const Light lightData)
     {
         GeometrySample sample;
-        const float3 wDir = lightData.wCenter - point;
 
         // sample in -1, 1
         const float2 uv = Random::rand2() * 2.0 - 1.0;
         sample.point = mul(lightData.lightToWorld, float4(uv.x, 0.0, uv.y, 1.0)).xyz;
 
-        float distSqrd = max(dot(wDir, wDir), EPSILON);
+
+        sample.pdf = 1.0 / lightData.surfaceArea;
+
         float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
-        float cosTheta = dot(normal, normalize(point - sample.point));
-        if(cosTheta <= 0.0)
+        if(finalizeSolidAngleSampling(sample.pdf, normal, point, sample.point))
         {
-            sample.pdf = 0.0;
             return sample;
         }
-        sample.pdf = distSqrd / (cosTheta * lightData.surfaceArea);
 
+        sample.pdf = 0.0;
         return sample;
     }
 
     static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint)
     {
-        const float3 wDir = lightData.wCenter - point;
-        float distSqrd = max(dot(wDir, wDir), EPSILON);
+        float pdf = 1.0 / lightData.surfaceArea;
+
         float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
-        float cosTheta = dot(normal, normalize(point - samplePoint));
-        if(cosTheta <= 0.0)
+        if(finalizeSolidAngleSampling(pdf, normal, point, samplePoint))
         {
-            return 0.0;
+            return pdf;
         }
-        return distSqrd / (cosTheta * lightData.surfaceArea);
+
+        return 0.0;
     }
 }
 
