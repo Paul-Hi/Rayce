@@ -1435,7 +1435,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 maxVertex      = static_cast<uint32>(vertices.size() - 1);
                 uint32 primitiveCount = static_cast<uint32>(indices.size() / 3);
-                mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
+                mReflectionInfo.meshTriCounts[meshId + sphereId] += primitiveCount;
 
                 // materialId is filled before
                 uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
@@ -1565,7 +1565,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 uint32 maxVertex      = static_cast<uint32>(vertices.size() - 1);
                 uint32 primitiveCount = static_cast<uint32>(indices.size() / 3);
-                mReflectionInfo.meshTriCounts[meshId] += primitiveCount;
+                mReflectionInfo.meshTriCounts[meshId + sphereId] += primitiveCount;
 
                 // materialId is filled before
                 uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;

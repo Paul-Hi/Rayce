@@ -118,7 +118,7 @@
         <ref id="light_gray" />
     </shape>
 
-    <shape type="obj">
+    <shape type="obj" id="teapot_lid">
         <string name="filename" value="teapot0.obj" />
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
@@ -127,7 +127,7 @@
         </transform>
         <ref id="gold" />
     </shape>
-    <shape type="obj">
+    <shape type="obj" id="teapot_kettle">
         <string name="filename" value="teapot1.obj" />
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />

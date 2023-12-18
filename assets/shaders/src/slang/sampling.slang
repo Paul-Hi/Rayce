@@ -22,7 +22,13 @@ bool finalizeSolidAngleSampling(inout float pdf, const float3 normal, const floa
     return true;
 }
 
-struct SphereSampler
+interface ISampler
+{
+    static GeometrySample sampleSolidAngle(const float3 point, const Light lightData);
+    static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint = float3(0.0));
+};
+
+struct SphereSampler : ISampler
 {
     static GeometrySample sampleUniform(const float3 center, const float radius, const float surfaceArea)
     {
@@ -72,7 +78,7 @@ struct SphereSampler
         return sample;
     }
 
-    static float samplePdf(const float3 point, const Light lightData)
+    static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint)
     {
         const float3 wDir = lightData.wCenter - point;
         const float dist = length(wDir);
@@ -93,7 +99,7 @@ struct SphereSampler
     }
 }
 
-struct RectangleSampler
+struct RectangleSampler : ISampler
 {
     static GeometrySample sampleSolidAngle(const float3 point, const Light lightData)
     {
