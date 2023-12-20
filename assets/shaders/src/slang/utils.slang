@@ -212,6 +212,12 @@ float3 linearTosRGB(in float3 linear)
     return pow(linear.rgb, float3(INV_GAMMA));
 }
 
+#define RGB_TO_LUM float3(0.2125, 0.7154, 0.0721)
+float averageLuminance(const float3 c)
+{
+    return dot(RGB_TO_LUM, c);
+}
+
 // ACES tone map
 // see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 toneMapACES(in float3 color)

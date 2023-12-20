@@ -614,6 +614,94 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         }
         break;
     }
+    case EBxDFType::smoothPlastic:
+    {
+        if (props.contains("int_ior"))
+        {
+            auto interiorIor = props.at("int_ior");
+
+            if (interiorIor.type() == mp::PT_NUMBER) // <float></float>
+            {
+                bsdf.possibleData.interiorIor = interiorIor.getNumber();
+            }
+            if (interiorIor.type() == mp::PT_STRING) // <string></string>
+            {
+                bsdf.possibleData.interiorIor = iorFromString(interiorIor.getString());
+            }
+        }
+        if (props.contains("ext_ior"))
+        {
+            auto exteriorIor = props.at("ext_ior");
+
+            if (exteriorIor.type() == mp::PT_NUMBER) // <float></float>
+            {
+                bsdf.possibleData.exteriorIor = exteriorIor.getNumber();
+            }
+            if (exteriorIor.type() == mp::PT_STRING) // <string></string>
+            {
+                bsdf.possibleData.exteriorIor = iorFromString(exteriorIor.getString());
+            }
+        }
+        if (props.contains("diffuse_reflectance"))
+        {
+            auto diffuseReflectance = props.at("diffuse_reflectance");
+
+            if (diffuseReflectance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                              = diffuseReflectance.getColor();
+                bsdf.possibleData.diffuseReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (diffuseReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+        }
+        if (props.contains("specular_reflectance"))
+        {
+            auto specularReflectance = props.at("specular_reflectance");
+
+            if (specularReflectance.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c                              = specularReflectance.getColor();
+                bsdf.possibleData.specularReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
+            {
+                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+            }
+        }
+        for (const auto& textureChild : bsdfObject->namedChildren())
+        {
+            // texture
+            if (textureChild.second->type() != mp::OT_TEXTURE)
+            {
+                continue;
+            }
+            if (textureChild.first == "diffuse_reflectance")
+            {
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+            if (textureChild.first == "specular_reflectance")
+            {
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+        break;
+    }
     default:
         RAYCE_LOG_WARN("Unsupported bsdf!");
         break;
@@ -1189,6 +1277,112 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             }
             break;
         }
+        case EBxDFType::smoothPlastic:
+        {
+            if (bsdf.possibleData.diffuseReflectanceTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_diffuseReflectance";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.diffuseReflectanceTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.diffuseReflectanceTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = STBI_rgb_alpha;
+                uint32 imageSize  = width * height * components;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage                                     = mImages[bsdf.possibleData.diffuseReflectanceTexture];
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews[bsdf.possibleData.diffuseReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                                                         VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+            if (bsdf.possibleData.specularReflectanceTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_specularReflectance";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.specularReflectanceTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = STBI_rgb_alpha;
+                uint32 imageSize  = width * height * components;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage                                      = mImages[bsdf.possibleData.specularReflectanceTexture];
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews[bsdf.possibleData.specularReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                                                          VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+            break;
+        }
         default:
             RAYCE_LOG_WARN("Unsupported bsdf!");
             break;
@@ -1437,7 +1631,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 mReflectionInfo.meshTriCounts[meshId + sphereId] += primitiveCount;
 
                 // materialId is filled before
-                uint32 materialId                = mitsubaBSDFs[shape.bsdf].materialId;
+                uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
                 int32 lightId     = -1;
                 if (shape.emitter >= 0 && shape.type == EShapeType::rectangle)
                 {

@@ -9,6 +9,12 @@
         <string name="ext_ior" value="air" />
     </bsdf>
 
+    <bsdf type="plastic" id="some_plastic">
+        <rgb name="diffuse_reflectance" value="0.6, 0.6, 0.6" />
+        <string name="int_ior" value="polypropylene" />
+        <string name="ext_ior" value="air" />
+    </bsdf>
+
     <bsdf type="roughdielectric" id="rough_glass">
         <string name="int_ior" value="bk7" />
         <string name="ext_ior" value="air" />
@@ -134,7 +140,7 @@
             <rotate y="1" angle="55" />
             <translate x="-1" z="0.25" />
         </transform>
-        <ref id="acrylic_glass" />
+        <ref id="some_plastic" />
     </shape>
 
 </scene>

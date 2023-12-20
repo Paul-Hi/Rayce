@@ -24,9 +24,8 @@ struct DielectricFresnelData
     float etaTI;
 };
 
-float3 cosineHemisphereSample()
+float3 cosineHemisphereSample(const float2 uv = Random::rand2())
 {
-    float2 uv = Random::rand2();
     float phi = TWO_PI * uv.x;
     float cosTheta = sqrt(1.0 - uv.y);
     float sinTheta = sqrt(uv.y);
@@ -115,6 +114,52 @@ float3 FresnelConductorApprox(const float cosThetaI, const float3 eta, const flo
     float3 Rp = (t1 - twoEtaCos2ThetaI + 1.0) / (t1 + twoEtaCos2ThetaI + 1.0);
 
     return 0.5* (Rp + Rs);
+}
+
+float fresnelDiffuseReflectance(float eta)
+{
+    /* Fast mode: the following code approximates the
+    * diffuse Frensel reflectance for the eta<1 and
+    * eta>1 cases. An evalution of the accuracy led
+    * to the following scheme, which cherry-picks
+    * fits from two papers where they are best.
+    */
+    if (eta < 1)
+    {
+        /* Fit by Egan and Hilgeman (1973). Works
+            reasonably well for "normal" IOR values (<2).
+
+            Max rel. error in 1.0 - 1.5 : 0.1%
+            Max rel. error in 1.5 - 2   : 0.6%
+            Max rel. error in 2.0 - 5   : 9.5%
+        */
+        return -1.4399 * (eta * eta)
+                + 0.7099 * eta
+                + 0.6681
+                + 0.0636 / eta;
+    }
+    else
+    {
+        /* Fit by d'Eon and Irving (2011)
+        *
+        * Maintains a good accuracy even for
+        * unrealistic IOR values.
+        *
+        * Max rel. error in 1.0 - 2.0   : 0.1%
+        * Max rel. error in 2.0 - 10.0  : 0.2%
+        */
+        float invEta = 1.0 / eta,
+                invEta2 = invEta * invEta,
+                invEta3 = invEta2 * invEta,
+                invEta4 = invEta3 * invEta,
+                invEta5 = invEta4 * invEta;
+
+        return 0.919317 - 3.4793 * invEta
+                + 6.75335 * invEta2
+                - 7.80989 * invEta3
+                + 4.98554 * invEta4
+                - 1.36881 * invEta5;
+    }
 }
 
 struct DiffuseBRDF : IBxDF
@@ -727,6 +772,141 @@ struct RoughConductorBSDF : IBxDF
     // Distribution distribution = Distribution::GGX; // FIXME: Add option?
 };
 
+// Mitsubas plastic implementation
+struct SmoothPlasticBSDF : IBxDF
+{
+    BxDFSample sample(const float3 wo)
+    {
+        BxDFSample sample;
+        sample.dirac = isDirac();
+        sample.dirac = isDirac();
+        sample.wi = float3(0.0);
+        sample.reflectance = float3(0.0);
+        sample.pdf = 0.0;
+
+        const float cosThetaI = cosThetaTS(wo);
+
+        if(cosThetaI <= 0.0)
+        {
+            return sample;
+        }
+
+        const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+
+        float specularProbability = (fresnelData.F * specularSamplingWeight) /
+                        (fresnelData.F * specularSamplingWeight + (1.0 - fresnelData.F) * (1.0 - specularSamplingWeight));
+
+        if(Random::rand() <= specularProbability)
+        {
+            sample.wi = reflectTS(wo);
+            sample.pdf = specularProbability;
+
+            const float absNDotL = abs(cosThetaTS(sample.wi));
+            sample.reflectance = absNDotL > 0.0 ? specularReflectance * fresnelData.F / absNDotL : float3(0.0);
+
+            return sample;
+        }
+        else
+        {
+            float2 biasedSample = Random::rand2();
+            biasedSample.x = (biasedSample.x - specularProbability) / (1.0 - specularProbability);
+            sample.wi = cosineHemisphereSample(biasedSample);
+
+            DielectricFresnelData fresnelOutwards = FresnelDielectric(cosThetaTS(sample.wi), eta);
+
+            float3 diffuse = diffuseReflectance;
+            if (nonlinear)
+                diffuse /= (float3(1.0) - diffuse * interiorFresnelDiffuseReflection);
+            else
+                diffuse /= (1.0 - interiorFresnelDiffuseReflection);
+
+            sample.pdf = (1.0 - specularProbability) * cosineHemispherePdf(sample.wi);
+
+            const float absNDotL = abs(cosThetaTS(sample.wi));
+            diffuse *= (1.0 / (eta * eta) * (1.0 - fresnelData.F) * (1.0 - fresnelOutwards.F));
+            sample.reflectance = absNDotL > 0.0 ? diffuse * cosineHemispherePdf(sample.wi) / absNDotL : float3(0.0);
+        }
+
+        return sample;
+    }
+
+    float3 evaluate(const float3 wo, const float3 wi)
+    {
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        if(cosThetaI <= 0.0 || cosThetaO <= 0.0)
+        {
+            return 0.0;
+        }
+
+        const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+
+        if(abs(dot(reflectTS(wo), wi) - 1.0) < EPSILON) // perfect reflection?
+        {
+            return specularReflectance * fresnelData.F;
+        }
+        else
+        {
+            DielectricFresnelData fresnelOutwards = FresnelDielectric(cosThetaO, eta);
+
+            float3 diffuse = diffuseReflectance;
+            if (nonlinear)
+                diffuse /= (float3(1.0) - diffuse * interiorFresnelDiffuseReflection);
+            else
+                diffuse /= (1.0 - interiorFresnelDiffuseReflection);
+
+            diffuse *= (1.0 / (eta * eta) * (1.0 - fresnelData.F) * (1.0 - fresnelOutwards.F));
+            return diffuse * cosineHemispherePdf(wo);
+        }
+    }
+
+    float pdf(const float3 wo, const float3 wi)
+    {
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        if(cosThetaI <= 0.0 || cosThetaO <= 0.0)
+        {
+            return 0.0;
+        }
+
+        const DielectricFresnelData fresnelData = FresnelDielectric(cosThetaI, eta);
+
+        float specularProbability = (fresnelData.F * specularSamplingWeight) /
+                        (fresnelData.F * specularSamplingWeight + (1.0 - fresnelData.F) * (1.0 - specularSamplingWeight));
+
+        if(abs(dot(reflectTS(wo), wi) - 1.0) < EPSILON) // perfect reflection?
+        {
+            return specularProbability;
+        }
+        else
+        {
+            return (1.0 - specularProbability) * cosineHemispherePdf(wo);
+        }
+    }
+
+    bool isDirac()
+    {
+        return false;
+    };
+
+    EBxDFType getType()
+    {
+        return EBxDFType::smoothConductor;
+    }
+
+    float eta;
+    float interiorFresnelDiffuseReflection,
+            exteriorFresnelDiffuseReflection;
+    float3 diffuseReflectance;
+    float3 specularReflectance;
+
+    float specularSamplingWeight;
+
+    bool nonlinear = false;
+};
+
 interface IMaterial
 {
     associatedtype RealBxDF : IBxDF;
@@ -745,14 +925,14 @@ struct DiffuseMaterial : IMaterial
 
     DiffuseBRDF createBxDF(const float2 uv)
     {
-        DiffuseBRDF brdf;
-        brdf.diffuseReflectance = this.diffuseReflectance;
+        DiffuseBRDF bsdf;
+        bsdf.diffuseReflectance = this.diffuseReflectance;
         if (this.diffuseReflectanceTexture >= 0)
         {
-            brdf.diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
+            bsdf.diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
         }
 
-        return brdf;
+        return bsdf;
     }
 
     float3 diffuseReflectance;
@@ -1006,6 +1186,52 @@ struct RoughConductorMaterial : IMaterial
     float2 alpha;
     int alphaTexture;
 };
+
+struct SmoothPlasticMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.diffuseReflectance = materialData.diffuseReflectance;
+        this.diffuseReflectanceTexture = materialData.diffuseReflectanceTexture;
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.eta = materialData.interiorIor / materialData.exteriorIor;
+    }
+
+    typedef SmoothPlasticBSDF RealBxDF;
+
+    SmoothPlasticBSDF createBxDF(const float2 uv)
+    {
+        SmoothPlasticBSDF bsdf;
+        bsdf.diffuseReflectance = this.diffuseReflectance;
+        bsdf.specularReflectance = this.specularReflectance;
+        if (this.diffuseReflectanceTexture >= 0)
+        {
+            bsdf.diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
+        }
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.eta = this.eta;
+        bsdf.interiorFresnelDiffuseReflection = fresnelDiffuseReflectance(1.0 / this.eta);
+        bsdf.exteriorFresnelDiffuseReflection = fresnelDiffuseReflectance(this.eta);
+
+        float diffuseAvg = averageLuminance(bsdf.diffuseReflectance);
+        float specularAvg = averageLuminance(bsdf.specularReflectance);
+
+        bsdf.specularSamplingWeight = specularAvg / (diffuseAvg + specularAvg);
+
+        return bsdf;
+    }
+
+    float eta;
+    float3 diffuseReflectance;
+    int diffuseReflectanceTexture;
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+};
 extension Material
 {
     IMaterial getMaterial()
@@ -1047,6 +1273,10 @@ extension Material
                     }
 
                     return RoughConductorMaterial(this);
+                }
+            case EBxDFType::smoothPlastic:
+                {
+                    return SmoothPlasticMaterial(this);
                 }
             default:
                 {

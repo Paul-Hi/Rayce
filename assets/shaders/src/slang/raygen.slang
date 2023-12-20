@@ -212,7 +212,7 @@ float3 tracePaths(Ray ray)
             continue;
         }
 
-        color += throughput * float3(0.02, 0.04, 0.08); // BG
+        //color += throughput * float3(0.02, 0.04, 0.08); // BG
 
         break;
     }
