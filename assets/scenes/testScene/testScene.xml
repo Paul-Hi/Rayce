@@ -1,7 +1,9 @@
 <scene version="3.0.0">
 
-    <bsdf type="diffuse" id="light_gray">
-        <rgb name="reflectance" value="0.85, 0.84, 0.8" />
+    <bsdf type="twosided" id="light_gray">
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.85, 0.84, 0.8" />
+        </bsdf>
     </bsdf>
 
     <bsdf type="thindielectric" id="acrylic_glass">
@@ -28,25 +30,33 @@
         <float name="alpha_v" value="0.05" />
     </bsdf>
 
-    <bsdf type="diffuse" id="blue">
-        <rgb name="reflectance" value="0.2, 0.2, 0.8" />
+    <bsdf type="twosided" id="blue">
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.2, 0.2, 0.8" />
+        </bsdf>
     </bsdf>
 
-    <bsdf type="diffuse" id="red">
-        <rgb name="reflectance" value="0.8, 0.2, 0.2" />
+    <bsdf type="twosided" id="red">
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.8, 0.2, 0.2" />
+        </bsdf>
     </bsdf>
 
-    <bsdf type="diffuse" id="rbTexDiffuse">
-        <texture name="reflectance" type="bitmap">
-            <string name="filename" value="rb_checkerboard.bmp" />
-        </texture>
+    <bsdf type="twosided" id="rbTexDiffuse">
+        <bsdf type="diffuse">
+            <texture name="reflectance" type="bitmap">
+                <string name="filename" value="rb_checkerboard.bmp" />
+            </texture>
+        </bsdf>
     </bsdf>
 
-    <bsdf type="roughconductor" id="rbTexConductor">
-        <rgb name="specular_reflectance" value="0.912, 0.914, 0.920" />
-        <texture type="bitmap" name="alpha">
-            <string name="filename" value="rb_checkerboard_alpha.bmp" />
-        </texture>
+    <bsdf type="twosided" id="rbTexConductor">
+        <bsdf type="roughconductor">
+            <rgb name="specular_reflectance" value="0.912, 0.914, 0.920" />
+            <texture type="bitmap" name="alpha">
+                <string name="filename" value="rb_checkerboard_alpha.bmp" />
+            </texture>
+        </bsdf>
     </bsdf>
 
     <bsdf type="diffuse" id="light">
@@ -108,7 +118,7 @@
         <transform name="to_world">
             <scale x="0.5" z="0.5" />
             <rotate z="1" angle="180" />
-            <translate x="0" y="3.99"/>
+            <translate x="0" y="3.99" />
         </transform>
         <emitter type="area">
             <rgb name="radiance" value="40.0, 35.0, 30.0" />

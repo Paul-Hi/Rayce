@@ -3,18 +3,6 @@ import utils;
 import random;
 import data;
 
-interface IBxDF
-{
-    EBxDFType getType();
-
-    BxDFSample sample(const float3 wo);
-    float3 evaluate(const float3 wo, const float3 wi);
-    float pdf(const float3 wo, const float3 wi);
-
-    bool isDirac();
-
-};
-
 struct DielectricFresnelData
 {
     float F;
@@ -162,7 +150,140 @@ float fresnelDiffuseReflectance(float eta)
     }
 }
 
-struct DiffuseBRDF : IBxDF
+interface IBxDF
+{
+    EBxDFType getType();
+
+    BxDFSample sample(const float3 wo);
+    float3 evaluate(const float3 wo, const float3 wi);
+    float pdf(const float3 wo, const float3 wi);
+
+    bool isDirac();
+
+};
+
+interface IBxDFAdapter
+{
+    EBxDFType getType();
+
+    BxDFSample sample(const float3 wo);
+    float3 evaluate(const float3 wo, const float3 wi);
+    float pdf(const float3 wo, const float3 wi);
+
+    bool isDirac();
+};
+
+struct DefaultAdapter : IBxDFAdapter
+{
+    __init(IBxDF bsdf)
+    {
+        this.bsdf0 = bsdf;
+    }
+
+    IBxDF bsdf0;
+
+    BxDFSample sample(const float3 wo)
+    {
+        return bsdf0.sample(wo);
+    }
+
+    float3 evaluate(const float3 wo, const float3 wi)
+    {
+        return bsdf0.evaluate(wo, wi);
+    }
+
+    float pdf(const float3 wo, const float3 wi)
+    {
+        return bsdf0.pdf(wo, wi);
+    }
+
+    bool isDirac()
+    {
+        return bsdf0.isDirac();
+    };
+
+    EBxDFType getType()
+    {
+        return bsdf0.getType();
+    }
+};
+
+
+struct TwoSidedAdapter : IBxDFAdapter
+{
+    __init(IBxDF bsdf)
+    {
+        this.bsdf0 = bsdf;
+        this.bsdf1 = bsdf;
+    }
+
+    IBxDF bsdf0;
+    IBxDF bsdf1;
+
+    BxDFSample sample(const float3 wo)
+    {
+        bool flipped = false;
+        float3 twoSidedWo = wo;
+        if (cosThetaTS(twoSidedWo) < 0.0)
+        {
+            twoSidedWo.z *= -1;
+            flipped = true;
+        }
+
+        BxDFSample result = flipped ? bsdf1.sample(twoSidedWo) : bsdf0.sample(twoSidedWo);
+
+        if (flipped)
+        {
+            result.wi.z *= -1;
+        }
+
+        return result;
+    }
+
+    float3 evaluate(const float3 wo, const float3 wi)
+    {
+        float3 twoSidedWi = wi;
+        float3 twoSidedWo = wo;
+        if (cosThetaTS(wi) > 0.0)
+        {
+            return bsdf0.evaluate(wo, wi);
+        }
+        else
+        {
+            twoSidedWi.z *= -1;
+            twoSidedWo.z *= -1;
+            return bsdf1.evaluate(twoSidedWo, twoSidedWi);
+        }
+    }
+
+    float pdf(const float3 wo, const float3 wi)
+    {
+        float3 twoSidedWi = wi;
+        float3 twoSidedWo = wo;
+        if (cosThetaTS(wi) > 0.0)
+        {
+            return bsdf0.pdf(wo, wi);
+        }
+        else
+        {
+            twoSidedWi.z *= -1;
+            twoSidedWo.z *= -1;
+            return bsdf1.pdf(twoSidedWo, twoSidedWi);
+        }
+    }
+
+    bool isDirac()
+    {
+        return bsdf0.isDirac();
+    };
+
+    EBxDFType getType()
+    {
+        return bsdf0.getType();
+    }
+};
+
+struct DiffuseBSDF : IBxDF
 {
     BxDFSample sample(const float3 wo)
     {
@@ -921,11 +1042,11 @@ struct DiffuseMaterial : IMaterial
         this.diffuseReflectanceTexture = materialData.diffuseReflectanceTexture;
     }
 
-    typedef DiffuseBRDF RealBxDF;
+    typedef DiffuseBSDF RealBxDF;
 
-    DiffuseBRDF createBxDF(const float2 uv)
+    DiffuseBSDF createBxDF(const float2 uv)
     {
-        DiffuseBRDF bsdf;
+        DiffuseBSDF bsdf;
         bsdf.diffuseReflectance = this.diffuseReflectance;
         if (this.diffuseReflectanceTexture >= 0)
         {
@@ -1283,5 +1404,18 @@ extension Material
                     return DiffuseMaterial(this);
                 }
         }
+    }
+}
+
+extension IMaterial
+{
+    IBxDFAdapter getAdapter(const IBxDF bsdf, bool twoSided)
+    {
+        if(twoSided == 1)
+        {
+            return TwoSidedAdapter(bsdf);
+        }
+
+        return DefaultAdapter(bsdf);
     }
 }

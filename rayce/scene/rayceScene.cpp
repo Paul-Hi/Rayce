@@ -1648,7 +1648,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                         lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
                         vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
-                        lightData->surfaceArea  = std::abs(tmp.x() * tmp.z());
+                        lightData->surfaceArea  = std::abs(tmp.squaredNorm());
                         lightData->lightToWorld = shape.transformationMatrix;
                         lightData->worldToLight = shape.transformationMatrix.inverse();
                     }
@@ -1778,7 +1778,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                         lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
                         vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
-                        lightData->surfaceArea  = std::abs(tmp.x() * tmp.z());
+                        lightData->surfaceArea  = std::abs(tmp.squaredNorm());
                         lightData->lightToWorld = shape.transformationMatrix;
                         lightData->worldToLight = shape.transformationMatrix.inverse();
                     }

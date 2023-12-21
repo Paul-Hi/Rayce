@@ -164,7 +164,6 @@ float3 tracePaths(Ray ray)
 
             if(lightId >= 0)
             {
-
                 // uses bxdfSample from last point
                 float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, ray.origin, payload.hitPoint);
                 if(lightPdf > 0.0)
@@ -177,7 +176,9 @@ float3 tracePaths(Ray ray)
 
             const float3 wo = space.worldToTangentFrame(-ray.direction);
 
-            let bsdf = material.createBxDF(uv);
+            let singleBsdf = material.createBxDF(uv);
+            let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
+
             if(!bsdf.isDirac())
             {
                 lightSample = sampleLights(payload.hitPoint, lightId, space);
@@ -212,7 +213,7 @@ float3 tracePaths(Ray ray)
             continue;
         }
 
-        //color += throughput * float3(0.02, 0.04, 0.08); // BG
+        //color += throughput * float3(0.1, 0.1, 0.1); // BG
 
         break;
     }
