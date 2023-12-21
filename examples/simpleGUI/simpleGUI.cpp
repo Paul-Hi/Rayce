@@ -44,6 +44,7 @@ SimpleGUI::SimpleGUI(const RayceOptions& options)
 {
     mViewportPanelSize = uvec2(1, 1);
     mMaxSamples        = 8192;
+    mIntegratorType    = EIntegratorType::path;
 }
 
 bool SimpleGUI::onInitialize()
@@ -176,7 +177,7 @@ bool SimpleGUI::onInitialize()
 
     // camera
     float aspect = static_cast<float>(getWindowWidth()) / static_cast<float>(getWindowHeight());
-    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.01f, 100.0f, 0.0f, 0.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
+    pCamera      = std::make_unique<Camera>(aspect, 45.0f, 0.02f, 20.0f, 0.0f, 0.0f, vec3(0.0f, 2.0f, 8.0f), vec3(0.0f, 2.0f, 0.0f), getInput());
 
     mAccumulationFrame = 0;
 
@@ -215,6 +216,8 @@ void SimpleGUI::onUpdate(float dt)
         cameraDataRT.inverseProjection = pCamera->getInverseProjection();
         cameraDataRT.pbData.x()        = pCamera->getLensRadius();
         cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
+        cameraDataRT.pbData.z()        = pCamera->getNear();
+        cameraDataRT.pbData.w()        = pCamera->getFar();
 
         pRaytracingPipeline->updateCameraData(cameraDataRT);
 
@@ -279,13 +282,15 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
 
     struct
     {
+        EIntegratorType integrator;
         int32 frame;
         int32 lightCount;
     } pushConstants;
+    pushConstants.integrator = mIntegratorType;
     pushConstants.frame      = mAccumulationFrame;
     pushConstants.lightCount = pScene->getLights().size();
 
-    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(int32) * 2, static_cast<void*>(&pushConstants));
+    vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(pushConstants), static_cast<void*>(&pushConstants));
 
     pRTF->vkCmdTraceRaysKHR(commandBuffer, &raygenEntry, &missEntry, &hitEntry, &callableEntry, mViewportPanelSize.x(), mViewportPanelSize.y(), 1);
 
@@ -326,6 +331,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         cameraDataRT.inverseProjection = pCamera->getInverseProjection();
         cameraDataRT.pbData.x()        = pCamera->getLensRadius();
         cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
+        cameraDataRT.pbData.z()        = pCamera->getNear();
+        cameraDataRT.pbData.w()        = pCamera->getFar();
 
         pRaytracingPipeline->updateCameraData(cameraDataRT);
 
@@ -399,6 +406,32 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::Separator();
     ImGui::SliderInt("Max. Samples", &mMaxSamples, 4, 65536);
 
+    ImGui::Separator();
+    const char* integrators[]  = { "Direct", "Path", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };
+    static const char* current = integrators[1];
+
+    if (ImGui::BeginCombo("Integrator##IntegratorSelection", current))
+    {
+        for (int n = 0; n < 6; ++n)
+        {
+            bool isSelected = (current == integrators[n]);
+            if (ImGui::Selectable(integrators[n], isSelected))
+            {
+                current = integrators[n];
+
+                mIntegratorType = (EIntegratorType)n;
+
+                mAccumulationFrame = 0;
+            }
+            if (isSelected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::Separator();
+
     // ImGui::InputText("Filename");
     if (ImGui::Button("Store Snapshot"))
     {
@@ -412,10 +445,10 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         storeImageAsPPM(image, mViewportPanelSize.x(), mViewportPanelSize.y());
     }
 
-    //if (ImGui::Button("Reload (DO NOT SPAM)"))
+    // if (ImGui::Button("Reload (DO NOT SPAM)"))
     //{
-    //    mReInitialize = true;
-    //}
+    //     mReInitialize = true;
+    // }
 
     ImGui::End();
 }
@@ -450,6 +483,8 @@ void SimpleGUI::recreateRTData()
     cameraDataRT.inverseProjection = pCamera->getInverseProjection();
     cameraDataRT.pbData.x()        = pCamera->getLensRadius();
     cameraDataRT.pbData.y()        = pCamera->getFocalDistance();
+    cameraDataRT.pbData.z()        = pCamera->getNear();
+    cameraDataRT.pbData.w()        = pCamera->getFar();
     pRaytracingPipeline.reset(new RaytracingPipeline(device, commandPool, swapchain, pTLAS, mVertexBuffers, mIndexBuffers, cameraDataRT, static_cast<uint32>(textureViews.size()), pRaytracingTargetView, swapchain->getImageCount()));
 
     pRaytracingPipeline->updateModelData(device, mInstances, mSpheres, pScene->getMaterials(), pScene->getLights(), textureViews, samplers);

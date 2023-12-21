@@ -56,6 +56,7 @@ StructuredBuffer<uint> gIndices[];
 
 struct PushConstants
 {
+    EIntegratorType integrator;
     int frame;
     int lightCount;
 };

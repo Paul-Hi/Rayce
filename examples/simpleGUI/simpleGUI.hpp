@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "hostDeviceInterop.slang"
 #include <app/rayceApp.hpp>
 
 namespace rayce
@@ -29,6 +30,7 @@ namespace rayce
         std::unique_ptr<class RaytracingPipeline> pRaytracingPipeline;
         std::unique_ptr<class RayceScene> pScene;
         std::unique_ptr<class Camera> pCamera;
+        EIntegratorType mIntegratorType;
         int32 mAccumulationFrame;
         int32 mMaxSamples;
         bool mViewportChange;

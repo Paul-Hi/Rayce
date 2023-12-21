@@ -172,7 +172,7 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
     } while(lightIndex == lightId);
 
     Light sampledLight = gLights.Load(lightIndex);
-GeometrySample sample;
+    GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
     {
         sample = SphereSampler::sampleSolidAngle(p, sampledLight);

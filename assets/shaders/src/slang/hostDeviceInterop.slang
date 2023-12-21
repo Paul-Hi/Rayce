@@ -39,6 +39,16 @@ namespace rayce
     static const int LIGHT_BINDING    = 3;
     static const int SPHERE_BINDING   = 4;
 
+    enum RAYCE_API_EXPORT EIntegratorType : uint
+    {
+        direct           = 0,
+        path             = 1,
+        debugDepth       = 2,
+        debugNormals     = 3,
+        debugReflectance = 4,
+        debugEmission    = 5,
+    };
+
     struct RAYCE_API_EXPORT Vertex
     {
         float3 position;
@@ -218,7 +228,7 @@ namespace rayce
     {
         float4x4 inverseView;
         float4x4 inverseProjection;
-        float4 pbData; // lens radius, focal distance, zw unused
+        float4 pbData; // lens radius, focal distance, near, far
     };
 
     struct RAYCE_API_EXPORT Material

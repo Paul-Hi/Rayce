@@ -32,6 +32,16 @@ namespace rayce
             return mInverseProjection;
         }
 
+        float getNear()
+        {
+            return mZNear;
+        }
+
+        float getFar()
+        {
+            return mZFar;
+        }
+
         float getLensRadius()
         {
             return mLensRadius;
