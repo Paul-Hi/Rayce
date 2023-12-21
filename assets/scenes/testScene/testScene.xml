@@ -121,7 +121,7 @@
             <translate x="0" y="3.99" />
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="40.0, 35.0, 30.0" />
+            <rgb name="radiance" value="30.0, 25.0, 20.0" />
         </emitter>
         <ref id="light" />
     </shape>
@@ -139,7 +139,7 @@
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
             <rotate y="1" angle="55" />
-            <translate x="-1.2" y="-0.69" z="1" />
+            <translate x="-1" z="0.25" />
         </transform>
         <ref id="acrylic_glass" />
     </shape>

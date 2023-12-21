@@ -61,3 +61,72 @@ struct PushConstants
 };
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> gPushConstants;
+
+DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomIndex, const float2 hitAttributes, const float4x3 worldToObject, const float3 viewPosition, const float3 hitPosition)
+{
+    DeviceTriangle tri;
+    const uint triangleIndex = primitiveIndex * 3;
+
+    const uint objIdx = NonUniformResourceIndex(gInstanceData[instanceCustomIndex].objectIndex);
+
+    const let ib = gIndices[objIdx];
+    const let vb = gVertices[objIdx];
+
+    for(uint i = 0; i < 3; ++i)
+    {
+        const uint idx = ib[triangleIndex + i];
+        tri.vertices[i] = vb[idx];
+    }
+
+    tri.barycentrics = float3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
+    tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
+
+    tri.interpolatedNormal = tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z;
+    tri.interpolatedNormal = normalize(mul(worldToObject, tri.interpolatedNormal).xyz);
+
+    tri.dfd1 = tri.vertices[1].position - tri.vertices[0].position;
+    tri.dfd2 = tri.vertices[2].position - tri.vertices[0].position;
+
+    tri.uvd1 = tri.vertices[1].uv - tri.vertices[0].uv;
+    tri.uvd2 = tri.vertices[2].uv - tri.vertices[0].uv;
+
+    tri.geometryNormal = float3(
+        tri.dfd1.y * tri.dfd2.z - tri.dfd1.z * tri.dfd2.y,
+        tri.dfd1.z * tri.dfd2.x - tri.dfd1.x * tri.dfd2.z,
+        tri.dfd1.x * tri.dfd2.y - tri.dfd1.y * tri.dfd2.x
+    );
+    tri.geometryNormal = normalize(mul(worldToObject, tri.geometryNormal).xyz);
+
+    tri.materialId = gInstanceData[instanceCustomIndex].materialId;
+
+    tri.lightId = gInstanceData[instanceCustomIndex].lightId;
+
+    return tri;
+}
+
+DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, const uint primitiveIndex, const float2 hitAttributes, const float4x3 worldToObject)
+{
+    DeviceSphere sphere;
+
+    int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
+
+    Sphere pSphere = gSpheres[sphereId];
+
+    const float3 p = hitPoint - pSphere.center;
+    sphere.normal = normalize(p);
+
+    sphere.materialId = gInstanceData[instanceCustomIndex + primitiveIndex].materialId;
+
+    sphere.lightId = gInstanceData[instanceCustomIndex + primitiveIndex].lightId;
+
+    const float3 local = mul(worldToObject, hitPoint - pSphere.center).xyz;
+
+    float theta = acos(local.y / pSphere.radius);
+    float phi = atan2(local.x, local.z);
+
+    if (phi < 0.0)
+        phi += TWO_PI;
+
+    sphere.uv = float2(0.5 * phi, theta) * INV_PI;
+    return sphere;
+}

@@ -84,3 +84,20 @@ struct SphereIntersectionAttributes
 {
     bool inside;
 };
+
+struct Ray
+{
+    float3 origin;
+    float3 direction;
+
+    __init()
+    {
+        this.origin = float3(0.0);
+        this.direction = float3(0.0);
+    }
+
+    float3 offsetOrigin()
+    {
+        return origin + direction * EPSILON;
+    }
+};
