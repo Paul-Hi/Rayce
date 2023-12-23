@@ -32,6 +32,7 @@ namespace rayce
         std::unique_ptr<class Camera> pCamera;
         EIntegratorType mIntegratorType;
         int32 mAccumulationFrame;
+        int32 mMaxDepth;
         int32 mMaxSamples;
         bool mViewportChange;
         bool mReInitialize;

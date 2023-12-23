@@ -133,7 +133,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     VkPushConstantRange bufferReferencePushConstantRange{};
     bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
     bufferReferencePushConstantRange.offset     = 0;
-    bufferReferencePushConstantRange.size       = sizeof(int32) * 2 + sizeof(uint) * 1;
+    bufferReferencePushConstantRange.size       = sizeof(int32) * 3 + sizeof(uint) * 1;
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -19,7 +19,13 @@ void main()
     float2 uv = (pixelCorner + Random::rand()) / float2(DispatchRaysDimensions().xy - uint2(1));
     uv = uv * 2.0 - 1.0;
 
-    switch(gPushConstants.integrator)
+
+    // FIXME: Precompiling the different integrator shaders should increase performance...
+    let integrator = gPushConstants.integrator;
+    // (gPushConstants.frame == 0 && gPushConstants.integrator == EIntegratorType::path)
+    //                        ? EIntegratorType::direct : gPushConstants.integrator;
+
+    switch(integrator)
     {
         case EIntegratorType::direct:
             {

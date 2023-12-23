@@ -44,6 +44,7 @@ SimpleGUI::SimpleGUI(const RayceOptions& options)
 {
     mViewportPanelSize = uvec2(1, 1);
     mMaxSamples        = 8192;
+    mMaxDepth          = 12;
     mIntegratorType    = EIntegratorType::path;
 }
 
@@ -284,10 +285,12 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     {
         EIntegratorType integrator;
         int32 frame;
+        int32 maxDepth;
         int32 lightCount;
     } pushConstants;
     pushConstants.integrator = mIntegratorType;
     pushConstants.frame      = mAccumulationFrame;
+    pushConstants.maxDepth   = mMaxDepth;
     pushConstants.lightCount = pScene->getLights().size();
 
     vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(pushConstants), static_cast<void*>(&pushConstants));
@@ -405,6 +408,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::Text("Accumulated Frames: %d", mAccumulationFrame);
     ImGui::Separator();
     ImGui::SliderInt("Max. Samples", &mMaxSamples, 4, 65536);
+    ImGui::Separator();
+    ImGui::SliderInt("Max. Depth", &mMaxDepth, 1, 16);
 
     ImGui::Separator();
     const char* integrators[]  = { "Direct", "Path", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };

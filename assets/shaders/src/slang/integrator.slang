@@ -5,8 +5,6 @@ import random;
 import bsdf;
 import sampling;
 
-#define MAX_DEPTH 16
-
 interface IIntegrator
 {
     Ray createPrimaryRay(const float2 uv);
@@ -84,7 +82,7 @@ struct PathIntegrator : IIntegrator
 
     PathState estimate(const float2 uv)
     {
-        const int maxDepth = MAX_DEPTH; // hopyfully never reached
+        const int maxDepth = gPushConstants.maxDepth; // hopyfully never reached
         const int russianRouletteStart = 3;
 
         PathState pathState;
@@ -248,9 +246,6 @@ struct DirectIntegrator : IIntegrator
 
     PathState estimate(const float2 uv)
     {
-        const int maxDepth = MAX_DEPTH; // hopyfully never reached
-        const int russianRouletteStart = 3;
-
         PathState pathState;
 
         LightSample lightSample;
@@ -382,9 +377,6 @@ struct DebugIntegrator : IIntegrator
 
     PathState estimate(const float2 uv)
     {
-        const int maxDepth = MAX_DEPTH; // hopyfully never reached
-        const int russianRouletteStart = 3;
-
         PathState pathState;
 
         CoordinateSpace space;

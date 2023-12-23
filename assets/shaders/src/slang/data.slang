@@ -58,6 +58,7 @@ struct PushConstants
 {
     EIntegratorType integrator;
     int frame;
+    int maxDepth;
     int lightCount;
 };
 
