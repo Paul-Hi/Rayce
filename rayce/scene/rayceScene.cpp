@@ -4,7 +4,6 @@
 /// @date      2023
 /// @copyright Apache License 2.0
 
-#include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <functional>
@@ -27,6 +26,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <scene/stb_image.h>
+
+#include "core/spectrum.hpp"
 
 using namespace rayce;
 namespace fs = std::filesystem;
@@ -212,9 +213,124 @@ static float iorFromString(str materialName)
     return 0.0f;
 }
 
-static vec2 conductorComplexIorFromString(str materialName)
+struct ComplexIOR
 {
-    return vec2(0.0, 1.0); // FIXME
+    const char* name;
+};
+
+static ComplexIOR complexIORData[] = {
+    { "a-C" },
+    { "Na_palik" },
+    { "Ag" },
+    { "Nb" },
+    { "Nb_palik" },
+    { "Al" },
+    { "Ni_palik" },
+    { "AlAs" },
+    { "AlAs_palik" },
+    { "Rh" },
+    { "Rh_palik" },
+    { "AlSb" },
+    { "AlSb_palik" },
+    { "Se" },
+    { "Se_palik" },
+    { "Au" },
+    { "SiC" },
+    { "SiC_palik" },
+    { "Be" },
+    { "Be_palik" },
+    { "SnTe" },
+    { "SnTe_palik" },
+    { "Cr" },
+    { "Ta" },
+    { "Ta_palik" },
+    { "CsI" },
+    { "CsI_palik" },
+    { "Te" },
+    { "Te_palik" },
+    { "Cu" },
+    { "Cu_palik" },
+    { "ThF4" },
+    { "ThF4_palik" },
+    { "Cu2O" },
+    { "Cu2O_palik" },
+    { "TiC" },
+    { "TiC_palik" },
+    { "CuO" },
+    { "CuO_palik" },
+    { "TiN" },
+    { "TiN_palik" },
+    { "d-C" },
+    { "d-C_palik" },
+    { "TiO2" },
+    { "TiO2_palik" },
+    { "Hg" },
+    { "Hg_palik" },
+    { "VC" },
+    { "VC_palik" },
+    { "HgTe" },
+    { "HgTe_palik" },
+    { "V_palik" },
+    { "Ir" },
+    { "Ir_palik" },
+    { "VN" },
+    { "VN_palik" },
+    { "K" },
+    { "K_palik" },
+    { "W" },
+    { "Li" },
+    { "Li_palik" },
+    { "MgO" },
+    { "MgO_palik" },
+    { "Mo" },
+    { "Mo_palik" }
+};
+
+static std::tuple<vec3, vec3> conductorComplexIorFromString(str materialName)
+{
+    if (materialName == "none")
+    {
+        return { vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0) };
+    }
+
+    ComplexIOR* ior = complexIORData;
+
+    while (ior->name)
+    {
+        if (materialName == ior->name)
+        {
+            vec3 rgbEta = spectrumToRGB(LinearInterpolatedSpectrum::fromFile(str("assets/spectra/") + materialName + str(".eta.spd")));
+            vec3 rgbK   = spectrumToRGB(LinearInterpolatedSpectrum::fromFile(str("assets/spectra/") + materialName + str(".k.spd")));
+
+            return { rgbEta, rgbK };
+        }
+        ++ior;
+    }
+
+    RAYCE_LOG_ERROR("Can not find an IOR value for %s!", materialName.c_str());
+
+    return { vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0) };
+}
+
+static LinearInterpolatedSpectrum convertMitsubaSpectrumToLIS(const tinyparser_mitsuba::Spectrum& spec)
+{
+    auto wvl = spec.wavelengths();
+    auto wts = spec.weights();
+
+    assert(wvl.size() == wts.size());
+
+    std::vector<float> wavelengths(wvl.size());
+    std::vector<float> values(wts.size());
+
+    for (ptr_size i = 0; i < wvl.size(); ++i)
+    {
+        wavelengths[i] = wvl[i];
+        values[i]      = wts[i];
+    }
+
+    LinearInterpolatedSpectrum spectrum = LinearInterpolatedSpectrum(wavelengths, values);
+
+    return spectrum;
 }
 
 static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
@@ -261,7 +377,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
             if (reflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = reflectance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.diffuseReflectance = spectrumToRGB(spectrum);
             }
         }
 
@@ -325,7 +445,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
             if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = specularReflectance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.specularReflectance = spectrumToRGB(spectrum);
             }
         }
         if (props.contains("specular_transmittance"))
@@ -339,7 +463,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
             if (specularTransmittance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = specularTransmittance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.specularTransmittance = spectrumToRGB(spectrum);
             }
         }
         for (const auto& textureChild : bsdfObject->namedChildren())
@@ -382,11 +510,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
                 if (alpha.type() == mp::PT_NUMBER) // <float></float>
                 {
-                    bsdf.possibleData.alpha = vec2(alpha.getNumber(), alpha.getNumber());
+                    bsdf.possibleData.alpha = vec3(alpha.getNumber(), alpha.getNumber(), 0.0);
                 }
                 else
                 {
-                    bsdf.possibleData.alpha = vec2(1.0, 1.0);
+                    bsdf.possibleData.alpha = vec3(1.0, 1.0, 0.0);
                 }
             }
             if (props.contains("alpha_u"))
@@ -448,7 +576,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
             if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = specularReflectance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.specularReflectance = spectrumToRGB(spectrum);
             }
         }
 
@@ -458,7 +590,9 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
             if (material.type() == mp::PT_STRING) // <string></string>
             {
-                bsdf.possibleData.complexIor = conductorComplexIorFromString(material.getString());
+                auto complexIor                = conductorComplexIorFromString(material.getString());
+                bsdf.possibleData.conductorEta = std::get<0>(complexIor);
+                bsdf.possibleData.conductorK   = std::get<1>(complexIor);
             }
         }
         if (props.contains("eta"))
@@ -467,7 +601,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
             if (eta.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = eta.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.conductorEta = spectrumToRGB(spectrum);
             }
         }
         if (props.contains("k"))
@@ -476,7 +614,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
             if (k.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = k.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.conductorK = spectrumToRGB(spectrum);
             }
         }
         for (const auto& textureChild : bsdfObject->namedChildren())
@@ -521,11 +663,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
                 if (alpha.type() == mp::PT_NUMBER) // <float></float>
                 {
-                    bsdf.possibleData.alpha = vec2(alpha.getNumber(), alpha.getNumber());
+                    bsdf.possibleData.alpha = vec3(alpha.getNumber(), alpha.getNumber(), 0.0);
                 }
                 else
                 {
-                    bsdf.possibleData.alpha = vec2(1.0, 1.0);
+                    bsdf.possibleData.alpha = vec3(1.0, 1.0, 0.0);
                 }
             }
             if (props.contains("alpha_u"))
@@ -562,11 +704,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
                 if (alpha.type() == mp::PT_NUMBER) // <float></float>
                 {
-                    bsdf.possibleData.alpha = vec2(alpha.getNumber(), alpha.getNumber());
+                    bsdf.possibleData.alpha = vec3(alpha.getNumber(), alpha.getNumber(), 0.0);
                 }
                 else
                 {
-                    bsdf.possibleData.alpha = vec2(1.0, 1.0);
+                    bsdf.possibleData.alpha = vec3(1.0, 1.0, 0.0);
                 }
             }
             if (props.contains("alpha_u"))
@@ -653,7 +795,11 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
             }
             if (diffuseReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = diffuseReflectance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.diffuseReflectance = spectrumToRGB(spectrum);
             }
         }
         if (props.contains("specular_reflectance"))
@@ -662,12 +808,16 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
 
             if (specularReflectance.type() == mp::PT_COLOR) // <rgb></rgb>
             {
-                auto& c                              = specularReflectance.getColor();
+                auto& c                               = specularReflectance.getColor();
                 bsdf.possibleData.specularReflectance = vec3(c.r, c.g, c.b);
             }
             if (specularReflectance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = specularReflectance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.specularReflectance = spectrumToRGB(spectrum);
             }
         }
         for (const auto& textureChild : bsdfObject->namedChildren())
@@ -732,7 +882,11 @@ static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<tinyparser_mitsub
             }
             if (radiance.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
-                RAYCE_LOG_WARN("Spectrum is not supported at the moment!");
+                auto& spec = radiance.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                emitter.possibleData.radiance = spectrumToRGB(spectrum);
             }
 
             for (const auto& textureChild : emitterObject->namedChildren())
@@ -1169,17 +1323,17 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                                                           VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
-            if (bsdf.possibleData.complexIorTexture >= 0)
+            if (bsdf.possibleData.conductorEtaTexture >= 0)
             {
                 // load image;
-                str name = bsdf.id + "_complexIor";
+                str name = bsdf.id + "_conductorEtaTexture";
 
                 if (mImageCache[name])
                 {
                     continue;
                 }
 
-                str imageFile = imagesToLoad[bsdf.possibleData.complexIorTexture];
+                str imageFile = imagesToLoad[bsdf.possibleData.conductorEtaTexture];
 
                 int32 w, h, c;
 
@@ -1188,7 +1342,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
-                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.complexIorTexture].c_str(), imageFile.c_str());
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.conductorEtaTexture].c_str(), imageFile.c_str());
                     }
                 }
 
@@ -1208,16 +1362,67 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 VkFormat format = getImageFormat(components, false);
 
                 VkExtent2D extent{ width, height };
-                mImages[bsdf.possibleData.complexIorTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
-                auto& addedImage                             = mImages[bsdf.possibleData.complexIorTexture];
+                mImages[bsdf.possibleData.conductorEtaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage                               = mImages[bsdf.possibleData.conductorEtaTexture];
                 addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
                 VkExtent3D extent3D{ width, height, 1 };
                 Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
                 addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-                mImageViews[bsdf.possibleData.complexIorTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
-                mImageSamplers[bsdf.possibleData.complexIorTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                mImageViews[bsdf.possibleData.conductorEtaTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.conductorEtaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                                                   VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+            if (bsdf.possibleData.conductorKTexture >= 0)
+            {
+                // load image;
+                str name = bsdf.id + "_conductorKTexture";
+
+                if (mImageCache[name])
+                {
+                    continue;
+                }
+
+                str imageFile = imagesToLoad[bsdf.possibleData.conductorKTexture];
+
+                int32 w, h, c;
+
+                if (!fs::exists(imageFile))
+                {
+                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    if (!fs::exists(imageFile))
+                    {
+                        RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.conductorKTexture].c_str(), imageFile.c_str());
+                    }
+                }
+
+                mImageCache[name] =
+                    stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                if (!mImageCache[name])
+                {
+                    RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                }
+                RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                uint32 width      = static_cast<uint32>(w);
+                uint32 height     = static_cast<uint32>(h);
+                uint32 components = STBI_rgb_alpha;
+                uint32 imageSize  = width * height * components;
+
+                VkFormat format = getImageFormat(components, false);
+
+                VkExtent2D extent{ width, height };
+                mImages[bsdf.possibleData.conductorKTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                auto& addedImage                             = mImages[bsdf.possibleData.conductorKTexture];
+                addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                VkExtent3D extent3D{ width, height, 1 };
+                Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                mImageViews[bsdf.possibleData.conductorKTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                mImageSamplers[bsdf.possibleData.conductorKTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                                                  VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
             }
 
@@ -1423,6 +1628,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     for (auto& emitter : mitsubaEmitters)
     {
         RAYCE_LOG_INFO("Creating light from emitter %d.", emitterId);
+        emitter.possibleData.type = emitter.type;
 
         switch (emitter.type)
         {
@@ -1640,7 +1846,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     // convert light data to our type
                     std::unique_ptr<Light>& lightData = mLights[lightId];
 
-                    assert(emitter.type == ELightType::area); // atm analytic rectangle
+                    assert(lightData->type == ELightType::area); // atm analytic rectangle
 
                     if (shape.type == EShapeType::rectangle)
                     {

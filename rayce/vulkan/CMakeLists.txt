@@ -2,11 +2,13 @@ message(STATUS "================================================")
 message(STATUS "Adding rayce::vulkan!")
 
 file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
+file(GLOB_RECURSE INLINE ${CMAKE_CURRENT_SOURCE_DIR}/*.inl)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 add_library(rayceVulkan
     STATIC
     ${HEADER}
+    ${INLINE}
     ${SOURCES}
 )
 

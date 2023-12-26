@@ -25,9 +25,8 @@
 
     <bsdf type="roughconductor" id="gold">
         <string name="material" value="Au" />
-        <rgb name="specular_reflectance" value="0.944, 0.776, 0.373" />
-        <float name="alpha_u" value="0.2" />
-        <float name="alpha_v" value="0.05" />
+        <float name="alpha_u" value="0.1" />
+        <float name="alpha_v" value="0.01" />
     </bsdf>
 
     <bsdf type="twosided" id="blue">
@@ -52,7 +51,7 @@
 
     <bsdf type="twosided" id="rbTexConductor">
         <bsdf type="roughconductor">
-            <rgb name="specular_reflectance" value="0.912, 0.914, 0.920" />
+            <string name="material" value="W" />
             <texture type="bitmap" name="alpha">
                 <string name="filename" value="rb_checkerboard_alpha.bmp" />
             </texture>

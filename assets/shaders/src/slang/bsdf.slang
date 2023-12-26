@@ -767,7 +767,7 @@ struct SmoothConductorBSDF : IBxDF
         return EBxDFType::smoothConductor;
     }
 
-    float eta, k;
+    float3 eta, k;
     float3 specularReflectance;
 };
 
@@ -885,7 +885,7 @@ struct RoughConductorBSDF : IBxDF
         return EBxDFType::roughConductor;
     }
 
-    float eta, k;
+    float3 eta, k;
     float3 specularReflectance;
 
     float alphaU, alphaV;
@@ -1154,7 +1154,7 @@ struct RoughDielectricMaterial : IMaterial
         this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
         this.interiorIor = materialData.interiorIor;
         this.exteriorIor = materialData.exteriorIor;
-        this.alpha = materialData.alpha;
+        this.alpha = materialData.alpha.xy;
         this.alphaTexture = materialData.alphaTexture;
     }
 
@@ -1209,9 +1209,10 @@ struct SmoothConductorMaterial : IMaterial
     {
         this.specularReflectance = materialData.specularReflectance;
         this.specularReflectanceTexture = materialData.specularReflectanceTexture;
-        this.complexIorTexture = materialData.complexIorTexture;
-        this.eta = materialData.complexIor.x;
-        this.k = materialData.complexIor.y;
+        this.etaTexture = materialData.conductorEtaTexture;
+        this.kTexture = materialData.conductorKTexture;
+        this.eta = materialData.conductorEta;
+        this.k = materialData.conductorK;
     }
 
     typedef SmoothConductorBSDF RealBxDF;
@@ -1227,24 +1228,27 @@ struct SmoothConductorMaterial : IMaterial
 
         bsdf.eta = this.eta;
         bsdf.k = this.k;
-        if (this.complexIorTexture >= 0)
+        if (this.etaTexture >= 0)
         {
-            float2 complexIor = gTextures[NonUniformResourceIndex(this.complexIorTexture)].Sample(uv).rg;
-            bsdf.eta = complexIor.x;
-            bsdf.k = complexIor.y;
+            bsdf.eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
+        }
+        if (this.kTexture >= 0)
+        {
+            bsdf.k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = max(bsdf.eta, EPSILON); // FIXME: This could be handled better
-        bsdf.k = max(bsdf.k, EPSILON); // FIXME: This could be handled better
+        bsdf.eta = max(bsdf.eta, float3(EPSILON)); // FIXME: This could be handled better
+        bsdf.k = max(bsdf.k, float3(EPSILON)); // FIXME: This could be handled better
 
         return bsdf;
     }
 
     float3 specularReflectance;
     int specularReflectanceTexture;
-    float eta;
-    float k;
-    int complexIorTexture;
+    float3 eta;
+    int etaTexture;
+    float3 k;
+    int kTexture;
 };
 
 struct RoughConductorMaterial : IMaterial
@@ -1253,10 +1257,11 @@ struct RoughConductorMaterial : IMaterial
     {
         this.specularReflectance = materialData.specularReflectance;
         this.specularReflectanceTexture = materialData.specularReflectanceTexture;
-        this.complexIorTexture = materialData.complexIorTexture;
-        this.eta = materialData.complexIor.x;
-        this.k = materialData.complexIor.y;
-        this.alpha = materialData.alpha;
+        this.etaTexture = materialData.conductorEtaTexture;
+        this.kTexture = materialData.conductorKTexture;
+        this.eta = materialData.conductorEta;
+        this.k = materialData.conductorK;
+        this.alpha = materialData.alpha.xy;
         this.alphaTexture = materialData.alphaTexture;
     }
 
@@ -1282,15 +1287,17 @@ struct RoughConductorMaterial : IMaterial
 
         bsdf.eta = this.eta;
         bsdf.k = this.k;
-        if (this.complexIorTexture >= 0)
+        if (this.etaTexture >= 0)
         {
-            float2 complexIor = gTextures[NonUniformResourceIndex(this.complexIorTexture)].Sample(uv).rg;
-            bsdf.eta = complexIor.x;
-            bsdf.k = complexIor.y;
+            bsdf.eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
+        }
+        if (this.kTexture >= 0)
+        {
+            bsdf.k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = max(bsdf.eta, EPSILON); // FIXME: This could be handled better
-        bsdf.k = max(bsdf.k, EPSILON); // FIXME: This could be handled better
+        bsdf.eta = max(bsdf.eta, float3(EPSILON)); // FIXME: This could be handled better
+        bsdf.k = max(bsdf.k, float3(EPSILON)); // FIXME: This could be handled better
 
         bsdf.alphaU = max(bsdf.alphaU, EPSILON); // FIXME: This could be handled better
         bsdf.alphaV = max(bsdf.alphaV, EPSILON); // FIXME: This could be handled better
@@ -1300,9 +1307,10 @@ struct RoughConductorMaterial : IMaterial
 
     float3 specularReflectance;
     int specularReflectanceTexture;
-    float eta;
-    float k;
-    int complexIorTexture;
+    float3 eta;
+    int etaTexture;
+    float3 k;
+    int kTexture;
 
     float2 alpha;
     int alphaTexture;

@@ -152,24 +152,6 @@ namespace rayce
         bsdfTypeCount        = 8
     };
 
-    struct RAYCE_API_EXPORT LightData
-    {
-        float3   center;
-        // float3   direction;
-        // float    openingAngle;
-        // float    cosOpeningAngle;
-        // float    cosSubtendedAngle;
-        // float    penumbraAngle;
-
-        // analytic area lights
-        float3   tangent;
-        float    surfaceArea;
-        float3   bitangent;
-        float    pad0;
-        float4x4 lightToWorld;
-        float4x4 worldToLight;
-    };
-
     struct RAYCE_API_EXPORT Light
     {
         float3     wCenter;
@@ -247,16 +229,20 @@ namespace rayce
         float3 specularTransmittance; // for physical realism, do not touch - default 1
         int specularTransmittanceTexture;
 
-        float2 alpha; // alpha u, alpha v;
+        float3 alpha; // alpha u, alpha v, unused
         int alphaTexture;
 
         // for complex conducting materials
-        int complexIorTexture;
-        float2 complexIor; // eta, k
+        float3 conductorEta;
+        int conductorEtaTexture;
+        float3 conductorK;
+        int conductorKTexture;
 
         uint nonlinear;
 
         uint canUseUv;
+
+        float2 pad;
 
 #ifdef __cplusplus
         Material()
@@ -270,10 +256,12 @@ namespace rayce
             , specularReflectanceTexture(-1)
             , specularTransmittance(float3(1.0, 1.0, 1.0))
             , specularTransmittanceTexture(-1)
-            , alpha(float2(0.1, 0.1))
+            , alpha(float3(0.1, 0.1, 0.0))
             , alphaTexture(-1)
-            , complexIorTexture(-1)
-            , complexIor(float2(0.0, 1.0))
+            , conductorEta(float3(0.0, 0.0, 0.0))
+            , conductorEtaTexture(-1)
+            , conductorK(float3(1.0, 1.0, 1.0))
+            , conductorKTexture(-1)
             , nonlinear(0)
             , canUseUv(0)
         {
@@ -291,10 +279,12 @@ namespace rayce
             this.specularReflectanceTexture = -1;
             this.specularTransmittance = float3(1.0, 1.0, 1.0);
             this.specularTransmittanceTexture = -1;
-            this.alpha = float2(0.1, 0.1);
+            this.alpha = float3(0.1, 0.1, 0.0);
             this.alphaTexture = -1;
-            this.complexIorTexture = -1;
-            this.complexIor = float2(0.0, 1.0);
+            this.conductorEta = float3(0.0, 0.0, 0.0);
+            this.conductorEtaTexture = -1;
+            this.conductorK = float3(1.0, 1.0, 1.0);
+            this.conductorKTexture = -1;
             this.nonlinear = 0;
             this.canUseUv = 0;
         }

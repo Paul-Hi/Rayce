@@ -14,6 +14,7 @@
 #include <Eigen/Core>
 #include <Eigen/Eigen>
 #include <Eigen/Geometry>
+#include <algorithm>
 #include <core/export.hpp>
 #include <core/iconsFA6.hpp>
 #include <core/macro.hpp>
