@@ -44,8 +44,10 @@ SimpleGUI::SimpleGUI(const RayceOptions& options)
 {
     mViewportPanelSize = uvec2(1, 1);
     mMaxSamples        = 8192;
-    mMaxDepth          = 12;
+    mMaxDepth          = 8;
     mIntegratorType    = EIntegratorType::path;
+
+    mReInitialize = false;
 }
 
 bool SimpleGUI::onInitialize()

@@ -51,7 +51,7 @@
 
     <bsdf type="twosided" id="rbTexConductor">
         <bsdf type="roughconductor">
-            <string name="material" value="W" />
+            <string name="material" value="Rh" />
             <texture type="bitmap" name="alpha">
                 <string name="filename" value="rb_checkerboard_alpha.bmp" />
             </texture>
