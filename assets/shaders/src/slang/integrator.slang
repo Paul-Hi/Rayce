@@ -83,7 +83,7 @@ struct PathIntegrator : IIntegrator
     PathState estimate(const float2 uv)
     {
         const int maxDepth = gPushConstants.maxDepth; // hopyfully never reached
-        const int russianRouletteStart = 3;
+        const int russianRouletteStart = clamp(3, 0, maxDepth - 1);
 
         PathState pathState;
         pathState.scatterRay = createPrimaryRay(uv);
@@ -96,7 +96,7 @@ struct PathIntegrator : IIntegrator
         CoordinateSpace space;
         space.normal = float3(0.0);
 
-        for(uint depth = 0; depth < maxDepth; ++depth)
+        for(uint depth = 0; depth <= maxDepth; ++depth)
         {
             RayPayload payload;
             traceRay(pathState.scatterRay, payload);
@@ -130,7 +130,7 @@ struct PathIntegrator : IIntegrator
                     float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, pathState.scatterRay.origin, payload.hitPoint);
                     if(lightPdf > 0.0)
                     {
-                        float miWeight = powerHeuristic(bxdfSample.pdf, lightPdf);
+                        float miWeight = depth == 0 ? 1.0 : powerHeuristic(bxdfSample.pdf, lightPdf);
 
                         pathState.L += pathState.throughput * miWeight * gLights[lightId].radiance;
                     }

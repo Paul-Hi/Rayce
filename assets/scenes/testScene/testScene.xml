@@ -45,15 +45,10 @@
         <bsdf type="diffuse">
             <texture name="reflectance" type="bitmap">
                 <string name="filename" value="rb_checkerboard.bmp" />
-            </texture>
-        </bsdf>
-    </bsdf>
-
-    <bsdf type="twosided" id="rbTexConductor">
-        <bsdf type="roughconductor">
-            <string name="material" value="Rh" />
-            <texture type="bitmap" name="alpha">
-                <string name="filename" value="rb_checkerboard_alpha.bmp" />
+                <!--<transform name="to_uv">
+                    <scale x="2" y="2"/>
+                    <translate x="0.5" y="1.0"/>
+                </transform>-->
             </texture>
         </bsdf>
     </bsdf>
@@ -64,15 +59,16 @@
 
     <shape type="rectangle" id="floor">
         <transform name="to_world">
-            <scale x="2" z="2" />
+            <scale x="2" y="2" />
+            <rotate x="1" angle="-90" />
         </transform>
-        <ref id="rbTexConductor" />
+        <ref id="rbTexDiffuse" />
     </shape>
 
     <shape type="rectangle" id="ceiling">
         <transform name="to_world">
-            <scale x="2" z="2" />
-            <rotate x="1" angle="180" />
+            <scale x="2" y="2" />
+            <rotate x="1" angle="90" />
             <translate y="4" />
         </transform>
         <ref id="rbTexDiffuse" />
@@ -80,8 +76,7 @@
 
     <shape type="rectangle" id="back">
         <transform name="to_world">
-            <scale x="2" z="2" />
-            <rotate x="1" angle="90" />
+            <scale x="2" y="2" />
             <translate y="2" z="-2" />
         </transform>
         <ref id="light_gray" />
@@ -89,8 +84,8 @@
 
     <shape type="rectangle" id="left">
         <transform name="to_world">
-            <scale x="2" z="2" />
-            <rotate z="1" angle="-90" />
+            <scale x="2" y="2" />
+            <rotate y="1" angle="90" />
             <translate y="2" x="-2" />
         </transform>
         <ref id="blue" />
@@ -98,37 +93,40 @@
 
     <shape type="rectangle" id="right">
         <transform name="to_world">
-            <scale x="2" z="2" />
-            <rotate z="1" angle="90" />
+            <scale x="2" y="2" />
+            <rotate y="1" angle="-90" />
             <translate y="2" x="2" />
         </transform>
         <ref id="red" />
     </shape>
 
-    <shape type="ply" id="bunny">
-        <string name="filename" value="bunny.ply" />
-        <transform name="to_world">
-            <translate x="0.5" y="-0.03" z="0.5" />
-        </transform>
-        <ref id="rough_glass" />
-    </shape>
-
     <shape type="rectangle" id="main_light_source">
         <transform name="to_world">
-            <scale x="0.5" z="0.5" />
-            <rotate z="1" angle="180" />
+            <scale x="0.3" y="0.3" />
+            <rotate x="1" angle="90" />
             <translate x="0" y="3.99" />
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="30.0, 25.0, 20.0" />
+            <rgb name="radiance" value="20.0, 18.0, 18.0" />
         </emitter>
         <ref id="light" />
     </shape>
 
+    <shape type="ply" id="bunny">
+        <string name="filename" value="bunny.ply" />
+        <transform name="to_world">
+            <rotate y="1" angle="18" />
+            <rotate z="1" angle="-21" />
+            <rotate x="1" angle="-16" />
+            <translate x="0.5" y="0.76" z="0.5" />
+        </transform>
+        <ref id="rough_glass" />
+    </shape>
+
     <shape type="sphere" id="large_sphere">
         <transform name="to_world">
-            <scale x="0.75" y="0.75" z="0.75" />
-            <translate x="1" y="0.75" z="-1" />
+            <scale x="0.65" y="0.65" z="0.65" />
+            <translate x="0.25" y="1.5" z="-1" />
         </transform>
         <ref id="gold" />
     </shape>
@@ -138,7 +136,8 @@
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
             <rotate y="1" angle="55" />
-            <translate x="-1" z="0.25" />
+            <rotate z="1" angle="12" />
+            <translate x="-1" z="0.25" y="1.6" />
         </transform>
         <ref id="acrylic_glass" />
     </shape>
@@ -147,7 +146,9 @@
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
             <rotate y="1" angle="55" />
-            <translate x="-1" z="0.25" />
+            <rotate x="1" angle="32" />
+            <rotate z="1" angle="12" />
+            <translate x="-1" z="0.25" y="1"/>
         </transform>
         <ref id="some_plastic" />
     </shape>

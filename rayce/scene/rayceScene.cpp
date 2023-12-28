@@ -950,8 +950,15 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             if (pluginType == "rectangle")
             {
                 shape.type     = EShapeType::rectangle;
-                shape.filename = "assets\\scenes\\rectangle.ply";
+                shape.filename = "assets\\internal\\rectangle.ply";
             }
+            if (pluginType == "cube")
+            {
+                shape.type     = EShapeType::cube;
+                shape.filename = "assets\\internal\\cube.obj";
+            }
+
+            shape.transformationMatrix = mat4::Identity();
             for (const auto& prop : object->properties())
             {
                 if (pluginType == "ply" && prop.first == "filename")
@@ -964,10 +971,25 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     shape.type     = EShapeType::triangleMesh;
                     shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string();
                 }
-                else if (prop.first == "to_world")
+
+                if (pluginType == "sphere")
                 {
-                    const auto& transform      = prop.second.getTransform();
-                    shape.transformationMatrix = mat4::Identity();
+                    if (prop.first == "center")
+                    {
+                        const auto& sCenter                          = prop.second.getVector();
+                        shape.transformationMatrix.block<3, 1>(0, 3) = vec3(sCenter.x, sCenter.y, sCenter.z);
+                        RAYCE_LOG_INFO("------------------------- %f, %f, %f", sCenter.x, sCenter.y, sCenter.z);
+                    }
+                    if (prop.first == "radius")
+                    {
+                        const auto& sRadius = prop.second.getNumber();
+                        shape.transformationMatrix.block<3, 3>(0, 0).diagonal() = vec3(sRadius, sRadius, sRadius);
+                    }
+                }
+
+                if (prop.first == "to_world")
+                {
+                    const auto& transform = prop.second.getTransform();
                     for (int i = 0; i < 4; i++)
                     {
                         for (int j = 0; j < 4; j++)
@@ -1704,7 +1726,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     uint32 sphereId = 0;
     for (auto& shape : mitsubaShapes)
     {
-        if (shape.type == EShapeType::triangleMesh || shape.type == EShapeType::rectangle)
+        if (shape.type == EShapeType::triangleMesh || shape.type == EShapeType::rectangle || shape.type == EShapeType::cube)
         {
             str ext = shape.filename.substr(shape.filename.find_last_of(".") + 1);
 
@@ -1852,8 +1874,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     {
                         lightData->type = ELightType::analyticRectangle;
 
-                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
-                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
+                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xy [-1, 1]
+                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 2.0, 0.0));
                         lightData->surfaceArea  = std::abs(tmp.squaredNorm());
                         lightData->lightToWorld = shape.transformationMatrix;
                         lightData->worldToLight = shape.transformationMatrix.inverse();
@@ -1885,11 +1907,17 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 auto& attrib = objReader.GetAttrib();
                 auto& shapes = objReader.GetShapes();
 
+                // FIXME: We could support setting in mitsuba files...
+                bool faceNormals = shape.type == EShapeType::cube; // ignore smoothing groups
+
                 bool hasPositions = !attrib.vertices.empty(), hasIndices = hasPositions, hasNormals = !attrib.normals.empty(), hasUVs = !attrib.texcoords.empty();
                 std::vector<uint32> indices;
-                std::vector<vec3> positions(attrib.vertices.size());
-                std::vector<vec3> normals(attrib.vertices.size());
-                std::vector<vec2> uvs(attrib.vertices.size());
+                std::vector<vec3> positions;
+                std::vector<vec3> normals;
+                std::vector<vec2> uvs;
+                uint32 vertIdx = 0;
+
+                std::unordered_map<uint32, uint32> simpleCache;
 
                 for (size_t s = 0; s < shapes.size(); ++s)
                 {
@@ -1897,18 +1925,30 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f)
                     {
                         size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+                        positions.resize(positions.size() + fv);
+                        normals.resize(positions.size() + fv);
+                        uvs.resize(positions.size() + fv);
 
                         for (size_t v = 0; v < fv; v++)
                         {
                             tinyobj::index_t idx = shapes[s].mesh.indices[indexOffset + v];
 
-                            indices.push_back(idx.vertex_index);
+                            if (!faceNormals && simpleCache.find(idx.vertex_index) != simpleCache.end())
+                            {
+                                uint32 vIdx = simpleCache[idx.vertex_index];
+                                indices.push_back(vIdx);
+                                continue;
+                            }
+
+                            indices.push_back(vertIdx);
+
+                            simpleCache[idx.vertex_index] = vertIdx;
 
                             tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
                             tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
                             tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
-                            positions[idx.vertex_index] = vec3(vx, vy, vz);
+                            positions[vertIdx] = vec3(vx, vy, vz);
 
                             if (idx.normal_index >= 0)
                             {
@@ -1916,7 +1956,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                 tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
                                 tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
 
-                                normals[idx.vertex_index] = vec3(nx, ny, nz);
+                                normals[vertIdx] = vec3(nx, ny, nz);
                             }
 
                             if (idx.texcoord_index >= 0)
@@ -1924,8 +1964,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                 tinyobj::real_t tx = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
                                 tinyobj::real_t ty = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
 
-                                uvs[idx.vertex_index] = vec2(tx, ty);
+                                uvs[vertIdx] = vec2(tx, ty);
                             }
+                            vertIdx++;
                         }
                         indexOffset += fv;
                     }
@@ -1982,8 +2023,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     {
                         lightData->type = ELightType::analyticRectangle;
 
-                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xz [-1, 1]
-                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 0.0, 2.0));
+                        lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xy [-1, 1]
+                        vec3 tmp                = (shape.transformationMatrix.block<3, 3>(0, 0) * vec3(2.0, 2.0, 0.0));
                         lightData->surfaceArea  = std::abs(tmp.squaredNorm());
                         lightData->lightToWorld = shape.transformationMatrix;
                         lightData->worldToLight = shape.transformationMatrix.inverse();

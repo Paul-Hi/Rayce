@@ -1,0 +1,94 @@
+<scene version="3.0.0">
+    <bsdf type="diffuse" id="plane_diff">
+        <rgb name="reflectance" value="0.5, 0.5, 0.5" />
+    </bsdf>
+    <bsdf type="roughconductor" id="smoothest">
+        <float name="alpha" value="0.005" />
+    </bsdf>
+    <bsdf type="roughconductor" id="smooth">
+        <float name="alpha" value="0.01" />
+    </bsdf>
+    <bsdf type="roughconductor" id="rough">
+        <float name="alpha" value="0.1" />
+    </bsdf>
+    <bsdf type="roughconductor" id="roughest">
+        <float name="alpha" value="0.2" />
+    </bsdf>
+    <bsdf type="diffuse" id="none">
+        <rgb name="reflectance" value="0.0, 0.0, 0.0" />
+    </bsdf>
+
+    <shape type="cube" id="smoothest_cube">
+        <transform name="to_world">
+            <scale y="0.03" z="0.2" />
+            <rotate x="1" angle="38" />
+            <translate y="0.6" z="0.25" />
+        </transform>
+        <ref id="smoothest" />
+    </shape>
+    <shape type="cube" id="smooth_cube">
+        <transform name="to_world">
+            <scale y="0.03" z="0.2" />
+            <rotate x="1" angle="18" />
+            <translate y="0.35" z="0.7" />
+        </transform>
+        <ref id="smooth" />
+    </shape>
+    <shape type="cube" id="rough_cube">
+        <transform name="to_world">
+            <scale y="0.03" z="0.2" />
+            <rotate x="1" angle="9" />
+            <translate y="0.225" z="1.2" />
+        </transform>
+        <ref id="rough" />
+    </shape>
+    <shape type="cube" id="roughest_cube">
+        <transform name="to_world">
+            <scale y="0.03" z="0.2" />
+            <rotate x="1" angle="0" />
+            <translate y="0.18" z="1.72" />
+        </transform>
+        <ref id="roughest" />
+    </shape>
+
+    <shape type="rectangle" id="back">
+        <transform name="to_world">
+            <scale x="3" />
+            <translate y="1"/>
+        </transform>
+        <ref id="plane_diff" />
+    </shape>
+    <shape type="rectangle" id="bottom">
+        <transform name="to_world">
+            <scale x="3" />
+            <rotate x="1" angle="-90" />
+            <translate z="1" />
+        </transform>
+        <ref id="plane_diff" />
+    </shape>
+
+    <shape type="sphere" id="light_small">
+        <float name="radius" value="0.005" />
+        <point name="center" x="-0.7" y="1" z="0.15" />
+        <emitter type="area">
+            <rgb name="radiance" value="50, 50, 300" />
+        </emitter>
+        <ref id="none" />
+    </shape>
+    <shape type="sphere" id="light_medium">
+        <float name="radius" value="0.05" />
+        <point name="center" x="0" y="1" z="0.15" />
+        <emitter type="area">
+            <rgb name="radiance" value="1.75, 1.75, 0.5" />
+        </emitter>
+        <ref id="none" />
+    </shape>
+    <shape type="sphere" id="light_large">
+        <float name="radius" value="0.1" />
+        <point name="center" x="0.7" y="1" z="0.15" />
+        <emitter type="area">
+            <rgb name="radiance" value="0.7, 0.15, 0.15" />
+        </emitter>
+        <ref id="none" />
+    </shape>
+</scene>

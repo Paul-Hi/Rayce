@@ -107,12 +107,12 @@ struct RectangleSampler : ISampler
 
         // sample in -1, 1
         const float2 uv = Random::rand2() * 2.0 - 1.0;
-        sample.point = mul(lightData.lightToWorld, float4(uv.x, 0.0, uv.y, 1.0)).xyz;
+        sample.point = mul(lightData.lightToWorld, float4(uv.x, uv.y, 0.0, 1.0)).xyz;
 
 
         sample.pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
+        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 0.0, 1.0, 0.0)).xyz);
         if(finalizeSolidAngleSampling(sample.pdf, normal, point, sample.point))
         {
             return sample;
@@ -126,7 +126,7 @@ struct RectangleSampler : ISampler
     {
         float pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 1.0, 0.0, 0.0)).xyz);
+        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 0.0, 1.0, 0.0)).xyz);
         if(finalizeSolidAngleSampling(pdf, normal, point, samplePoint))
         {
             return pdf;
