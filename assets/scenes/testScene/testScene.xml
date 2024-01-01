@@ -25,8 +25,8 @@
 
     <bsdf type="roughconductor" id="gold">
         <string name="material" value="Au" />
-        <float name="alpha_u" value="0.1" />
-        <float name="alpha_v" value="0.01" />
+        <float name="alpha_u" value="0.05" />
+        <float name="alpha_v" value="0.2" />
     </bsdf>
 
     <bsdf type="twosided" id="blue">
@@ -102,25 +102,14 @@
 
     <shape type="rectangle" id="main_light_source">
         <transform name="to_world">
-            <scale x="0.3" y="0.3" />
+            <scale x="0.4" y="0.4" />
             <rotate x="1" angle="90" />
             <translate x="0" y="3.99" />
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="20.0, 18.0, 18.0" />
+            <rgb name="radiance" value="14, 13, 12" />
         </emitter>
         <ref id="light" />
-    </shape>
-
-    <shape type="ply" id="bunny">
-        <string name="filename" value="bunny.ply" />
-        <transform name="to_world">
-            <rotate y="1" angle="18" />
-            <rotate z="1" angle="-21" />
-            <rotate x="1" angle="-16" />
-            <translate x="0.5" y="0.76" z="0.5" />
-        </transform>
-        <ref id="rough_glass" />
     </shape>
 
     <shape type="sphere" id="large_sphere">
@@ -129,6 +118,17 @@
             <translate x="0.25" y="1.5" z="-1" />
         </transform>
         <ref id="gold" />
+    </shape>
+
+    <!--<shape type="ply" id="bunny">
+        <string name="filename" value="bunny.ply" />
+        <transform name="to_world">
+            <rotate y="1" angle="18" />
+            <rotate z="1" angle="-21" />
+            <rotate x="1" angle="-16" />
+            <translate x="0.5" y="0.76" z="0.5" />
+        </transform>
+        <ref id="rough_glass" />
     </shape>
 
     <shape type="obj" id="teapot_lid">
@@ -151,6 +151,6 @@
             <translate x="-1" z="0.25" y="1"/>
         </transform>
         <ref id="some_plastic" />
-    </shape>
+    </shape>-->
 
 </scene>

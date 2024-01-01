@@ -99,6 +99,7 @@ namespace rayce
         std::unique_ptr<class ShaderModule> pSphereIntersectionShader;
         std::unique_ptr<class ShaderModule> pClosestHitSphereShader;
         std::unique_ptr<class ShaderModule> pMissShader;
+        std::unique_ptr<class ShaderModule> pMissShadowShader;
 
         std::unique_ptr<class Buffer> pShaderBindingTableBuffer;
         uint32 mAlignedHandleSize;

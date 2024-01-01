@@ -4,7 +4,6 @@ import data;
 struct SphereIntersection
 {
     float t;
-    bool inside;
 };
 
 SphereIntersection intersectSphere(const Sphere s, const float3 origin, const float3 direction)
@@ -16,7 +15,6 @@ SphereIntersection intersectSphere(const Sphere s, const float3 origin, const fl
     const float c = dot(d, d) - s.radius * s.radius;
     const float discriminant = b * b - 4.0 * a * c;
     sphereIntersection.t = -1.0;
-    sphereIntersection.inside = false;
     if(discriminant < 0)
     {
         return sphereIntersection;
@@ -36,7 +34,7 @@ SphereIntersection intersectSphere(const Sphere s, const float3 origin, const fl
         {
             return sphereIntersection;
         }
-        sphereIntersection.inside = t0 >= 0 && t1 <= 0 || t0 <= 0 && t1 >= 0;
+
         sphereIntersection.t = max(t0, t1);
         return sphereIntersection;
     }
@@ -45,15 +43,13 @@ SphereIntersection intersectSphere(const Sphere s, const float3 origin, const fl
 [shader("intersection")]
 void main()
 {
-    Sphere sphere = gSpheres.Load(PrimitiveIndex());
-    SphereIntersectionAttributes attributes;
+    Sphere sphere = gSpheres[PrimitiveIndex()];
 
     uint hitKind = (uint)EHitKind::proceduralSphere; // FIXME: Always that atm.
 
     SphereIntersection sphereIntersection = intersectSphere(sphere, WorldRayOrigin(), WorldRayDirection());
     if(sphereIntersection.t >= 0.0)
     {
-        attributes.inside = sphereIntersection.inside;
-        ReportHit(sphereIntersection.t, hitKind, attributes);
+        ReportHit(sphereIntersection.t, hitKind, new SphereIntersectionAttributes());
     }
 }

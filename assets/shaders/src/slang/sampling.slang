@@ -26,6 +26,8 @@ interface ISampler
 {
     static GeometrySample sampleSolidAngle(const float3 point, const Light lightData);
     static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint = float3(0.0));
+
+    static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint = float3(0.0));
 };
 
 struct SphereSampler : ISampler
@@ -97,6 +99,16 @@ struct SphereSampler : ISampler
 
         return 1.0 / (TWO_PI * (1.0 - cosThetaMax));
     }
+
+    static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint)
+    {
+        const float3 wDir = lightData.wCenter - point;
+        const float dist = length(wDir);
+
+        const float radius = (mul(lightData.lightToWorld, float4(1.0, 0.0, 0.0, 1.0)).xyz - lightData.wCenter).x;
+
+        return (dist > radius);
+    }
 }
 
 struct RectangleSampler : ISampler
@@ -112,13 +124,12 @@ struct RectangleSampler : ISampler
 
         sample.pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 0.0, 1.0, 0.0)).xyz);
-        if(finalizeSolidAngleSampling(sample.pdf, normal, point, sample.point))
+        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        if(!finalizeSolidAngleSampling(sample.pdf, normal, point, sample.point))
         {
-            return sample;
+            sample.pdf = 0.0;
         }
 
-        sample.pdf = 0.0;
         return sample;
     }
 
@@ -126,20 +137,28 @@ struct RectangleSampler : ISampler
     {
         float pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.worldToLight, float4(0.0, 0.0, 1.0, 0.0)).xyz);
-        if(finalizeSolidAngleSampling(pdf, normal, point, samplePoint))
+        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        if(!finalizeSolidAngleSampling(pdf, normal, point, samplePoint))
         {
-            return pdf;
+            return 0.0;
         }
 
-        return 0.0;
+        return pdf;
+    }
+
+    static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint)
+    {
+        const float3 w = point - samplePoint;
+        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+
+        return dot(w, normal) > 0.0;
     }
 }
 
 float pdfLight(const int lightId, const float3 surfacePoint, const float3 samplePoint)
 {
     float pdf = 1.0 / gPushConstants.lightCount;
-    const Light light = gLights.Load(lightId);
+    const Light light = gLights[lightId];
 
     if(light.type == ELightType::analyticSphere)
     {
@@ -153,15 +172,28 @@ float pdfLight(const int lightId, const float3 surfacePoint, const float3 sample
     return 0.0;
 }
 
-LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpace space)
+bool lightSampleOrientationValid(const int lightId, const float3 surfacePoint, const float3 samplePoint)
+{
+    const Light light = gLights[lightId];
+
+    if(light.type == ELightType::analyticSphere)
+    {
+        return SphereSampler::sampleOrientationValid(surfacePoint, light);
+    }
+    else if(light.type == ELightType::analyticRectangle)
+    {
+        return RectangleSampler::sampleOrientationValid(surfacePoint, light, samplePoint);
+    }
+
+    return false;
+}
+
+Optional<LightSample> sampleLights(const float3 p, const int lightId, const CoordinateSpace space)
 {
     LightSample lightSample;
     if(lightId >= 0 && gPushConstants.lightCount == 1)
     {
-        lightSample.pdf = 0.0;
-        lightSample.radiance = float3(0.0);
-        lightSample.valid = false;
-        return lightSample;
+        return none;
     }
 
     int lightIndex;
@@ -171,7 +203,7 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
         lightIndex = int(Random::rand() * gPushConstants.lightCount);
     } while(lightIndex == lightId);
 
-    Light sampledLight = gLights.Load(lightIndex);
+    Light sampledLight = gLights[lightIndex];
     GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
     {
@@ -185,10 +217,7 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
     }
     else
     {
-        lightSample.pdf = 0.0;
-        lightSample.radiance = float3(0.0);
-        lightSample.valid = false;
-        return lightSample;
+        return none;
     }
 
     float3 wDir = sample.point - p;
@@ -200,13 +229,10 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
 
     if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
     {
-        lightSample.pdf = 0.0;
-        lightSample.radiance = float3(0.0);
-        lightSample.valid = false;
-        return lightSample;
+        return none;
     }
 
-    RayPayload pld;
+    ShadowRayPayload pld;
     pld.hit = true;
     RayDesc rayDescriptor;
     rayDescriptor.Origin = p + space.normal * EPSILON;
@@ -219,21 +245,18 @@ LightSample sampleLights(const float3 p, const int lightId, const CoordinateSpac
         0xff,   // cullMask
         0,      // sbtRecordOffset
         0,      // sbtRecordStride
-        0,      // missIndex
+        1,      // missIndex
         rayDescriptor,
         pld
     );
 
     if(pld.hit)
     {
-        lightSample.pdf = 0.0;
-        lightSample.radiance = float3(0.0);
-        lightSample.valid = false;
-        return lightSample;
+        return none;
     }
 
     lightSample.radiance = nDotL * gPushConstants.lightCount * sampledLight.radiance;
 
-    lightSample.valid = true;
+    lightSample.valid = lightSample.pdf > 0.0;
     return lightSample;
 };

@@ -76,7 +76,7 @@ static EBxDFType bsdfFromPluginType(const str& pluginType)
 {
     if (pluginType == "diffuse")
     {
-        return EBxDFType::diffuse;
+        return EBxDFType::lambertDiffuse;
     }
     else if (pluginType == "dielectric")
     {
@@ -364,7 +364,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         }
         break;
     }
-    case EBxDFType::diffuse:
+    case EBxDFType::lambertDiffuse:
     {
         if (props.contains("reflectance"))
         {
@@ -982,7 +982,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
                     if (prop.first == "radius")
                     {
-                        const auto& sRadius = prop.second.getNumber();
+                        const auto& sRadius                                     = prop.second.getNumber();
                         shape.transformationMatrix.block<3, 3>(0, 0).diagonal() = vec3(sRadius, sRadius, sRadius);
                     }
                 }
@@ -1072,7 +1072,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
         switch (bsdf.type)
         {
-        case EBxDFType::diffuse:
+        case EBxDFType::lambertDiffuse:
         {
             if (bsdf.possibleData.diffuseReflectanceTexture >= 0)
             {

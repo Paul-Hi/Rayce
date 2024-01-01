@@ -3,11 +3,14 @@ __exported import hostDeviceInterop;
 static const float INFINITY = 1e32;
 static const float EPSILON = 1e-6;
 
-static const float PI = 3.1415926535897932384626433832795;
-static const float INV_PI = (1.0 / PI);
+static const float PI = 3.14159265358979323846;
 static const float TWO_PI = (2.0 * PI);
-static const float HALF_PI = (0.5 * PI);
-static const float QUARTER_PI = (0.25 * PI);
+static const float INV_PI = 0.31830988618379067154;
+static const float INV_TWO_PI = 0.15915494309189533577;
+static const float INV_FOUR_PI = 0.07957747154594766788;
+static const float HALF_PI = 1.57079632679489661923;
+static const float QUARTER_PI = 0.78539816339744830961;
+static const float SQRT2 = 1.41421356237309504880;
 
 struct DeviceTriangle
 {
@@ -35,35 +38,79 @@ struct DeviceSphere
     int lightId;
 };
 
-enum EHitKind : uint
+enum EHitKind : uint8_t
 {
     triangleMesh = 0,
     proceduralSphere = 1
 };
 
-struct Hit
-{
-    EHitKind hitKind;
-    uint primitiveId;
-    uint instanceCustomIndex;
-    float2 hitAttributes;
-    float4x3 worldToObject;
-    float4x3 objectToWorld;
-};
-
+// FIXME: We should reduce the size - can we get rid of the matrix? - what about packing?
 struct RayPayload
 {
-    bool hit;
     float3 hitPoint;
-    Hit hitInfo;
+    bool hit;
+
+    float4x3 worldToObject;
+    // float4x3 objectToWorld;
+
+    float2 hitAttributes;
+    uint primitiveId;
+    uint instanceCustomIndex;
+
+    EHitKind hitKind;
 };
+
+struct ShadowRayPayload
+{
+    bool hit;
+};
+
+enum EBxDFFlags : uint
+{
+    unset                = 0,
+
+    reflection           = 1 << 0,
+    transmission         = 1 << 1,
+
+    diffuse              = 1 << 2,
+    glossy               = 1 << 3,
+    specular             = 1 << 4,
+
+    diffuseReflection    = (uint)EBxDFFlags::diffuse | (uint)EBxDFFlags::reflection,
+    diffuseTransmission  = (uint)EBxDFFlags::diffuse | (uint)EBxDFFlags::transmission,
+
+    glossyReflection     = (uint)EBxDFFlags::glossy | (uint)EBxDFFlags::reflection,
+    glossyTransmission   = (uint)EBxDFFlags::glossy | (uint)EBxDFFlags::transmission,
+
+    specularReflection   = (uint)EBxDFFlags::specular | (uint)EBxDFFlags::reflection,
+    specularTransmission = (uint)EBxDFFlags::specular | (uint)EBxDFFlags::transmission,
+
+    all                  = (uint)EBxDFFlags::diffuse | (uint)EBxDFFlags::glossy | (uint)EBxDFFlags::specular |
+                            (uint)EBxDFFlags::reflection | (uint)EBxDFFlags::transmission
+};
+
+bool isReflective(EBxDFFlags f) { return ((uint)f & (uint)EBxDFFlags::reflection) != 0; }
+bool isTransmissive(EBxDFFlags f) { return ((uint)f & (uint)EBxDFFlags::transmission) != 0; }
+bool isDiffuse(EBxDFFlags f) { return ((uint)f & (uint)EBxDFFlags::diffuse) != 0; }
+bool isGlossy(EBxDFFlags f) { return ((uint)f & (uint)EBxDFFlags::glossy) != 0; }
+bool isSpecular(EBxDFFlags f) { return ((uint)f & (uint)EBxDFFlags::specular) != 0; }
+bool isNonSpecular(EBxDFFlags f) { return ((uint)f & ((uint)EBxDFFlags::diffuse | (uint)EBxDFFlags::glossy)) != 0; }
 
 struct BxDFSample
 {
-    float3 reflectance;
+    float3 f;
+    float eta = 1.0;
     float3 wi;
-    float pdf;
-    bool dirac;
+    float pdf = 0.0;
+    EBxDFFlags flags = EBxDFFlags::unset;
+
+    bool proportionalPDF = false;
+
+    bool isReflection() { return isReflective(flags); }
+    bool isTransmission() { return isTransmissive(flags); }
+    bool isDiffuse() { return isDiffuse(flags); }
+    bool isGlossy() { return isGlossy(flags); }
+    bool isSpecular() { return isSpecular(flags); }
 };
 
 struct MicrofacetSample
@@ -75,15 +122,13 @@ struct MicrofacetSample
 struct LightSample
 {
     float3 radiance;
+    float pdf = 0.0;
     float3 wi;
-    float pdf;
-    bool valid;
+    bool valid = false;
 };
 
-struct SphereIntersectionAttributes
-{
-    bool inside;
-};
+
+struct SphereIntersectionAttributes {};
 
 struct Ray
 {

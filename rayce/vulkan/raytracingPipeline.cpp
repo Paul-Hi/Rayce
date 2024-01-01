@@ -150,10 +150,11 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pSphereIntersectionShader = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\sphereIntersection.slang.spv");
     pClosestHitSphereShader   = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHitSphere.slang.spv");
     pMissShader               = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\miss.slang.spv");
+    pMissShadowShader         = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\missShadow.slang.spv");
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { pRayGenShader->createShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_KHR), pClosestHitShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR),
                                                        pClosestHitSphereShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR), pSphereIntersectionShader->createShaderStage(VK_SHADER_STAGE_INTERSECTION_BIT_KHR),
-                                                       pMissShader->createShaderStage(VK_SHADER_STAGE_MISS_BIT_KHR) };
+                                                       pMissShader->createShaderStage(VK_SHADER_STAGE_MISS_BIT_KHR), pMissShadowShader->createShaderStage(VK_SHADER_STAGE_MISS_BIT_KHR) };
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroupCreateInfos;
 
@@ -182,9 +183,12 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     rtShaderGroupCreateInfo.generalShader      = 4;
     shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
 
+    rtShaderGroupCreateInfo.generalShader = 5;
+    shaderGroupCreateInfos.push_back(rtShaderGroupCreateInfo);
+
     VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCreateInfo{};
     rayTracingPipelineCreateInfo.sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    rayTracingPipelineCreateInfo.stageCount                   = 5;
+    rayTracingPipelineCreateInfo.stageCount                   = 6;
     rayTracingPipelineCreateInfo.pStages                      = shaderStages;
     rayTracingPipelineCreateInfo.groupCount                   = static_cast<uint32>(shaderGroupCreateInfos.size());
     rayTracingPipelineCreateInfo.pGroups                      = shaderGroupCreateInfos.data();
@@ -211,7 +215,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     mAlignedHandleSize                       = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupHandleAlignment);
     const uint32 raygenBaseAlignedHandleSize = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
     const uint32 cHitBaseAlignedHandleSize   = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize * 2, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
-    const uint32 missBaseAlignedHandleSize   = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
+    const uint32 missBaseAlignedHandleSize   = quickAlign(physicalDeviceRayTracingPipelineProperties.shaderGroupHandleSize * 2, physicalDeviceRayTracingPipelineProperties.shaderGroupBaseAlignment);
     const uint32 groupCount                  = rayTracingPipelineCreateInfo.groupCount;
     mRayGenOffset                            = 0;
     mCHitOffset                              = raygenBaseAlignedHandleSize;
@@ -219,7 +223,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     // intersection shders are not included here?!
     mRayGenSize = mAlignedHandleSize * 1;
     mCHitSize   = mAlignedHandleSize * 2;
-    mMissSize   = mAlignedHandleSize * 1;
+    mMissSize   = mAlignedHandleSize * 2;
 
     const uint32 shaderBindingTableSize = raygenBaseAlignedHandleSize + cHitBaseAlignedHandleSize + missBaseAlignedHandleSize;
     pShaderBindingTableBuffer =
@@ -230,11 +234,11 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_CHECK_VK(pRTF->vkGetRayTracingShaderGroupHandlesKHR(mVkLogicalDeviceRef, mVkPipeline, 0, groupCount, shaderBindingTableSize, shaderHandleTempStorage.data()),
                    "Getting ray tracing shader group handles failed!");
     byte* mappedMemory = static_cast<byte*>(pShaderBindingTableBuffer->getDeviceMemory()->map(0, shaderBindingTableSize));
-    std::memcpy(mappedMemory, shaderHandleTempStorage.data(), mAlignedHandleSize);
+    std::memcpy(mappedMemory, shaderHandleTempStorage.data(), mRayGenSize);
     mappedMemory += raygenBaseAlignedHandleSize;
-    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + mAlignedHandleSize, 2 * mAlignedHandleSize);
+    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + mRayGenSize, mCHitSize);
     mappedMemory += cHitBaseAlignedHandleSize;
-    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + 3 * mAlignedHandleSize, mAlignedHandleSize);
+    std::memcpy(mappedMemory, shaderHandleTempStorage.data() + mRayGenSize + mCHitSize, mMissSize);
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 
     // descriptor sets

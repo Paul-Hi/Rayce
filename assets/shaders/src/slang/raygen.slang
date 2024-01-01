@@ -20,11 +20,11 @@ void main()
     uv = uv * 2.0 - 1.0;
 
     // FIXME: Precompiling the different integrator shaders should increase performance...
-    let integrator = gPushConstants.integrator;
+    let integratorT = gPushConstants.integrator;
     // (gPushConstants.frame == 0 && gPushConstants.integrator == EIntegratorType::path)
     //                        ? EIntegratorType::direct : gPushConstants.integrator;
 
-    switch(integrator)
+    switch(integratorT)
     {
         case EIntegratorType::direct:
             {

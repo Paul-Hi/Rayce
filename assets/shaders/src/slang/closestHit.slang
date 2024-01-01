@@ -5,10 +5,10 @@ void main(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes att
 {
     payload.hit = true;
     payload.hitPoint = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    payload.hitInfo.hitKind = EHitKind::triangleMesh;
-    payload.hitInfo.primitiveId = PrimitiveIndex();
-    payload.hitInfo.instanceCustomIndex = InstanceID();
-    payload.hitInfo.hitAttributes = attributes.barycentrics;
-    payload.hitInfo.worldToObject = WorldToObject4x3();
-    payload.hitInfo.objectToWorld = ObjectToWorld4x3();
+    payload.hitKind = EHitKind::triangleMesh;
+    payload.primitiveId = PrimitiveIndex();
+    payload.instanceCustomIndex = InstanceID();
+    payload.hitAttributes = attributes.barycentrics;
+    payload.worldToObject = WorldToObject4x3();
+    //payload.objectToWorld = ObjectToWorld4x3();
 }

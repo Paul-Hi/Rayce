@@ -13,6 +13,37 @@ interface IIntegrator
     IntegratorPathState estimate(const float2 uv);
 };
 
+struct IntersectionInfo
+{
+    float2 uv;
+    Material material;
+    CoordinateSpace space;
+
+    int lightId;
+};
+
+// FIXME: Should use that, but inline produces invalid code
+//[ForceInline]
+void getIntersectionInfo(const RayPayload payload, out IntersectionInfo iInfo)
+{
+    if(payload.hitKind == EHitKind::triangleMesh)
+    {
+        DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject);
+        iInfo.material = gMaterials[triangle.materialId];
+        iInfo.uv = triangle.interpolatedUV;
+        iInfo.lightId = triangle.lightId;
+        iInfo.space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+    }
+    else if(payload.hitKind == EHitKind::proceduralSphere)
+    {
+        DeviceSphere sphere = getSphere(payload.hitPoint, payload.primitiveId, payload.instanceCustomIndex, payload.worldToObject);
+        iInfo.material = gMaterials[sphere.materialId];
+        iInfo.uv = sphere.uv;
+        iInfo.lightId = sphere.lightId;
+        iInfo.space = CoordinateSpace(sphere.normal, true);
+    }
+}
+
 struct PathIntegrator : IIntegrator
 {
     struct PathState
@@ -83,102 +114,121 @@ struct PathIntegrator : IIntegrator
     PathState estimate(const float2 uv)
     {
         const int maxDepth = gPushConstants.maxDepth; // hopyfully never reached
-        const int russianRouletteStart = clamp(3, 0, maxDepth - 1);
+        const int russianRouletteStart = min(1, maxDepth - 1);
 
         PathState pathState;
         pathState.scatterRay = createPrimaryRay(uv);
 
-        LightSample lightSample;
-        lightSample.pdf = 1.0;
-        BxDFSample bxdfSample;
-        bxdfSample.pdf = 1.0;
-        bxdfSample.dirac = false;
-        CoordinateSpace space;
-        space.normal = float3(0.0);
+        float pdfBxDF = 1.0;
+        bool specularBounce = false;
+        bool anyNonSpecularBounces = false;
+        float etaScale = 1.0;
 
-        for(uint depth = 0; depth <= maxDepth; ++depth)
+        RayPayload payload;
+        IntersectionInfo iInfo;
+        uint depth = 0;
+
+        // FIXME Next: Rework everything to make it work more like pbrt:
+        // That means:
+        // - rework the bsdfs again
+        //     - merge rough and non rough and compare to pbrt
+        //     - add layered bsdf (maybe the falcor version here) and build the plastic from that to support mitsuba stuff
+
+        while(true)
         {
-            RayPayload payload;
             traceRay(pathState.scatterRay, payload);
 
-            if(payload.hit)
+            if(!payload.hit)
             {
-                int lightId = -1;
-                float2 uv;
-                Material mat;
-                if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
-                {
-                    DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, pathState.scatterRay.origin, payload.hitPoint);
-                    mat = gMaterials[triangle.materialId];
-                    uv = triangle.interpolatedUV;
-                    lightId = triangle.lightId;
-                    space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
-                }
-                else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
-                {
-                    DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject);
-                    mat = gMaterials[sphere.materialId];
-                    uv = sphere.uv;
-                    space = CoordinateSpace(sphere.normal, true);
-                    lightId = sphere.lightId;
-                }
-                let material = mat.getMaterial();
+                // incorporate infinite lights?
+                break;
+            }
+            else
+            {
+                getIntersectionInfo(payload, iInfo); // FIXME
 
-                if(lightId >= 0)
+                if(iInfo.lightId >= 0)
                 {
                     // uses bxdfSample from last point
-                    float lightPdf = (depth == 0 || bxdfSample.dirac) ? 1.0 : pdfLight(lightId, pathState.scatterRay.origin, payload.hitPoint);
-                    if(lightPdf > 0.0)
+                    bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                    if(orientationValid)
                     {
-                        float miWeight = depth == 0 ? 1.0 : powerHeuristic(bxdfSample.pdf, lightPdf);
 
-                        pathState.L += pathState.throughput * miWeight * gLights[lightId].radiance;
+                        if(depth == 0 || specularBounce)
+                        {
+                            pathState.L += pathState.throughput * gLights[iInfo.lightId].radiance;
+                        }
+                        else
+                        {
+                            float lightPdf = pdfLight(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                            float miWeight = powerHeuristic(pdfBxDF, lightPdf);
+
+                            pathState.L += pathState.throughput * miWeight * gLights[iInfo.lightId].radiance;
+                        }
                     }
                 }
 
-                const float3 wo = space.worldToTangentFrame(-pathState.scatterRay.direction);
-
-                let singleBsdf = material.createBxDF(uv);
-                let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
-
-                if(!bsdf.isDirac())
+                if (depth++ == maxDepth)
                 {
-                    lightSample = sampleLights(payload.hitPoint, lightId, space);
-                    if(lightSample.valid)
+                    break;
+                }
+
+                const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+
+                let material = iInfo.material.getMaterial();
+                let singleBsdf = material.createBxDF(iInfo.uv);
+                let bsdf = material.getAdapter(singleBsdf, iInfo.material.twoSided == 1);
+
+                if(isNonSpecular(bsdf.flags()))
+                {
+                    Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space);
+                    if(lightSample != none)
                     {
-                        float bsdfPdf = bsdf.pdf(wo, lightSample.wi);
-                        float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                        pathState.L += lightSample.pdf > 0.0 ? pathState.throughput * miWeight * bsdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf : float3(0.0);
+                        float bsdfPdf = bsdf.pdf(wo, lightSample.value.wi);
+                        float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
+                        float3 f = bsdf.f(wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
+                        pathState.L += pathState.throughput * miWeight * f * lightSample.value.radiance / lightSample.value.pdf;
                     }
                 }
 
-                bxdfSample = bsdf.sample(wo);
+                Optional<BxDFSample> optionalSample = bsdf.sample(wo);
 
-                float nDotL = cosThetaTS(bxdfSample.wi);
+                if(optionalSample == none)
+                {
+                    break;
+                }
 
-                pathState.throughput *= bxdfSample.pdf > 0.0 ? bxdfSample.reflectance * abs(nDotL) / bxdfSample.pdf : 0.0;
+                BxDFSample bxdfSample = optionalSample.value;
+
+                pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / bxdfSample.pdf;
+                pdfBxDF = bxdfSample.proportionalPDF ? bsdf.pdf(wo, bxdfSample.wi) : bxdfSample.pdf;
+                specularBounce = bxdfSample.isSpecular();
+                anyNonSpecularBounces |= !specularBounce;
+
+                if(bxdfSample.isTransmission())
+                {
+                    etaScale *= sqr(bxdfSample.eta);
+                }
 
                 // russian roulette
-                if (depth >= russianRouletteStart)
+                float3 rrBeta = etaScale * pathState.throughput;
+                float maxRRBeta = max(max(rrBeta.x, rrBeta.y), rrBeta.z);
+                if (maxRRBeta < 1.0 && depth > russianRouletteStart)
                 {
-                    float p = max(max(pathState.throughput.x, max(pathState.throughput.y, pathState.throughput.z)), EPSILON);
-                    if (Random::rand() > p)
+                    float q = max(1.0 - maxRRBeta, 0.0);
+                    if (Random::rand() < q)
                     {
                         break;
                     }
 
-                    pathState.throughput *= 1.0 / p;
+                    pathState.throughput *= 1.0 / (1.0 - q);
                 }
 
                 pathState.bounces++;
                 pathState.length += length(payload.hitPoint - pathState.scatterRay.origin);
                 pathState.scatterRay.origin = payload.hitPoint;
-                pathState.scatterRay.direction = space.tangentToWorld(bxdfSample.wi);
-
-                continue;
+                pathState.scatterRay.direction = iInfo.space.tangentToWorld(bxdfSample.wi);
             }
-
-            break;
         }
 
         return pathState;
@@ -247,7 +297,7 @@ struct DirectIntegrator : IIntegrator
     PathState estimate(const float2 uv)
     {
         PathState pathState;
-
+/*
         LightSample lightSample;
         lightSample.pdf = 1.0;
         BxDFSample bxdfSample;
@@ -265,17 +315,17 @@ struct DirectIntegrator : IIntegrator
             int lightId = -1;
             float2 uv;
             Material mat;
-            if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
+            if(payload.hitKind == EHitKind::triangleMesh)
             {
-                DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, cameraRay.origin, payload.hitPoint);
+                DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject, cameraRay.origin, payload.hitPoint);
                 mat = gMaterials[triangle.materialId];
                 uv = triangle.interpolatedUV;
                 lightId = triangle.lightId;
                 space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
-            else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
+            else if(payload.hitKind == EHitKind::proceduralSphere)
             {
-                DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject);
+                DeviceSphere sphere = getSphere(payload.hitPoint, payload.instanceCustomIndex, payload.primitiveId, payload.hitAttributes, payload.worldToObject);
                 mat = gMaterials[sphere.materialId];
                 uv = sphere.uv;
                 space = CoordinateSpace(sphere.normal, true);
@@ -290,7 +340,7 @@ struct DirectIntegrator : IIntegrator
                 return pathState;
             }
 
-            const float3 wo = space.worldToTangentFrame(-cameraRay.direction);
+            const float3 wi = space.worldToTangentFrame(-cameraRay.direction);
 
             let singleBsdf = material.createBxDF(uv);
             let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
@@ -300,14 +350,14 @@ struct DirectIntegrator : IIntegrator
                 lightSample = sampleLights(payload.hitPoint, lightId, space);
                 if(lightSample.valid)
                 {
-                    float bsdfPdf = bsdf.pdf(wo, lightSample.wi);
+                    float bsdfPdf = bsdf.pdf(wi, lightSample.wo);
                     float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                    pathState.L = lightSample.pdf > 0.0 ? miWeight * bsdf.evaluate(wo, lightSample.wi) * lightSample.radiance / lightSample.pdf : float3(0.0);
+                    pathState.L = miWeight * bsdf.f(wi, lightSample.wo) * lightSample.radiance;
                     return pathState;
                 }
             }
         }
-
+*/
         return pathState;
     }
 };
@@ -391,21 +441,21 @@ struct DebugIntegrator : IIntegrator
             int lightId = -1;
             float2 uv;
             Material mat;
-            if(payload.hitInfo.hitKind == EHitKind::triangleMesh)
+            if(payload.hitKind == EHitKind::triangleMesh)
             {
-                DeviceTriangle triangle = getTriangle(payload.hitInfo.primitiveId, payload.hitInfo.instanceCustomIndex, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject, cameraRay.origin, payload.hitPoint);
+                DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject);
                 mat = gMaterials[triangle.materialId];
                 uv = triangle.interpolatedUV;
                 lightId = triangle.lightId;
                 space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
             }
-            else if(payload.hitInfo.hitKind == EHitKind::proceduralSphere)
+            else if(payload.hitKind == EHitKind::proceduralSphere)
             {
-                DeviceSphere sphere = getSphere(payload.hitPoint, payload.hitInfo.instanceCustomIndex, payload.hitInfo.primitiveId, payload.hitInfo.hitAttributes, payload.hitInfo.worldToObject);
+                DeviceSphere sphere = getSphere(payload.hitPoint, payload.primitiveId, payload.instanceCustomIndex, payload.worldToObject);
                 mat = gMaterials[sphere.materialId];
                 uv = sphere.uv;
-                space = CoordinateSpace(sphere.normal, true);
                 lightId = sphere.lightId;
+                space = CoordinateSpace(sphere.normal, true);
             }
             let material = mat.getMaterial();
 
@@ -419,12 +469,13 @@ struct DebugIntegrator : IIntegrator
                 return pathState;
             }
 
-            const float3 wo = space.worldToTangentFrame(-cameraRay.direction);
+            const float3 wi = space.worldToTangentFrame(-cameraRay.direction);
 
             let singleBsdf = material.createBxDF(uv);
             let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
 
-            pathState.reflectance = bsdf.sample(wo).reflectance;
+            Optional<BxDFSample> optionalSample = bsdf.sample(wi);
+            pathState.reflectance = optionalSample != none ? optionalSample.value.f : float3(0.0);
         }
 
         return pathState;

@@ -11,6 +11,7 @@ set(SLANG_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/slang/closestHitSphere.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/slang/sphereIntersection.slang
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/slang/miss.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/slang/missShadow.slang
 )
 set(SLANG_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/src/slang/bsdf.slang

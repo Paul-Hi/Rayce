@@ -12,10 +12,51 @@ float sinPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / 
 float cos2PhiTS(in float3 w) { return cosPhiTS(w) * cosPhiTS(w); }
 float sin2PhiTS(in float3 w) { return sinPhiTS(w) * sinPhiTS(w); }
 
-float3 reflectTS(in float3 w) { return float3(-w.x, -w.y, w.z); }
-float3 refractTS(in float3 w, in float cosThetaT, in float etaTI)
+float3 reflectTS(const float3 wi) { return float3(-wi.x, -wi.y, wi.z); }
+Optional<float3> refractTS(const float3 wi, float cosThetaI, float eta, out float etap)
 {
-    return float3(-etaTI * w.x, -etaTI * w.y, cosThetaT);
+    etap = eta;
+
+    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), eta * eta, 1.0);
+
+    // total internal reflection
+    if (cosThetaTSqrd <= 0.0)
+    {
+        return none;
+    }
+
+    float cosThetaT = sqrt(cosThetaTSqrd);
+
+    return float3(-eta * wi.x, -eta * wi.y, cosThetaT);
+}
+
+float3 reflect(const float3 wi, const float3 n)
+{
+    return 2.0 * dot(wi, n) * n - wi;
+}
+
+Optional<float3> refract(const float3 wi, float3 n, float eta, out float etap)
+{
+    float cosThetaI = dot(wi, n);
+    if (cosThetaI < 0.0)
+    {
+        eta = 1.0 / eta;
+        cosThetaI *= -1.0;
+        n *= -1.0;
+    }
+    etap = eta;
+
+    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), eta * eta, 1.0);
+
+    // total internal reflection
+    if (cosThetaTSqrd <= 0.0)
+    {
+        return none;
+    }
+
+    float cosThetaT = sqrt(cosThetaTSqrd);
+
+    return -wi / eta + (cosThetaI / eta - cosThetaT) * n;
 }
 
 // similar to mitsuba
@@ -40,19 +81,34 @@ float hypot2(float a, float b)
     return r;
 }
 
+func sqr<T : __BuiltinFloatingPointType>(T v) -> T
+{
+    return v * v;
+}
+
+func sqr<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> v) -> vector<T, N>
+{
+    return v * v;
+}
+
+func sqr<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, M> v) -> matrix<T, N, M>
+{
+    return v * v;
+}
+
 func safe_sqrt<T : __BuiltinFloatingPointType>(T v) -> T
 {
-    return sqrt(max(T(0.0), v));
+    return sqrt(max(T(1e-9), v)); // looks like slang sqrt(0) is nan?
 }
 
 func safe_sqrt<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> v) -> vector<T, N>
 {
-    return sqrt(max(vector<T, N>(T(0.0)), v));
+    return sqrt(max(vector<T, N>(T(1e-9)), v)); // looks like slang sqrt(0) is nan?
 }
 
 func safe_sqrt<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, M> v) -> matrix<T, N, M>
 {
-    return sqrt(max(matrix<T, N, M>(T(0.0)), v));
+    return sqrt(max(matrix<T, N, M>(T(1e-9)), v)); // looks like slang sqrt(0) is nan?
 }
 
 func multiplyAndAdd<T : __BuiltinFloatingPointType>(T a, T b, T c) -> T
@@ -73,21 +129,6 @@ func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType>(T a, T b, T c) -> T
 func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> a, vector<T, N> b, vector<T, N> c) -> vector<T, N>
 {
     return -a * b + c;
-}
-
-float3 reflect(const float3 wi, const float3 n)
-{
-    return 2.0 * dot(wi, n) * n - wi;
-}
-
-float3 refract(const float3 wi, const float3 n, float cosThetaT, float eta)
-{
-    if (cosThetaT < 0.0)
-    {
-        eta = 1.0 / eta;
-    }
-
-    return n * (dot(wi, n) * eta + cosThetaT) - wi * eta;
 }
 
 struct CoordinateSpace
@@ -213,6 +254,7 @@ float3 linearTosRGB(in float3 linear)
 }
 
 #define RGB_TO_LUM float3(0.2125, 0.7154, 0.0721)
+
 float averageLuminance(const float3 c)
 {
     return dot(RGB_TO_LUM, c);

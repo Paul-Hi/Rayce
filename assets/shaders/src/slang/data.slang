@@ -64,7 +64,8 @@ struct PushConstants
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> gPushConstants;
 
-DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomIndex, const float2 hitAttributes, const float4x3 worldToObject, const float3 viewPosition, const float3 hitPosition)
+
+DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomIndex, const float2 hitAttributes, const float4x3 worldToObject)
 {
     DeviceTriangle tri;
     const uint triangleIndex = primitiveIndex * 3;
@@ -74,6 +75,7 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     const let ib = gIndices[objIdx];
     const let vb = gVertices[objIdx];
 
+    [ForceUnroll]
     for(uint i = 0; i < 3; ++i)
     {
         const uint idx = ib[triangleIndex + i];
@@ -106,7 +108,7 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     return tri;
 }
 
-DeviceSphere getSphere(const float3 hitPoint, const uint instanceCustomIndex, const uint primitiveIndex, const float2 hitAttributes, const float4x3 worldToObject)
+DeviceSphere getSphere(const float3 hitPoint, const uint primitiveIndex, const uint instanceCustomIndex, const float4x3 worldToObject)
 {
     DeviceSphere sphere;
 

@@ -142,7 +142,7 @@ namespace rayce
 
     enum RAYCE_API_EXPORT EBxDFType : uint
     {
-        diffuse              = 0,
+        lambertDiffuse       = 0,
         smoothDielectric     = 1,
         smoothDielectricThin = 2,
         roughDielectric      = 3,
@@ -151,6 +151,12 @@ namespace rayce
         smoothPlastic        = 6,
         roughPlastic         = 7,
         bsdfTypeCount        = 8
+    };
+
+    enum RAYCE_API_EXPORT ETransportMode : uint
+    {
+        radiance   = 0,
+        importance = 1
     };
 
     struct RAYCE_API_EXPORT Light
@@ -250,7 +256,7 @@ namespace rayce
             : diffuseReflectance(float3(0.5, 0.5, 0.5))
             , diffuseReflectanceTexture(-1)
             , twoSided(0)
-            , bxdfType(EBxDFType::diffuse)
+            , bxdfType(EBxDFType::lambertDiffuse)
             , interiorIor(1.5046f)
             , exteriorIor(1.000277f)
             , specularReflectance(float3(1.0, 1.0, 1.0))
@@ -273,7 +279,7 @@ namespace rayce
             this.diffuseReflectance = float3(0.5, 0.5, 0.5);
             this.diffuseReflectanceTexture = -1;
             this.twoSided = 0;
-            this.bxdfType = EBxDFType::diffuse;
+            this.bxdfType = EBxDFType::lambertDiffuse;
             this.interiorIor = 1.5046f;
             this.exteriorIor = 1.000277f;
             this.specularReflectance = float3(1.0, 1.0, 1.0);
