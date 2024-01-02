@@ -12,12 +12,16 @@ float sinPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / 
 float cos2PhiTS(in float3 w) { return cosPhiTS(w) * cosPhiTS(w); }
 float sin2PhiTS(in float3 w) { return sinPhiTS(w) * sinPhiTS(w); }
 
-float3 reflectTS(const float3 wi) { return float3(-wi.x, -wi.y, wi.z); }
-Optional<float3> refractTS(const float3 wi, float cosThetaI, float eta, out float etap)
+float3 reflectTS(const float3 w) { return float3(-w.x, -w.y, w.z); }
+Optional<float3> refractTS(const float3 w, float cosTheta, float eta, out float etap)
 {
+    if (cosTheta < 0.0)
+    {
+        eta = 1.0 / eta;
+    }
     etap = eta;
 
-    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), eta * eta, 1.0);
+    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosTheta, cosTheta, 1.0), 1.0 / sqr(eta), 1.0);
 
     // total internal reflection
     if (cosThetaTSqrd <= 0.0)
@@ -25,28 +29,28 @@ Optional<float3> refractTS(const float3 wi, float cosThetaI, float eta, out floa
         return none;
     }
 
-    float cosThetaT = sqrt(cosThetaTSqrd);
+    float cosThetaT = (cosTheta < 0.0 ? 1.0 : -1.0) * sqrt(cosThetaTSqrd);
 
-    return float3(-eta * wi.x, -eta * wi.y, cosThetaT);
+    return float3(-eta * w.x, -eta * w.y, cosThetaT);
 }
 
-float3 reflect(const float3 wi, const float3 n)
+float3 reflect(const float3 w, const float3 n)
 {
-    return 2.0 * dot(wi, n) * n - wi;
+    return 2.0 * dot(w, n) * n - w;
 }
 
-Optional<float3> refract(const float3 wi, float3 n, float eta, out float etap)
+Optional<float3> refract(const float3 w, float3 n, float eta, out float etap)
 {
-    float cosThetaI = dot(wi, n);
-    if (cosThetaI < 0.0)
+    float cosTheta = dot(n, w);
+    if (cosTheta < 0.0)
     {
         eta = 1.0 / eta;
-        cosThetaI *= -1.0;
+        cosTheta *= -1.0;
         n *= -1.0;
     }
     etap = eta;
 
-    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), eta * eta, 1.0);
+    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosTheta, cosTheta, 1.0), 1.0 / sqr(eta), 1.0);
 
     // total internal reflection
     if (cosThetaTSqrd <= 0.0)
@@ -56,7 +60,7 @@ Optional<float3> refract(const float3 wi, float3 n, float eta, out float etap)
 
     float cosThetaT = sqrt(cosThetaTSqrd);
 
-    return -wi / eta + (cosThetaI / eta - cosThetaT) * n;
+    return -w / eta + (cosTheta / eta - cosThetaT) * n;
 }
 
 // similar to mitsuba

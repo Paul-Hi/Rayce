@@ -214,6 +214,10 @@ struct GGXDistribution
         float2 rand = Random::rand2();
 
         float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
+        if (stretchedWo.z < 0.0)
+        {
+            stretchedWo = -stretchedWo;
+        }
 
         float phi = TWO_PI * rand.x;
         float z = 1.0 - (rand.y * (1.0 + stretchedWo.z));
@@ -446,68 +450,85 @@ struct DiffuseBSDF : IBxDF
     float3 diffuseReflectance;
 };
 
-struct ConductorBSDF : IBxDF
+struct SmoothConductorBSDF : IBxDF
 {
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
 
-        if(distr.effectivelySmooth())
-        {
-            sample.flags = EBxDFFlags::specularReflection;
-            sample.wi = reflectTS(wo);
-            sample.pdf = 1.0;
+        sample.flags = EBxDFFlags::specularReflection;
 
-            const float absCosThetaI = abs(cosThetaTS(sample.wi));
+        sample.wi = reflectTS(wo);
 
-            sample.f = fresnelConductorExact(absCosThetaI, eta, k) * specularReflectance / absCosThetaI;
+        sample.pdf = 1.0;
 
-            return sample;
-        }
-        else
-        {
-            sample.flags = EBxDFFlags::glossyReflection;
+        const float absCosThetaI = abs(cosThetaTS(sample.wi));
 
-            const Optional<MicrofacetSample> mfSample = distr.sample(wo);
+        sample.f = fresnelConductorExact(absCosThetaI, eta, k) * specularReflectance / absCosThetaI;
 
-            if (mfSample == none)
-            {
-                return none;
-            }
+        return sample;
 
-            sample.wi = reflect(wo, mfSample.value.wm);
-
-            const float cosThetaI = cosThetaTS(sample.wi);
-            const float cosThetaO = cosThetaTS(wo);
-
-            if(!sameHemisphere(cosThetaI, cosThetaO))
-            {
-                return none;
-            }
-
-            const float absCosThetaOM = abs(dot(wo, mfSample.value.wm));
-
-            sample.pdf = mfSample.value.pdf / (4.0 * absCosThetaOM);
-
-            const float3 F = fresnelConductorExact(absCosThetaOM, eta, k);
-
-            const float D = distr.D(mfSample.value.wm);
-            const float G = distr.G(wo, sample.wi);
-            sample.f = D * G * F * specularReflectance / (4.0 * abs(cosThetaI) * abs(cosThetaO));
-
-            return sample;
-        }
-
-        return none;
     }
 
     float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
     {
-        if(distr.effectivelySmooth())
+        return float3(0.0);
+    }
+
+    float pdf(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        return 0.0;
+    }
+
+    EBxDFFlags flags()
+    {
+        return EBxDFFlags::specularReflection;
+    }
+
+    float3 eta, k;
+    float3 specularReflectance;
+};
+
+struct RoughConductorBSDF : IBxDF
+{
+    Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
+    {
+        BxDFSample sample;
+
+        sample.flags = EBxDFFlags::glossyReflection;
+
+        const Optional<MicrofacetSample> mfSample = distr.sample(wo);
+
+        if (mfSample == none)
         {
-            return float3(0.0);
+            return none;
         }
 
+        sample.wi = reflect(wo, mfSample.value.wm);
+
+        const float cosThetaI = cosThetaTS(sample.wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        if(!sameHemisphere(cosThetaI, cosThetaO))
+        {
+            return none;
+        }
+
+        const float absCosThetaOM = abs(dot(wo, mfSample.value.wm));
+
+        sample.pdf = mfSample.value.pdf / (4.0 * absCosThetaOM);
+
+        const float3 F = fresnelConductorExact(absCosThetaOM, eta, k);
+
+        const float D = distr.D(mfSample.value.wm);
+        const float G = distr.G(wo, sample.wi);
+        sample.f = D * G * F * specularReflectance / (4.0 * abs(cosThetaI) * abs(cosThetaO));
+
+        return sample;
+    }
+
+    float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
         const float cosThetaI = cosThetaTS(wi);
         const float cosThetaO = cosThetaTS(wo);
 
@@ -535,11 +556,6 @@ struct ConductorBSDF : IBxDF
 
         const float D = distr.D(wm);
 
-        if(D == 0.0)
-        {
-            return float3(0.0);
-        }
-
         const float3 F = fresnelConductorExact(abs(dot(wo, wm)), eta, k);
 
         const float G = distr.G(wo, wi);
@@ -549,11 +565,6 @@ struct ConductorBSDF : IBxDF
 
     float pdf(const float3 wo, const float3 wi, const ETransportMode mode)
     {
-        if(distr.effectivelySmooth())
-        {
-            return 0.0;
-        }
-
         const float cosThetaI = cosThetaTS(wi);
         const float cosThetaO = cosThetaTS(wo);
 
@@ -585,11 +596,343 @@ struct ConductorBSDF : IBxDF
 
     EBxDFFlags flags()
     {
-        return distr.effectivelySmooth() ? EBxDFFlags::specularReflection : EBxDFFlags::glossyReflection;
+        return EBxDFFlags::glossyReflection;
     }
 
     float3 eta, k;
     float3 specularReflectance;
+
+    GGXDistribution distr;
+
+    // bool sampleVisible = true; // FIXME: Add option?
+    // Distribution distribution = Distribution::GGX; // FIXME: Add option?
+};
+
+struct SmoothDielectricBSDF : IBxDF
+{
+    Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
+    {
+        BxDFSample sample;
+
+        float cosThetaO = cosThetaTS(wo);
+        float R = fresnelDielectric(cosThetaO, eta);
+
+        float T = 1.0 - R;
+
+        if(Random::rand() < R) // reflection
+        {
+            sample.flags = EBxDFFlags::specularReflection;
+
+            sample.wi = reflectTS(wo);
+            sample.pdf = R;
+
+            sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
+        }
+        else // transmission
+        {
+            sample.flags = EBxDFFlags::specularTransmission;
+
+            float etap;
+            Optional<float3> optionalDirection = refractTS(wo, cosThetaO, eta, etap);
+
+            if(optionalDirection == none)
+            {
+                return none;
+            }
+
+            sample.wi = optionalDirection.value;
+
+            sample.pdf = T;
+
+            sample.f = T * specularTransmittance / abs(cosThetaTS(sample.wi));
+
+            if(mode == ETransportMode::radiance)
+            {
+                sample.f /= sqr(etap);
+            }
+
+            sample.eta = etap;
+        }
+
+        return sample;
+    }
+
+    float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        return float3(0.0);
+    }
+
+    float pdf(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        return 0.0;
+    }
+
+    EBxDFFlags flags()
+    {
+        return (EBxDFFlags)(((eta == 1.0) ? (uint)EBxDFFlags::transmission : ((uint)EBxDFFlags::reflection | (uint)EBxDFFlags::transmission)) | (uint)EBxDFFlags::specular);
+    }
+
+    float eta;
+    float3 specularReflectance;
+    float3 specularTransmittance;
+};
+
+struct SmoothThinPlateDielectricBSDF : IBxDF
+{
+    Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
+    {
+        BxDFSample sample;
+
+        float cosThetaO = cosThetaTS(wo);
+        float R = fresnelDielectric(abs(cosThetaO), eta);
+
+        if(R < 1.0)
+        {
+            // Account for internal reflections
+            R += sqr(1.0 - R) * R / (1.0 - sqr(R));
+        }
+
+
+        float T = 1.0 - R;
+
+        if(Random::rand() < R) // reflection
+        {
+            sample.flags = EBxDFFlags::specularReflection;
+
+            sample.wi = reflectTS(wo);
+            sample.pdf = R;
+
+            sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
+        }
+        else // transmission
+        {
+            sample.flags = EBxDFFlags::specularTransmission;
+
+            sample.wi = -wo;
+
+            sample.pdf = T;
+
+            sample.f = T * specularTransmittance / abs(cosThetaTS(sample.wi));
+
+            sample.eta = 1.0;
+        }
+
+        return sample;
+    }
+
+    float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        return float3(0.0);
+    }
+
+    float pdf(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        return 0.0;
+    }
+
+    EBxDFFlags flags()
+    {
+        return (EBxDFFlags)((uint)EBxDFFlags::reflection | (uint)EBxDFFlags::transmission | (uint)EBxDFFlags::specular);
+    }
+
+    float eta;
+    float3 specularReflectance;
+    float3 specularTransmittance;
+};
+
+struct RoughDielectricBSDF : IBxDF
+{
+    Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
+    {
+        BxDFSample sample;
+
+        const Optional<MicrofacetSample> mfSample = distr.sample(wo);
+
+        if (mfSample == none)
+        {
+            return none;
+        }
+
+        float dotWoWm = dot(wo, mfSample.value.wm);
+        float R = fresnelDielectric(dotWoWm, eta);
+
+        float T = 1.0 - R;
+
+        if(Random::rand() < R) // reflection
+        {
+            sample.flags = EBxDFFlags::glossyReflection;
+
+            sample.wi = reflect(wo, mfSample.value.wm);
+
+            const float cosThetaI = cosThetaTS(sample.wi);
+            const float cosThetaO = cosThetaTS(wo);
+
+            if(!sameHemisphere(cosThetaI, cosThetaO))
+            {
+                return none;
+            }
+
+            sample.pdf = R * mfSample.value.pdf / (4.0 * abs(dotWoWm));
+
+            const float D = distr.D(mfSample.value.wm);
+            const float G = distr.G(wo, sample.wi);
+            sample.f = D * G * R * specularReflectance / (4.0 * cosThetaI * cosThetaO);
+        }
+        else
+        {
+            sample.flags = EBxDFFlags::glossyTransmission;
+
+            float etap;
+            Optional<float3> optionalDirection = refract(wo, mfSample.value.wm, eta, etap);
+
+            if(optionalDirection == none)
+            {
+                return none;
+            }
+
+            sample.wi = optionalDirection.value;
+            sample.pdf = 1.0;
+            sample.f = float3(1.0);
+            return sample;
+
+            const float cosThetaI = cosThetaTS(sample.wi);
+            const float cosThetaO = cosThetaTS(wo);
+
+            if(sameHemisphere(cosThetaI, cosThetaO) || cosThetaI == 0.0)
+            {
+                return none;
+            }
+
+            float dotWiWm = dot(sample.wi, mfSample.value.wm);
+            float dotWoWm = dot(wo, mfSample.value.wm);
+            float denom = sqr(dotWiWm + dotWoWm / etap);
+            float dwmDwi = abs(dotWiWm) / denom;
+
+            sample.pdf = T * mfSample.value.pdf * dwmDwi;
+
+            const float D = distr.D(mfSample.value.wm);
+            const float G = distr.G(wo, sample.wi);
+            sample.f = T * D * G * abs(dotWiWm * dotWoWm / (cosThetaI * cosThetaO * denom));
+
+            if(mode == ETransportMode::radiance)
+            {
+                sample.f /= sqr(etap);
+            }
+
+            sample.eta = etap;
+        }
+
+        return sample;
+    }
+
+    float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        bool reflect = sameHemisphere(cosThetaI, cosThetaO);
+
+        float etap = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
+
+        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        {
+            return float3(0.0);
+        }
+
+        float3 wm = etap * wi + wo;
+
+        if(dot(wm, wm) == 0.0)
+        {
+            return float3(0.0);
+        }
+
+        wm = normalize(wm);
+        wm *= sign(cosThetaTS(wm));
+
+        float dotWoWm = dot(wo, wm);
+        if (dotWoWm * cosThetaO < 0.0 || dot(wi, wm) * cosThetaI < 0.0)
+        {
+            return 0.0;
+        }
+
+        const float D = distr.D(wm);
+        const float G = distr.G(wo, wi);
+        const float F = fresnelDielectric(dotWoWm, eta);
+
+        if(reflect)
+        {
+            return D * G * F * specularReflectance / abs(4.0 * cosThetaI * cosThetaO);
+        }
+        else
+        {
+            float dotWiWm = dot(wi, wm);
+            float denom = sqr(dotWiWm + dotWoWm / etap) * cosThetaI * cosThetaO;
+            float f = D * G * (1.0 - F) * abs(dotWiWm * dotWoWm / denom);
+
+            if(mode == ETransportMode::radiance)
+            {
+                f /= sqr(etap);
+            }
+
+            return f;
+        }
+    }
+
+    float pdf(const float3 wo, const float3 wi, const ETransportMode mode)
+    {
+        const float cosThetaI = cosThetaTS(wi);
+        const float cosThetaO = cosThetaTS(wo);
+
+        bool reflect = sameHemisphere(cosThetaI, cosThetaO);
+
+        float etap = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : 1.0 / eta);
+
+        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        {
+            return 0.0;
+        }
+
+        float3 wm = etap * wi + wo;
+
+        if(dot(wm, wm) == 0.0)
+        {
+            return 0.0;
+        }
+
+        wm = normalize(wm);
+        wm *= sign(cosThetaTS(wm));
+
+        float dotWoWm = dot(wo, wm);
+        if (dotWoWm * cosThetaO < 0.0 || dot(wi, wm) * cosThetaI < 0.0)
+        {
+            return 0.0;
+        }
+
+        float R = fresnelDielectric(dotWoWm, eta);
+        float T = 1.0 - R;
+
+        if(reflect)
+        {
+            return R * distr.pdf(wo, wm) / (4.0 * abs(dotWoWm));
+        }
+        else
+        {
+            float dotWiWm = dot(wi, wm);
+            float denom = sqr(dotWiWm + dotWoWm / etap);
+            float dwmDwi = abs(dotWiWm) / denom;
+
+            return T * distr.pdf(wo, wm) * dwmDwi;
+        }
+    }
+
+    EBxDFFlags flags()
+    {
+        return (EBxDFFlags)(((eta == 1.0) ? (uint)EBxDFFlags::transmission : ((uint)EBxDFFlags::reflection | (uint)EBxDFFlags::transmission)) | (uint)EBxDFFlags::glossy);
+    }
+
+    float eta;
+    float3 specularReflectance;
+    float3 specularTransmittance;
 
     GGXDistribution distr;
 
@@ -1573,7 +1916,55 @@ struct DiffuseMaterial : IMaterial
     int diffuseReflectanceTexture;
 };
 
-struct ConductorMaterial : IMaterial
+struct SmoothConductorMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.etaTexture = materialData.conductorEtaTexture;
+        this.kTexture = materialData.conductorKTexture;
+        this.eta = materialData.conductorEta;
+        this.k = materialData.conductorK;
+    }
+
+    typedef SmoothConductorBSDF RealBxDF;
+
+    SmoothConductorBSDF createBxDF(const float2 uv)
+    {
+        SmoothConductorBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.eta = this.eta;
+        bsdf.k = this.k;
+        if (this.etaTexture >= 0)
+        {
+            bsdf.eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
+        }
+        if (this.kTexture >= 0)
+        {
+            bsdf.k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.eta = max(bsdf.eta, float3(EPSILON)); // FIXME: This could be handled better
+        bsdf.k = max(bsdf.k, float3(EPSILON)); // FIXME: This could be handled better
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+    float3 eta;
+    int etaTexture;
+    float3 k;
+    int kTexture;
+};
+
+struct RoughConductorMaterial : IMaterial
 {
     __init(const Material materialData)
     {
@@ -1587,11 +1978,11 @@ struct ConductorMaterial : IMaterial
         this.alphaTexture = materialData.alphaTexture;
     }
 
-    typedef ConductorBSDF RealBxDF;
+    typedef RoughConductorBSDF RealBxDF;
 
-    ConductorBSDF createBxDF(const float2 uv)
+    RoughConductorBSDF createBxDF(const float2 uv)
     {
-        ConductorBSDF bsdf;
+        RoughConductorBSDF bsdf;
         bsdf.specularReflectance = this.specularReflectance;
         if (this.specularReflectanceTexture >= 0)
         {
@@ -1635,6 +2026,138 @@ struct ConductorMaterial : IMaterial
 
     float2 alpha;
     int alphaTexture;
+};
+
+struct SmoothDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.eta = materialData.interiorIor / materialData.exteriorIor;
+    }
+
+    typedef SmoothDielectricBSDF RealBxDF;
+
+    SmoothDielectricBSDF createBxDF(const float2 uv)
+    {
+        SmoothDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.eta = this.eta;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+    float3 specularTransmittance;
+    int specularTransmittanceTexture;
+    float eta;
+};
+
+struct SmoothThinPlateDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.eta = materialData.interiorIor / materialData.exteriorIor;
+    }
+
+    typedef SmoothThinPlateDielectricBSDF RealBxDF;
+
+    SmoothThinPlateDielectricBSDF createBxDF(const float2 uv)
+    {
+        SmoothThinPlateDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+        }
+
+        bsdf.eta = this.eta;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+    float3 specularTransmittance;
+    int specularTransmittanceTexture;
+    float eta;
+};
+
+struct RoughDielectricMaterial : IMaterial
+{
+    __init(const Material materialData)
+    {
+        this.specularReflectance = materialData.specularReflectance;
+        this.specularTransmittance = materialData.specularTransmittance;
+        this.specularReflectanceTexture = materialData.specularReflectanceTexture;
+        this.specularTransmittanceTexture = materialData.specularTransmittanceTexture;
+        this.eta = materialData.interiorIor / materialData.exteriorIor;
+        this.alpha = materialData.alpha.xy;
+        this.alphaTexture = materialData.alphaTexture;
+    }
+
+    typedef RoughDielectricBSDF RealBxDF;
+
+    RoughDielectricBSDF createBxDF(const float2 uv)
+    {
+        RoughDielectricBSDF bsdf;
+        bsdf.specularReflectance = this.specularReflectance;
+        bsdf.specularTransmittance = this.specularTransmittance;
+        if (this.specularReflectanceTexture >= 0)
+        {
+            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+        }
+        if (this.specularTransmittanceTexture >= 0)
+        {
+            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+        }
+
+        float alphaU = alpha.x;
+        float alphaV = alpha.y;
+        if (this.alphaTexture >= 0)
+        {
+            float2 alphaT = gTextures[NonUniformResourceIndex(this.alphaTexture)].Sample(uv).rg;
+            alphaU = alphaT.x;
+            alphaV = alphaT.y;
+        }
+
+        bsdf.distr = GGXDistribution(alphaU, alphaV);
+
+        bsdf.eta = this.eta;
+
+        return bsdf;
+    }
+
+    float3 specularReflectance;
+    int specularReflectanceTexture;
+    float3 specularTransmittance;
+    int specularTransmittanceTexture;
+    float2 alpha;
+    int alphaTexture;
+    float eta;
 };
 
 /*
@@ -2011,15 +2534,34 @@ extension Material
                 }
             case EBxDFType::smoothConductor:
                 {
-                    this.alpha = float3(0.0);
+                    return SmoothConductorMaterial(this);
                 }
             case EBxDFType::roughConductor:
                 {
-                    return ConductorMaterial(this);
+                    if(max(this.alpha.x, this.alpha.y) < EPSILON)
+                    {
+                        return SmoothConductorMaterial(this);
+                    }
+
+                    return RoughConductorMaterial(this);
+                }
+            case EBxDFType::smoothDielectricThin:
+                {
+                    return SmoothThinPlateDielectricMaterial(this);
                 }
             case EBxDFType::smoothDielectric:
-            case EBxDFType::smoothDielectricThin:
+                {
+                    return SmoothDielectricMaterial(this);
+                }
             case EBxDFType::roughDielectric:
+                {
+                    if(this.interiorIor / this.exteriorIor == 1.0 || max(this.alpha.x, this.alpha.y) < EPSILON)
+                    {
+                        return SmoothDielectricMaterial(this);
+                    }
+
+                    return RoughDielectricMaterial(this);
+                }
             case EBxDFType::smoothPlastic:
             case EBxDFType::roughPlastic:
             default:
