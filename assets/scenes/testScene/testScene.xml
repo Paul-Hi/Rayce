@@ -20,7 +20,7 @@
     <bsdf type="roughdielectric" id="rough_glass">
         <string name="int_ior" value="bk7" />
         <string name="ext_ior" value="air" />
-        <float name="alpha" value="0.1" />
+        <float name="alpha" value="0.05" />
     </bsdf>
 
     <bsdf type="roughconductor" id="gold">

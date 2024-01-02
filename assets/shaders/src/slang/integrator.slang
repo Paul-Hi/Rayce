@@ -131,8 +131,7 @@ struct PathIntegrator : IIntegrator
         // FIXME Next: Rework everything to make it work more like pbrt:
         // That means:
         // - rework the bsdfs again
-        //     - merge rough and non rough and compare to pbrt
-        //     - add layered bsdf (maybe the falcor version here) and build the plastic from that to support mitsuba stuff
+        //     - add layered bsdf (mix pbrt and falcor version here) and build the plastic from that to support mitsuba stuff
 
         while(true)
         {
