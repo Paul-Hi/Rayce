@@ -1,3 +1,5 @@
+#pragma once
+
 import globals;
 import utils;
 import data;
@@ -22,8 +24,6 @@ struct IntersectionInfo
     int lightId;
 };
 
-// FIXME: Should use that, but inline produces invalid code
-//[ForceInline]
 void getIntersectionInfo(const RayPayload payload, out IntersectionInfo iInfo)
 {
     if(payload.hitKind == EHitKind::triangleMesh)
@@ -137,19 +137,18 @@ struct PathIntegrator : IIntegrator
         {
             traceRay(pathState.scatterRay, payload);
 
-            if(!payload.hit)
+            if(payload.hitKind == EHitKind::miss)
             {
                 // incorporate infinite lights?
                 break;
             }
             else
             {
-                getIntersectionInfo(payload, iInfo); // FIXME
+                getIntersectionInfo(payload, iInfo);
 
                 if(iInfo.lightId >= 0)
                 {
-                    // uses bxdfSample from last point
-                    bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                    const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
                     if(orientationValid)
                     {
 
@@ -159,8 +158,8 @@ struct PathIntegrator : IIntegrator
                         }
                         else
                         {
-                            float lightPdf = pdfLight(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
-                            float miWeight = powerHeuristic(pdfBxDF, lightPdf);
+                            const float lightPdf = pdfLight(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                            const float miWeight = powerHeuristic(pdfBxDF, lightPdf);
 
                             pathState.L += pathState.throughput * miWeight * gLights[iInfo.lightId].radiance;
                         }
@@ -180,24 +179,24 @@ struct PathIntegrator : IIntegrator
 
                 if(isNonSpecular(bsdf.flags()))
                 {
-                    Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space);
+                    const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space);
                     if(lightSample != none)
                     {
-                        float bsdfPdf = bsdf.pdf(wo, lightSample.value.wi);
-                        float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
-                        float3 f = bsdf.f(wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
+                        const float bsdfPdf = bsdf.pdf(wo, lightSample.value.wi);
+                        const float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
+                        const float3 f = bsdf.f(wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
                         pathState.L += pathState.throughput * miWeight * f * lightSample.value.radiance / lightSample.value.pdf;
                     }
                 }
 
-                Optional<BxDFSample> optionalSample = bsdf.sample(wo);
+                const Optional<BxDFSample> optionalSample = bsdf.sample(wo);
 
                 if(optionalSample == none)
                 {
                     break;
                 }
 
-                BxDFSample bxdfSample = optionalSample.value;
+                const BxDFSample bxdfSample = optionalSample.value;
 
                 pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / bxdfSample.pdf;
                 pdfBxDF = bxdfSample.proportionalPDF ? bsdf.pdf(wo, bxdfSample.wi) : bxdfSample.pdf;
@@ -210,11 +209,11 @@ struct PathIntegrator : IIntegrator
                 }
 
                 // russian roulette
-                float3 rrBeta = etaScale * pathState.throughput;
-                float maxRRBeta = max(max(rrBeta.x, rrBeta.y), rrBeta.z);
+                const float3 rrBeta = etaScale * pathState.throughput;
+                const float maxRRBeta = max(max(rrBeta.x, rrBeta.y), rrBeta.z);
                 if (maxRRBeta < 1.0 && depth > russianRouletteStart)
                 {
-                    float q = max(1.0 - maxRRBeta, 0.0);
+                    const float q = max(1.0 - maxRRBeta, 0.0);
                     if (Random::rand() < q)
                     {
                         break;
@@ -243,7 +242,7 @@ struct DirectIntegrator : IIntegrator
             this.L = float3(0.0);
         }
 
-        Ray shadowRay;
+        Ray scatterRay;
 
         float3 L;
     };
@@ -296,67 +295,57 @@ struct DirectIntegrator : IIntegrator
     PathState estimate(const float2 uv)
     {
         PathState pathState;
-/*
-        LightSample lightSample;
-        lightSample.pdf = 1.0;
-        BxDFSample bxdfSample;
-        bxdfSample.pdf = 1.0;
-        bxdfSample.dirac = false;
-        CoordinateSpace space;
-        space.normal = float3(0.0);
+        pathState.scatterRay = createPrimaryRay(uv);
 
         RayPayload payload;
-        Ray cameraRay = createPrimaryRay(uv);
-        traceRay(cameraRay, payload);
+        IntersectionInfo iInfo;
 
-        if(payload.hit)
+        traceRay(pathState.scatterRay, payload);
+
+        if(payload.hitKind == EHitKind::miss)
         {
-            int lightId = -1;
-            float2 uv;
-            Material mat;
-            if(payload.hitKind == EHitKind::triangleMesh)
+            // incorporate infinite lights?
+            return pathState;
+        }
+        else
+        {
+            getIntersectionInfo(payload, iInfo);
+
+            if(iInfo.lightId >= 0)
             {
-                DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject, cameraRay.origin, payload.hitPoint);
-                mat = gMaterials[triangle.materialId];
-                uv = triangle.interpolatedUV;
-                lightId = triangle.lightId;
-                space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
-            }
-            else if(payload.hitKind == EHitKind::proceduralSphere)
-            {
-                DeviceSphere sphere = getSphere(payload.hitPoint, payload.instanceCustomIndex, payload.primitiveId, payload.hitAttributes, payload.worldToObject);
-                mat = gMaterials[sphere.materialId];
-                uv = sphere.uv;
-                space = CoordinateSpace(sphere.normal, true);
-                lightId = sphere.lightId;
-            }
-            let material = mat.getMaterial();
-
-            if(lightId >= 0)
-            {
-                pathState.L = gLights[lightId].radiance;
-
-                return pathState;
-            }
-
-            const float3 wi = space.worldToTangentFrame(-cameraRay.direction);
-
-            let singleBsdf = material.createBxDF(uv);
-            let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
-
-            if(!bsdf.isDirac())
-            {
-                lightSample = sampleLights(payload.hitPoint, lightId, space);
-                if(lightSample.valid)
+                const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                if(orientationValid)
                 {
-                    float bsdfPdf = bsdf.pdf(wi, lightSample.wo);
-                    float miWeight = powerHeuristic(lightSample.pdf, bsdfPdf);
-                    pathState.L = miWeight * bsdf.f(wi, lightSample.wo) * lightSample.radiance;
-                    return pathState;
+                    pathState.L += gLights[iInfo.lightId].radiance;
                 }
             }
+
+            const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+
+            let material = iInfo.material.getMaterial();
+            let singleBsdf = material.createBxDF(iInfo.uv);
+            let bsdf = material.getAdapter(singleBsdf, iInfo.material.twoSided == 1);
+
+            if(isNonSpecular(bsdf.flags()))
+            {
+                const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space);
+                if(lightSample != none)
+                {
+                    const float bsdfPdf = bsdf.pdf(wo, lightSample.value.wi);
+                    const float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
+                    const float3 f = bsdf.f(wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
+                    pathState.L += miWeight * f * lightSample.value.radiance / lightSample.value.pdf;
+                }
+            }
+
+            const Optional<BxDFSample> optionalSample = bsdf.sample(wo);
+
+            if(optionalSample == none)
+            {
+                return pathState;
+            }
         }
-*/
+
         return pathState;
     }
 };
@@ -426,54 +415,43 @@ struct DebugIntegrator : IIntegrator
 
     PathState estimate(const float2 uv)
     {
+
         PathState pathState;
 
-        CoordinateSpace space;
-        space.normal = float3(0.0);
+        const Ray cameraRay = createPrimaryRay(uv);
 
         RayPayload payload;
-        Ray cameraRay = createPrimaryRay(uv);
+        IntersectionInfo iInfo;
+
         traceRay(cameraRay, payload);
 
-        if(payload.hit)
+        if(payload.hitKind == EHitKind::miss)
         {
-            int lightId = -1;
-            float2 uv;
-            Material mat;
-            if(payload.hitKind == EHitKind::triangleMesh)
-            {
-                DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject);
-                mat = gMaterials[triangle.materialId];
-                uv = triangle.interpolatedUV;
-                lightId = triangle.lightId;
-                space = CoordinateSpace(triangle.interpolatedNormal, gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
-            }
-            else if(payload.hitKind == EHitKind::proceduralSphere)
-            {
-                DeviceSphere sphere = getSphere(payload.hitPoint, payload.primitiveId, payload.instanceCustomIndex, payload.worldToObject);
-                mat = gMaterials[sphere.materialId];
-                uv = sphere.uv;
-                lightId = sphere.lightId;
-                space = CoordinateSpace(sphere.normal, true);
-            }
-            let material = mat.getMaterial();
+            // incorporate infinite lights?
+            return pathState;
+        }
+        else
+        {
+            getIntersectionInfo(payload, iInfo);
+
+            let material = iInfo.material.getMaterial();
 
             pathState.depth = (length(payload.hitPoint - cameraRay.origin) - gCamera.pbData.z) / (gCamera.pbData.w - gCamera.pbData.z);
-            pathState.normal = space.normal;
+            pathState.normal = iInfo.space.normal;
 
-            if(lightId >= 0)
+            if(iInfo.lightId >= 0)
             {
-                pathState.emission = gLights[lightId].radiance;
+                pathState.emission = gLights[iInfo.lightId].radiance;
 
                 return pathState;
             }
 
-            const float3 wi = space.worldToTangentFrame(-cameraRay.direction);
+            const float3 wi = iInfo.space.worldToTangentFrame(-cameraRay.direction);
 
-            let singleBsdf = material.createBxDF(uv);
-            let bsdf = material.getAdapter(singleBsdf, mat.twoSided == 1);
+            let singleBsdf = material.createBxDF(iInfo.uv);
+            let bsdf = material.getAdapter(singleBsdf, iInfo.material.twoSided == 1);
 
-            Optional<BxDFSample> optionalSample = bsdf.sample(wi);
+            const Optional<BxDFSample> optionalSample = bsdf.sample(wi);
             pathState.reflectance = optionalSample != none ? optionalSample.value.f : float3(0.0);
         }
 

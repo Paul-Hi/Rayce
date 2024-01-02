@@ -1,3 +1,5 @@
+#pragma once
+
 __exported import hostDeviceInterop;
 
 static const float INFINITY = 1e32;
@@ -40,26 +42,28 @@ struct DeviceSphere
 
 enum EHitKind : uint8_t
 {
-    triangleMesh = 0,
-    proceduralSphere = 1
+    miss = 0,
+    triangleMesh = 1,
+    proceduralSphere = 2
 };
 
-// FIXME: We should reduce the size - can we get rid of the matrix? - what about packing?
+// FIXME: We should reduce the size - what about packing?
+
+[payload]
 struct RayPayload
 {
     float3 hitPoint;
-    bool hit;
-
-    float4x3 worldToObject;
-    // float4x3 objectToWorld;
+    EHitKind hitKind;
 
     float2 hitAttributes;
     uint primitiveId;
     uint instanceCustomIndex;
 
-    EHitKind hitKind;
+    float4x3 worldToObject;
+    // float4x3 objectToWorld;
 };
 
+[payload]
 struct ShadowRayPayload
 {
     bool hit;

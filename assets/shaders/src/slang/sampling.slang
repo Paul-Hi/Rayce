@@ -1,3 +1,5 @@
+#pragma once
+
 import globals;
 import utils;
 import data;
@@ -11,14 +13,14 @@ struct GeometrySample
 
 bool finalizeSolidAngleSampling(inout float pdf, const float3 normal, const float3 point, const float3 samplePoint)
 {
-    float3 dir = point - samplePoint;
-    float distSqrd = max(dot(dir, dir), EPSILON);
-    float cosTheta = dot(normal, normalize(dir));
+    const float3 dir = point - samplePoint;
+    const float distSqrd = dot(dir, dir);
+    const float cosTheta = dot(normal, dir / safe_sqrt(distSqrd));
     if(cosTheta <= 0.0)
     {
         return false;
     }
-    pdf *= distSqrd / (cosTheta);
+    pdf *= distSqrd / cosTheta;
     return true;
 }
 
@@ -35,11 +37,11 @@ struct SphereSampler : ISampler
     static GeometrySample sampleUniform(const float3 center, const float radius, const float surfaceArea)
     {
         GeometrySample sample;
-        float2 uv = Random::rand2();
-        float z = 1.0 - 2.0 * uv.x;
-        float r = sqrt(max(0.0, 1.0 - z * z));
-        float phi = TWO_PI * uv.y;
-        float3 unitPoint = float3(r * cos(phi), r * sin(phi), z);
+        const float2 uv = Random::rand2();
+        const float z = 1.0 - 2.0 * uv.x;
+        const float r = safe_sqrt(1.0 - z * z);
+        const float phi = TWO_PI * uv.y;
+        const float3 unitPoint = float3(r * cos(phi), r * sin(phi), z);
         sample.point = center + unitPoint * radius;
         sample.pdf = 1.0 / surfaceArea;
         return sample;
@@ -60,18 +62,20 @@ struct SphereSampler : ISampler
             return SphereSampler::sampleUniform(lightData.wCenter, radius, lightData.surfaceArea);
         }
 
+        const float distSqrd = sqr(dist);
+        const float radiusSqrd = sqr(radius);
         // max cone angles
-        const float sinThetaMaxSqrd = radius * radius / (dist * dist);
-        const float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
-        sample.pdf = 1.0 / (TWO_PI * (1.0 - cosThetaMax));
+        const float sinThetaMaxSqrd = radiusSqrd / distSqrd;
+        const float cosThetaMax = safe_sqrt(1.0 - sinThetaMaxSqrd);
+        sample.pdf = INV_TWO_PI / (1.0 - cosThetaMax);
         // random in cone
         const float2 uv = Random::rand2();
         const float cosTheta = (1.0 - uv.x) + uv.x * cosThetaMax;
-        const float sinThetaSqrd = max(0.0, 1.0 - cosTheta * cosTheta);
+        const float sinThetaSqrd = max(0.0, 1.0 - sqr(cosTheta));
         const float phi = TWO_PI * uv.y;
         // project to sphere surface
-        const float cosAlpha = dist / radius * sinThetaSqrd + cosTheta * sqrt(max(0.0, 1.0 - dist * dist / (radius * radius) * sinThetaSqrd));
-        const float sinAlpha = sqrt(max(0.0, 1.0 - cosAlpha * cosAlpha));
+        const float cosAlpha = dist / radius * sinThetaSqrd + cosTheta * safe_sqrt(1.0 - distSqrd / radiusSqrd * sinThetaSqrd);
+        const float sinAlpha = safe_sqrt(1.0 - sqr(cosAlpha));
         float3 samplePoint = float3(sinAlpha * cos(phi), sinAlpha * sin(phi), cosAlpha);
         samplePoint = space.flipped().tangentToWorld(samplePoint);
 
@@ -94,10 +98,10 @@ struct SphereSampler : ISampler
             return 1.0 / lightData.surfaceArea;
         }
 
-        const float sinThetaMaxSqrd = radius * radius / (dist * dist);
-        const float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMaxSqrd));
+        const float sinThetaMaxSqrd = sqr(radius) / sqr(dist);
+        const float cosThetaMax = safe_sqrt(1.0 - sinThetaMaxSqrd);
 
-        return 1.0 / (TWO_PI * (1.0 - cosThetaMax));
+        return INV_TWO_PI / (1.0 - cosThetaMax);
     }
 
     static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint)
@@ -121,10 +125,9 @@ struct RectangleSampler : ISampler
         const float2 uv = Random::rand2() * 2.0 - 1.0;
         sample.point = mul(lightData.lightToWorld, float4(uv.x, uv.y, 0.0, 1.0)).xyz;
 
-
         sample.pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        const float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
         if(!finalizeSolidAngleSampling(sample.pdf, normal, point, sample.point))
         {
             sample.pdf = 0.0;
@@ -137,7 +140,7 @@ struct RectangleSampler : ISampler
     {
         float pdf = 1.0 / lightData.surfaceArea;
 
-        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        const float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
         if(!finalizeSolidAngleSampling(pdf, normal, point, samplePoint))
         {
             return 0.0;
@@ -149,7 +152,7 @@ struct RectangleSampler : ISampler
     static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint)
     {
         const float3 w = point - samplePoint;
-        float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        const float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
 
         return dot(w, normal) > 0.0;
     }
@@ -157,7 +160,7 @@ struct RectangleSampler : ISampler
 
 float pdfLight(const int lightId, const float3 surfacePoint, const float3 samplePoint)
 {
-    float pdf = 1.0 / gPushConstants.lightCount;
+    const float pdf = 1.0 / gPushConstants.lightCount;
     const Light light = gLights[lightId];
 
     if(light.type == ELightType::analyticSphere)
@@ -203,7 +206,7 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         lightIndex = int(Random::rand() * gPushConstants.lightCount);
     } while(lightIndex == lightId);
 
-    Light sampledLight = gLights[lightIndex];
+    const Light sampledLight = gLights[lightIndex];
     GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
     {
@@ -221,11 +224,11 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
     }
 
     float3 wDir = sample.point - p;
-    float pointDistance = length(wDir);
+    const float pointDistance = length(wDir);
     wDir = normalize(wDir);
 
     lightSample.wi = space.worldToTangentFrame(wDir);
-    float nDotL = cosThetaTS(lightSample.wi);
+    const float nDotL = cosThetaTS(lightSample.wi);
 
     if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
     {

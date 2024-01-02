@@ -1,3 +1,5 @@
+#pragma once
+
 import globals;
 import utils;
 import random;
@@ -5,7 +7,7 @@ import data;
 
 float2 sampleUniformConcentricDisk(const float2 uv)
 {
-    float2 mapped = 2.0 * uv - float2(1.0);
+    const float2 mapped = 2.0 * uv - float2(1.0);
     if (mapped.x == 0.0 && mapped.y == 0.0)
     {
         return float2(0.0);
@@ -30,9 +32,9 @@ float2 sampleUniformConcentricDisk(const float2 uv)
 
 float3 cosineHemisphereSample(const float2 uv = Random::rand2())
 {
-    float2 d = sampleUniformConcentricDisk(uv);
+    const float2 d = sampleUniformConcentricDisk(uv);
 
-    float z = safe_sqrt(1.0 - sqr(d.x) - sqr(d.y));
+    const float z = safe_sqrt(1.0 - sqr(d.x) - sqr(d.y));
 
     return float3(d.x, d.y, z);
 }
@@ -42,7 +44,7 @@ float cosineHemispherePdf(const float cosTheta)
     return cosTheta * INV_PI;
 }
 
-float fresnelDielectric(float cosThetaI, const float etati, const float etait)
+float fresnelDielectric(const float cosThetaI, const float etati, const float etait)
 {
     float eta = etati;
     float _ignore0 = 0.0;
@@ -50,7 +52,7 @@ float fresnelDielectric(float cosThetaI, const float etati, const float etait)
     return fresnelDielectric(cosThetaI, eta, _ignore0, _ignore1);
 }
 
-float fresnelDielectric(float cosThetaI, inout float etati, out float etait, out float cosThetaT)
+float fresnelDielectric(const float cosThetaI, inout float etati, out float etait, out float cosThetaT)
 {
     if(etati == 1.0)
     {
@@ -59,11 +61,11 @@ float fresnelDielectric(float cosThetaI, inout float etati, out float etait, out
         return 0.0;
     }
 
-    bool switch = cosThetaI >= 0.0;
+    const bool switch = cosThetaI > 0.0;
     etait = switch ? etati : rcp(etati);
     etati = switch ? rcp(etati) : etati;
 
-    float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), sqr(etati), 1.0);
+    const float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), sqr(etati), 1.0);
 
     // total internal reflection
     if (cosThetaTSqrd <= 0.0)
@@ -72,13 +74,13 @@ float fresnelDielectric(float cosThetaI, inout float etati, out float etait, out
         return 1.0;
     }
 
-    float absCosThetaI = abs(cosThetaI);
-    float absCosThetaT = sqrt(cosThetaTSqrd);
+    const float absCosThetaI = abs(cosThetaI);
+    const float absCosThetaT = sqrt(cosThetaTSqrd);
 
-    float Rs = negativeMultiplyAndAdd(etait, absCosThetaT, absCosThetaI) / multiplyAndAdd(etait, absCosThetaT, absCosThetaI);
-    float Rp = negativeMultiplyAndAdd(etait, absCosThetaI, absCosThetaT) / multiplyAndAdd(etait, absCosThetaI, absCosThetaT);
+    const float Rs = negativeMultiplyAndAdd(etait, absCosThetaT, absCosThetaI) / multiplyAndAdd(etait, absCosThetaT, absCosThetaI);
+    const float Rp = negativeMultiplyAndAdd(etait, absCosThetaI, absCosThetaT) / multiplyAndAdd(etait, absCosThetaI, absCosThetaT);
 
-    cosThetaT = cosThetaI > 0.0 ? -absCosThetaT : absCosThetaT;
+    cosThetaT = switch ? -absCosThetaT : absCosThetaT;
 
     return 0.5 * (sqr(Rs) + sqr(Rp));
 }
@@ -86,89 +88,45 @@ float fresnelDielectric(float cosThetaI, inout float etati, out float etait, out
 // Simliar to https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/#more-1921
 float3 fresnelConductorExact(const float cosThetaI, const float3 eta, const float3 k)
 {
-    float cos2ThetaI = cosThetaI * cosThetaI;
-    float sin2ThetaI = 1.0 - cos2ThetaI;
-    float sin4ThetaI = sin2ThetaI * sin2ThetaI;
+    const float cos2ThetaI = sqr(cosThetaI);
+    const float sin2ThetaI = 1.0 - cos2ThetaI;
+    const float sin4ThetaI = sqr(sin2ThetaI);
 
-    float3 t0 = eta * eta - k * k - sin2ThetaI;
-    float3 a2pb2 = safe_sqrt(t0 * t0 + 4.0 * k * k * eta * eta);
-    float3 a     = safe_sqrt(0.5 * (a2pb2 + t0));
+    const float3 etaSqrd = sqr(eta);
+    const float3 kSqrd = sqr(k);
+    const float3 t0 = etaSqrd - kSqrd - sin2ThetaI;
+    const float3 a2pb2 = safe_sqrt(t0 * t0 + 4.0 * kSqrd * etaSqrd);
+    const float3 a = safe_sqrt(0.5 * (a2pb2 + t0));
 
-    float3 term1 = a2pb2 + cos2ThetaI;
-    float3 term2 = 2.0 * a * cosThetaI;
+    const float3 term1 = a2pb2 + cos2ThetaI;
+    const float3 term2 = 2.0 * a * cosThetaI;
 
-    float3 Rs2 = (term1 - term2) / (term1 + term2);
+    const float3 Rs2 = (term1 - term2) / (term1 + term2);
 
-    float3 term3 = a2pb2 * cos2ThetaI + sin4ThetaI;
-    float3 term4 = term2 * sin2ThetaI;
+    const float3 term3 = a2pb2 * cos2ThetaI + sin4ThetaI;
+    const float3 term4 = term2 * sin2ThetaI;
 
-    float3 Rp2 = Rs2 * (term3 - term4) / (term3 + term4);
+    const float3 Rp2 = Rs2 * (term3 - term4) / (term3 + term4);
 
     return 0.5 * (Rp2 + Rs2);
 }
 
 float3 fresnelConductorApprox(const float cosThetaI, const float3 eta, const float3 k)
 {
-    float cos2ThetaI = cosThetaI * cosThetaI;
-    float3 twoEtaCos2ThetaI = 2.0 * eta * cos2ThetaI;
+    const float cos2ThetaI = cosThetaI * cosThetaI;
+    const float3 twoEtaCos2ThetaI = 2.0 * eta * cos2ThetaI;
 
-    float3 t0 = eta * eta + k * k;
-    float3 t1 = t0 * cos2ThetaI;
-    float3 Rs = (t0 - twoEtaCos2ThetaI + cos2ThetaI) / (t0 + twoEtaCos2ThetaI + cos2ThetaI);
-    float3 Rp = (t1 - twoEtaCos2ThetaI + 1.0) / (t1 + twoEtaCos2ThetaI + 1.0);
+    const float3 t0 = sqr(eta) + sqr(k);
+    const float3 t1 = t0 * cos2ThetaI;
+    const float3 Rs = (t0 - twoEtaCos2ThetaI + cos2ThetaI) / (t0 + twoEtaCos2ThetaI + cos2ThetaI);
+    const float3 Rp = (t1 - twoEtaCos2ThetaI + 1.0) / (t1 + twoEtaCos2ThetaI + 1.0);
 
     return 0.5 * (Rp + Rs);
 }
 
-float fresnelDiffuseReflectance(float eta)
-{
-    /* Fast mode: the following code approximates the
-    * diffuse Frensel reflectance for the eta<1 and
-    * eta>1 cases. An evalution of the accuracy led
-    * to the following scheme, which cherry-picks
-    * fits from two papers where they are best.
-    */
-    if (eta < 1)
-    {
-        /* Fit by Egan and Hilgeman (1973). Works
-            reasonably well for "normal" IOR values (<2).
-
-            Max rel. error in 1.0 - 1.5 : 0.1%
-            Max rel. error in 1.5 - 2   : 0.6%
-            Max rel. error in 2.0 - 5   : 9.5%
-        */
-        return -1.4399 * (eta * eta)
-                + 0.7099 * eta
-                + 0.6681
-                + 0.0636 / eta;
-    }
-    else
-    {
-        /* Fit by d'Eon and Irving (2011)
-        *
-        * Maintains a good accuracy even for
-        * unrealistic IOR values.
-        *
-        * Max rel. error in 1.0 - 2.0   : 0.1%
-        * Max rel. error in 2.0 - 10.0  : 0.2%
-        */
-        float invEta = 1.0 / eta,
-                invEta2 = invEta * invEta,
-                invEta3 = invEta2 * invEta,
-                invEta4 = invEta3 * invEta,
-                invEta5 = invEta4 * invEta;
-
-        return 0.919317 - 3.4793 * invEta
-                + 6.75335 * invEta2
-                - 7.80989 * invEta3
-                + 4.98554 * invEta4
-                - 1.36881 * invEta5;
-    }
-}
-
 struct GGXDistribution
 {
-    __init(float alphaU, float alphaV)
+    __init(const float alphaU, const float alphaV)
     {
         this.alphaU = alphaU;
         this.alphaV = alphaV;
@@ -177,25 +135,24 @@ struct GGXDistribution
     // VNDF
     float D(const float3 wm)
     {
-        float tan2Theta = tan2ThetaTS(wm);
+        const float tan2Theta = tan2ThetaTS(wm);
         if (isinf(tan2Theta))
         {
             return 0.0;
         }
 
-        float cos4Theta = cos2ThetaTS(wm);
-        cos4Theta *= cos4Theta;
+        float cos4Theta = sqr(cos2ThetaTS(wm));
         if (cos4Theta < EPSILON)
         {
             return 0.0;
         }
 
-        float scldAlphaU = cosPhiTS(wm) / alphaU;
-        float scldAlphaV = sinPhiTS(wm) / alphaV;
-        float sqrdAlpha = scldAlphaU * scldAlphaU + scldAlphaV * scldAlphaV;
-        float e = tan2Theta * sqrdAlpha;
+        const float scaledAlphaU = cosPhiTS(wm) / alphaU;
+        const float scaledAlphaV = sinPhiTS(wm) / alphaV;
+        const float sqrdAlpha = sqr(scaledAlphaU) + sqr(scaledAlphaV);
+        const float e = tan2Theta * sqrdAlpha;
 
-        return 1.0 / (PI * alphaU * alphaV * cos4Theta * (1.0 + e) * (1.0 + e));
+        return INV_PI / (alphaU * alphaV * cos4Theta * sqr(1.0 + e));
     }
 
     float D(const float3 w, const float3 wm)
@@ -205,16 +162,17 @@ struct GGXDistribution
 
     float lambda(const float3 w)
     {
-        float tan2Theta = tan2ThetaTS(w);
+        const float tan2Theta = tan2ThetaTS(w);
         if (isinf(tan2Theta))
         {
             return 0.0;
         }
 
-        float scldAlphaU = cosPhiTS(w) * alphaU;
-        float scldAlphaV = sinPhiTS(w) * alphaV;
-        float sqrdAlpha = scldAlphaU * scldAlphaU + scldAlphaV * scldAlphaV;
-        return (sqrt(1.0 + sqrdAlpha * tan2Theta) - 1.0) * 0.5;
+        const float scaledAlphaU = cosPhiTS(w) * alphaU;
+        const float scaledAlphaV = sinPhiTS(w) * alphaV;
+        const float sqrdAlpha = sqr(scaledAlphaU) + sqr(scaledAlphaV);
+
+        return 0.5 * (sqrt(1.0 + sqrdAlpha * tan2Theta) - 1.0);
     }
 
     // based on Sampling Visible GGX Normals with Spherical Caps https://arxiv.org/pdf/2306.05044.pdf
@@ -223,22 +181,24 @@ struct GGXDistribution
         // sample visible
         MicrofacetSample sample;
 
-        float2 rand = Random::rand2();
+        const float2 rand = Random::rand2();
 
         float3 stretchedWo = normalize(float3(alphaU * wo.x, alphaV * wo.y, wo.z));
-        if (stretchedWo.z < 0.0)
+        float cosThetaO = cosThetaTS(stretchedWo);
+        if (cosThetaO < 0.0)
         {
             stretchedWo = -stretchedWo;
+            cosThetaO = -cosThetaO;
         }
 
-        float phi = TWO_PI * rand.x;
-        float z = 1.0 - (rand.y * (1.0 + stretchedWo.z));
-        float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
-        float x = sinTheta * cos(phi);
-        float y = sinTheta * sin(phi);
-        float3 c = float3(x, y, z);
+        const float phi = TWO_PI * rand.x;
+        const float z = 1.0 - (rand.y * (1.0 + cosThetaO));
+        const float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
+        const float x = sinTheta * cos(phi);
+        const float y = sinTheta * sin(phi);
+        const float3 c = float3(x, y, z);
 
-        float3 h = c + stretchedWo;
+        const float3 h = c + stretchedWo;
 
         sample.wm = normalize(float3(alphaU * h.x, alphaV * h.y, max(0.0, h.z)));
 
@@ -267,12 +227,8 @@ struct GGXDistribution
         return D(w, wm);
     }
 
-    bool effectivelySmooth()
-    {
-        return max(alphaU, alphaV) < EPSILON;
-    }
-
-    float alphaU, alphaV;
+    float alphaU;
+    float alphaV;
 };
 
 interface IBxDF
@@ -295,12 +251,10 @@ interface IBxDFAdapter
 
 struct DefaultAdapter : IBxDFAdapter
 {
-    __init(IBxDF bsdf)
+    __init(const IBxDF bsdf)
     {
         this.bsdf0 = bsdf;
     }
-
-    IBxDF bsdf0;
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
@@ -321,19 +275,18 @@ struct DefaultAdapter : IBxDFAdapter
     {
         return bsdf0.flags();
     }
+
+    IBxDF bsdf0;
 };
 
 
 struct TwoSidedAdapter : IBxDFAdapter
 {
-    __init(IBxDF bsdf)
+    __init(const IBxDF bsdf)
     {
         this.bsdf0 = bsdf;
         this.bsdf1 = bsdf;
     }
-
-    IBxDF bsdf0;
-    IBxDF bsdf1;
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
@@ -345,7 +298,7 @@ struct TwoSidedAdapter : IBxDFAdapter
             flipped = true;
         }
 
-        Optional<BxDFSample> result = flipped ? bsdf1.sample(twoSidedWo, mode) : bsdf0.sample(twoSidedWo, mode);
+        const Optional<BxDFSample> result = flipped ? bsdf1.sample(twoSidedWo, mode) : bsdf0.sample(twoSidedWo, mode);
 
         if(result == none)
         {
@@ -396,8 +349,11 @@ struct TwoSidedAdapter : IBxDFAdapter
 
     EBxDFFlags flags()
     {
-        return bsdf0.flags(); // FIXME
+        return (EBxDFFlags)((uint)bsdf0.flags() | (uint)bsdf1.flags());
     }
+
+    IBxDF bsdf0;
+    IBxDF bsdf1;
 };
 
 bool sameHemisphere(const float3 w, const float3 wp)
@@ -419,7 +375,6 @@ struct DiffuseBSDF : IBxDF
     {
         BxDFSample sample;
 
-        sample.flags = EBxDFFlags::diffuseReflection;
         sample.wi = cosineHemisphereSample();
 
         if (cosThetaTS(wo) < 0.0)
@@ -430,6 +385,8 @@ struct DiffuseBSDF : IBxDF
         sample.pdf = cosineHemispherePdf(abs(cosThetaTS(sample.wi)));
 
         sample.f = diffuseReflectance * INV_PI;
+
+        sample.flags = EBxDFFlags::diffuseReflection;
 
         return sample;
     }
@@ -468,8 +425,6 @@ struct SmoothConductorBSDF : IBxDF
     {
         BxDFSample sample;
 
-        sample.flags = EBxDFFlags::specularReflection;
-
         sample.wi = reflectTS(wo);
 
         sample.pdf = 1.0;
@@ -477,6 +432,8 @@ struct SmoothConductorBSDF : IBxDF
         const float absCosThetaI = abs(cosThetaTS(sample.wi));
 
         sample.f = fresnelConductorExact(absCosThetaI, eta, k) * specularReflectance / absCosThetaI;
+
+        sample.flags = EBxDFFlags::specularReflection;
 
         return sample;
 
@@ -507,8 +464,6 @@ struct RoughConductorBSDF : IBxDF
     {
         BxDFSample sample;
 
-        sample.flags = EBxDFFlags::glossyReflection;
-
         const Optional<MicrofacetSample> mfSample = distr.sample(wo);
 
         if (mfSample == none)
@@ -535,6 +490,8 @@ struct RoughConductorBSDF : IBxDF
         const float D = distr.D(mfSample.value.wm);
         const float G = distr.G(wo, sample.wi);
         sample.f = D * G * F * specularReflectance / (4.0 * abs(cosThetaI) * abs(cosThetaO));
+
+        sample.flags = EBxDFFlags::glossyReflection;
 
         return sample;
     }
@@ -601,7 +558,7 @@ struct RoughConductorBSDF : IBxDF
         }
 
         wm = normalize(wm);
-        wm *= sign(cosThetaTS(wm));
+        // wm *= sign(cosThetaTS(wm));
 
         return distr.pdf(wo, wm) / (4.0 * abs(dot(wo, wm)));
     }
@@ -626,28 +583,25 @@ struct SmoothDielectricBSDF : IBxDF
     {
         BxDFSample sample;
 
-        float cosThetaO = cosThetaTS(wo);
         float etati = eta;
         float etait = 0.0;
         float cosThetaT = 0.0;
-        float R = fresnelDielectric(cosThetaO, etati, etait, cosThetaT);
+        const float R = fresnelDielectric(cosThetaTS(wo), etati, etait, cosThetaT);
 
-        float T = 1.0 - R;
+        const float T = 1.0 - R;
 
         if(Random::rand() < R) // reflection
         {
-            sample.flags = EBxDFFlags::specularReflection;
-
             sample.wi = reflectTS(wo);
             sample.pdf = R;
 
             sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
+
+            sample.flags = EBxDFFlags::specularReflection;
         }
         else // transmission
         {
-            sample.flags = EBxDFFlags::specularTransmission;
-
-            Optional<float3> optionalDirection = refractTS(wo, cosThetaT, etati);
+            const Optional<float3> optionalDirection = refractTS(wo, cosThetaT, etati);
 
             if(optionalDirection == none)
             {
@@ -664,6 +618,8 @@ struct SmoothDielectricBSDF : IBxDF
             {
                 sample.f *= sqr(etati);
             }
+
+            sample.flags = EBxDFFlags::specularTransmission;
 
             sample.eta = etait;
         }
@@ -697,11 +653,10 @@ struct SmoothThinPlateDielectricBSDF : IBxDF
     {
         BxDFSample sample;
 
-        float cosThetaO = abs(cosThetaTS(wo));
         float etati = eta;
         float etait = 0.0;
         float cosThetaT = 0.0;
-        float R = fresnelDielectric(cosThetaO, etati, etait, cosThetaT);
+        float R = fresnelDielectric(abs(cosThetaTS(wo)), etati, etait, cosThetaT);
 
         if(R < 1.0)
         {
@@ -709,27 +664,26 @@ struct SmoothThinPlateDielectricBSDF : IBxDF
             R += sqr(1.0 - R) * R / (1.0 - sqr(R));
         }
 
-
-        float T = 1.0 - R;
+        const float T = 1.0 - R;
 
         if(Random::rand() < R) // reflection
         {
-            sample.flags = EBxDFFlags::specularReflection;
-
             sample.wi = reflectTS(wo);
             sample.pdf = R;
 
             sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
+
+            sample.flags = EBxDFFlags::specularReflection;
         }
         else // transmission
         {
-            sample.flags = EBxDFFlags::specularTransmission;
-
             sample.wi = -wo;
 
             sample.pdf = T;
 
             sample.f = T * specularTransmittance / abs(cosThetaTS(sample.wi));
+
+            sample.flags = EBxDFFlags::specularTransmission;
 
             sample.eta = 1.0;
         }
@@ -770,18 +724,16 @@ struct RoughDielectricBSDF : IBxDF
             return none;
         }
 
-        float dotWoWm = dot(wo, mfSample.value.wm);
+        const float dotWoWm = dot(wo, mfSample.value.wm);
         float etati = eta;
         float etait = 0.0;
         float cosThetaT = 0.0;
-        float R = fresnelDielectric(dotWoWm, etati, etait, cosThetaT);
+        const float R = fresnelDielectric(dotWoWm, etati, etait, cosThetaT);
 
-        float T = 1.0 - R;
+        const float T = 1.0 - R;
 
         if(Random::rand() < R) // reflection
         {
-            sample.flags = EBxDFFlags::glossyReflection;
-
             sample.wi = reflect(wo, mfSample.value.wm);
 
             const float cosThetaI = cosThetaTS(sample.wi);
@@ -797,11 +749,11 @@ struct RoughDielectricBSDF : IBxDF
             const float D = distr.D(mfSample.value.wm);
             const float G = distr.G(wo, sample.wi);
             sample.f = D * G * R * specularReflectance / (4.0 * cosThetaI * cosThetaO);
+
+            sample.flags = EBxDFFlags::glossyReflection;
         }
         else
         {
-            sample.flags = EBxDFFlags::glossyTransmission;
-
             Optional<float3> optionalDirection = refract(wo, mfSample.value.wm, cosThetaT, etati);
 
             if(optionalDirection == none)
@@ -819,10 +771,10 @@ struct RoughDielectricBSDF : IBxDF
                 return none;
             }
 
-            float dotWiWm = dot(sample.wi, mfSample.value.wm);
-            float dotWoWm = dot(wo, mfSample.value.wm);
-            float denom = sqr(dotWiWm + dotWoWm * etati);
-            float dwmDwi = abs(dotWiWm) / denom;
+            const float dotWiWm = dot(sample.wi, mfSample.value.wm);
+            const float dotWoWm = dot(wo, mfSample.value.wm);
+            const float denom = sqr(dotWiWm + dotWoWm * etati);
+            const float dwmDwi = abs(dotWiWm) / denom;
 
             sample.pdf = T * mfSample.value.pdf * dwmDwi;
 
@@ -835,6 +787,7 @@ struct RoughDielectricBSDF : IBxDF
                 sample.f *= sqr(etati);
             }
 
+            sample.flags = EBxDFFlags::glossyTransmission;
             sample.eta = etait;
         }
 
@@ -851,9 +804,9 @@ struct RoughDielectricBSDF : IBxDF
             return float3(0.0);
         }
 
-        bool reflect = sameHemisphere(cosThetaI, cosThetaO);
+        const bool reflect = sameHemisphere(cosThetaI, cosThetaO);
 
-        float etait = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : rcp(eta));
+        const float etait = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : rcp(eta));
 
         float3 wm = etait * wi + wo;
 
@@ -865,15 +818,16 @@ struct RoughDielectricBSDF : IBxDF
         wm = normalize(wm);
         wm *= sign(cosThetaTS(wm));
 
-        float dotWoWm = dot(wo, wm);
-        if (dotWoWm * cosThetaO < 0.0 || dot(wi, wm) * cosThetaI < 0.0)
+        const float dotWiWm = dot(wi, wm);
+        const float dotWoWm = dot(wo, wm);
+        if (dotWoWm * cosThetaO < 0.0 || dotWiWm * cosThetaI < 0.0)
         {
             return float3(0.0);
         }
 
         const float D = distr.D(wm);
 
-        float etati = reflect ? 1.0 : (cosThetaO > 0.0 ? rcp(eta) : eta);
+        const float etati = cosThetaO > 0.0 ? rcp(eta) : eta;
         const float F = fresnelDielectric(dotWoWm, etati, etait);
 
         const float G = distr.G(wo, wi);
@@ -884,8 +838,7 @@ struct RoughDielectricBSDF : IBxDF
         }
         else
         {
-            float dotWiWm = dot(wi, wm);
-            float denom = sqr(dotWiWm + dotWoWm * etati) * cosThetaI * cosThetaO;
+            const float denom = sqr(dotWiWm + dotWoWm * etati) * cosThetaI * cosThetaO;
             float3 f = D * G * (1.0 - F) * specularTransmittance * abs(dotWiWm * dotWoWm / denom);
 
             if(mode == ETransportMode::radiance)
@@ -907,9 +860,9 @@ struct RoughDielectricBSDF : IBxDF
             return 0.0;
         }
 
-        bool reflect = sameHemisphere(cosThetaI, cosThetaO);
+        const bool reflect = sameHemisphere(cosThetaI, cosThetaO);
 
-        float etait = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : rcp(eta));
+        const float etait = reflect ? 1.0 : (cosThetaO > 0.0 ? eta : rcp(eta));
 
         float3 wm = etait * wi + wo;
 
@@ -921,13 +874,14 @@ struct RoughDielectricBSDF : IBxDF
         wm = normalize(wm);
         wm *= sign(cosThetaTS(wm));
 
-        float dotWoWm = dot(wo, wm);
-        if (dotWoWm * cosThetaO < 0.0 || dot(wi, wm) * cosThetaI < 0.0)
+        const float dotWiWm = dot(wi, wm);
+        const float dotWoWm = dot(wo, wm);
+        if (dotWoWm * cosThetaO < 0.0 || dotWiWm * cosThetaI < 0.0)
         {
             return 0.0;
         }
 
-        float etati = reflect ? 1.0 : (cosThetaO > 0.0 ? rcp(eta) : eta);
+        const float etati = cosThetaO > 0.0 ? rcp(eta) : eta;
         const float R = fresnelDielectric(dotWoWm, etati, etait);
         const float T = 1.0 - R;
 
@@ -937,9 +891,8 @@ struct RoughDielectricBSDF : IBxDF
         }
         else
         {
-            float dotWiWm = dot(wi, wm);
-            float denom = sqr(dotWiWm + dotWoWm * etati);
-            float dwmDwi = abs(dotWiWm) / denom;
+            const float denom = sqr(dotWiWm + dotWoWm * etati);
+            const float dwmDwi = abs(dotWiWm) / denom;
 
             return T * distr.pdf(wo, wm) * dwmDwi;
         }

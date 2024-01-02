@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef HOST_DEVICE_HPP
 #define HOST_DEVICE_HPP
 

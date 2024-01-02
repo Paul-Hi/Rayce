@@ -2,10 +2,9 @@ import globals;
 
 [shader("closesthit")]
 void main(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
-{
-    payload.hit = true;
-    payload.hitPoint = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+{;
     payload.hitKind = EHitKind::triangleMesh;
+    payload.hitPoint = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     payload.primitiveId = PrimitiveIndex();
     payload.instanceCustomIndex = InstanceID();
     payload.hitAttributes = attributes.barycentrics;

@@ -1,16 +1,18 @@
+#pragma once
+
 import globals;
 
 // tangent space trigonometry
-float cosThetaTS(in float3 w) { return w.z; }
-float cos2ThetaTS(in float3 w) { return w.z * w.z; }
-float sin2ThetaTS(in float3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
-float sinThetaTS(in float3 w) { return sqrt(sin2ThetaTS(w)); }
-float tanThetaTS(in float3 w) { return sinThetaTS(w) / cosThetaTS(w); }
-float tan2ThetaTS(in float3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
-float cosPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
-float sinPhiTS(in float3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
-float cos2PhiTS(in float3 w) { return cosPhiTS(w) * cosPhiTS(w); }
-float sin2PhiTS(in float3 w) { return sinPhiTS(w) * sinPhiTS(w); }
+float cosThetaTS(const float3 w) { return w.z; }
+float cos2ThetaTS(const float3 w) { return w.z * w.z; }
+float sin2ThetaTS(const float3 w) { return max(0.0, 1.0 - cos2ThetaTS(w)); }
+float sinThetaTS(const float3 w) { return sqrt(sin2ThetaTS(w)); }
+float tanThetaTS(const float3 w) { return sinThetaTS(w) / cosThetaTS(w); }
+float tan2ThetaTS(const float3 w) { return sin2ThetaTS(w) / cos2ThetaTS(w); }
+float cosPhiTS(const float3 w) { return (sinThetaTS(w) == 0.0) ? 1.0 : clamp(w.x / sinThetaTS(w), -1.0, 1.0); }
+float sinPhiTS(const float3 w) { return (sinThetaTS(w) == 0.0) ? 0.0 : clamp(w.y / sinThetaTS(w), -1.0, 1.0); }
+float cos2PhiTS(const float3 w) { return cosPhiTS(w) * cosPhiTS(w); }
+float sin2PhiTS(const float3 w) { return sinPhiTS(w) * sinPhiTS(w); }
 
 float3 reflectTS(const float3 w) { return float3(-w.x, -w.y, w.z); }
 float3 refractTS(const float3 w, float cosThetaT, float etati)
@@ -23,31 +25,9 @@ float3 reflect(const float3 w, const float3 n)
     return 2.0 * dot(w, n) * n - w;
 }
 
-float3 refract(const float3 w, const float3 n, float cosThetaT, float etati)
+float3 refract(const float3 w, const float3 n, const float cosThetaT, const float etati)
 {
     return (dot(w, n) * etati + cosThetaT) * n - w * etati;
-}
-
-// similar to mitsuba
-float hypot2(float a, float b)
-{
-    float r;
-    if (abs(a) > abs(b))
-    {
-        r = b / a;
-        r = abs(a) * sqrt(1.0 + r * r);
-    }
-    else if (b != 0.0f)
-    {
-        r = a / b;
-        r = abs(b) * sqrt(1.0 + r * r);
-    }
-    else
-    {
-        r = 0.0;
-    }
-
-    return r;
 }
 
 func sqr<T : __BuiltinFloatingPointType>(T v) -> T
@@ -102,7 +82,7 @@ func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<
 
 struct CoordinateSpace
 {
-    __init(const float3 normal, bool sphere = false)
+    __init(const float3 normal, const bool sphere = false)
     {
         this.normal = normal;
 
@@ -117,25 +97,11 @@ struct CoordinateSpace
             // Not consistent for spheres
             // Building an Orthonormal Basis, Revisited, (JCGT), vol. 6, no. 1, 1-8, 2017
             // Available online: http://jcgt.org/published/0006/01/01/
-            float normalSign = normal.z < 0.0 ? -1.0 : 1.0;
-            float a = -1.0 / (normalSign + normal.z);
-            float b = normal.x * normal.y * a;
+            const float normalSign = normal.z < 0.0 ? -1.0 : 1.0;
+            const float a = -rcp(normalSign + normal.z);
+            const float b = normal.x * normal.y * a;
             this.tangent = float3(1.0 + normalSign * normal.x * normal.x * a, normalSign * b, -normalSign * normal.x);
-            this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);
-
-            // has ugly inconsistent point on spheres
-            // Frisvad https://backend.orbit.dtu.dk/ws/portalfiles/portal/126824972/onb_frisvad_jgt2012_v2.pdf
-            //if(normal.z < -0.9999)
-            //{
-            //    this.tangent = float3(0.0, -1.0, 0.0);
-            //    this.bitangent = float3(-1.0, 0.0, 0.0);
-            //    return this;
-            //}
-            //float a = 1.0 / (1.0 + normal.z);
-            //float b = -normal.x * normal.y * a;
-            //this.tangent = float3(1.0 - normal.x * normal.x * a, b, -normal.x);
-            //this.bitangent = float3(b, 1.0 - normal.y * normal.y * a, -normal.y);
-        }
+            this.bitangent = float3(b, normalSign + normal.y * normal.y * a, -normal.y);}
     }
 
     __init(const float3 normal, bool canUsePartials, const float3 dfd1, const float3 dfd2, const float2 uvd1, const float2 uvd2)
@@ -143,7 +109,7 @@ struct CoordinateSpace
         this.normal = normal;
         if(canUsePartials && uvd1.x > 0.0)
         {
-            float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
+            const float3 t_    = (uvd2.y * dfd1 - uvd1.y * dfd2) / (uvd1.x * uvd2.y - uvd2.x * uvd1.y);
             this.tangent    = normalize(t_ - normal * dot(normal, t_));
             this.bitangent  = cross(normal, this.tangent);
             return this;
@@ -168,7 +134,7 @@ struct CoordinateSpace
         return multiplyAndAdd(float3(p.x), tangent, multiplyAndAdd(float3(p.y), bitangent, p.z * normal));
     }
 
-    float3 worldToTangentFrame(in float3 p)
+    float3 worldToTangentFrame(const float3 p)
     {
         return float3(dot(p, tangent), dot(p, bitangent), dot(p, normal));
     }
@@ -179,16 +145,15 @@ struct CoordinateSpace
 };
 
 // beta = 2 - number samples = 1
-float powerHeuristic(float fPdf, float gPdf)
+float powerHeuristic(const float fPdf, const float gPdf)
 {
-    fPdf *= fPdf;
-    gPdf *= gPdf;
-    return fPdf / (fPdf + gPdf);
+    const float fPdfSqrd = sqr(fPdf);
+    return fPdfSqrd / (fPdfSqrd + sqr(gPdf));
 }
 
 float2 mapToConcentricDisc(const float2 p)
 {
-    float2 offset = p * 2.0 - 1.0;
+    const float2 offset = p * 2.0 - 1.0;
 
     if(offset.x == 0 && offset.y == 0)
     {
@@ -210,14 +175,14 @@ float2 mapToConcentricDisc(const float2 p)
 }
 
 static const float GAMMA     = 2.2;
-static const float INV_GAMMA = 1.0 / GAMMA;
+static const float INV_GAMMA = 0.45454545454545454545454545454545;
 
-float3 sRGBToLinear(in float3 srgb)
+float3 sRGBToLinear(const float3 srgb)
 {
     return pow(srgb.rgb, float3(GAMMA));
 }
 
-float3 linearTosRGB(in float3 linear)
+float3 linearTosRGB(const float3 linear)
 {
     return pow(linear.rgb, float3(INV_GAMMA));
 }
@@ -231,7 +196,7 @@ float averageLuminance(const float3 c)
 
 // ACES tone map
 // see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-float3 toneMapACES(in float3 color)
+float3 toneMapACES(const float3 color)
 {
     float A = 2.51;
     float B = 0.03;

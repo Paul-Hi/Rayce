@@ -1,3 +1,5 @@
+#pragma once
+
 import globals;
 
 [[vk::binding(TLAS_BINDING, RT_SET)]]
@@ -46,7 +48,6 @@ StructuredBuffer<Light> gLights;
 StructuredBuffer<Sphere> gSpheres;
 // layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
-// FIXME: Is ConstBufferPointer stuff better here?
 [[vk::binding(VERTEX_BINDING,VERTEX_SET)]]
 StructuredBuffer<Vertex> gVertices[];
 // layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };p
@@ -112,9 +113,9 @@ DeviceSphere getSphere(const float3 hitPoint, const uint primitiveIndex, const u
 {
     DeviceSphere sphere;
 
-    int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
+    const int sphereId = gInstanceData[instanceCustomIndex + primitiveIndex].sphereId;
 
-    Sphere pSphere = gSpheres[sphereId];
+    const Sphere pSphere = gSpheres[sphereId];
 
     const float3 p = hitPoint - pSphere.center;
     sphere.normal = normalize(p);
@@ -125,7 +126,7 @@ DeviceSphere getSphere(const float3 hitPoint, const uint primitiveIndex, const u
 
     const float3 local = mul(worldToObject, hitPoint - pSphere.center).xyz;
 
-    float theta = acos(local.y / pSphere.radius);
+    const float theta = acos(local.y / pSphere.radius);
     float phi = atan2(local.x, local.z);
 
     if (phi < 0.0)

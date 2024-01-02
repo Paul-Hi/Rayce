@@ -1,3 +1,5 @@
+#pragma once
+
 struct Random
 {
     static uint4 gState;
