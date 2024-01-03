@@ -371,6 +371,11 @@ bool sameHemisphere(const float cosTheta, const float cosThetaP)
 
 struct DiffuseBSDF : IBxDF
 {
+    __init(const float3 diffuseReflectance)
+    {
+        this.diffuseReflectance = diffuseReflectance;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -421,6 +426,13 @@ struct DiffuseBSDF : IBxDF
 
 struct SmoothConductorBSDF : IBxDF
 {
+    __init(const float3 specularReflectance, const float3 eta, const float3 k)
+    {
+        this.specularReflectance = specularReflectance;
+        this.eta = eta;
+        this.k = k;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -460,6 +472,14 @@ struct SmoothConductorBSDF : IBxDF
 
 struct RoughConductorBSDF : IBxDF
 {
+    __init(const float3 specularReflectance, const float3 eta, const float3 k, const GGXDistribution distr)
+    {
+        this.specularReflectance = specularReflectance;
+        this.eta = eta;
+        this.k = k;
+        this.distr = distr;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -579,6 +599,13 @@ struct RoughConductorBSDF : IBxDF
 
 struct SmoothDielectricBSDF : IBxDF
 {
+    __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta)
+    {
+        this.specularReflectance = specularReflectance;
+        this.specularTransmittance = specularTransmittance;
+        this.eta = eta;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -649,6 +676,13 @@ struct SmoothDielectricBSDF : IBxDF
 
 struct SmoothThinPlateDielectricBSDF : IBxDF
 {
+    __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta)
+    {
+        this.specularReflectance = specularReflectance;
+        this.specularTransmittance = specularTransmittance;
+        this.eta = eta;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -713,6 +747,14 @@ struct SmoothThinPlateDielectricBSDF : IBxDF
 
 struct RoughDielectricBSDF : IBxDF
 {
+    __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta, const GGXDistribution distr)
+    {
+        this.specularReflectance = specularReflectance;
+        this.specularTransmittance = specularTransmittance;
+        this.eta = eta;
+        this.distr = distr;
+    }
+
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode)
     {
         BxDFSample sample;
@@ -948,14 +990,13 @@ struct DiffuseMaterial : IMaterial
 
     DiffuseBSDF createBxDF(const float2 uv)
     {
-        DiffuseBSDF bsdf;
-        bsdf.diffuseReflectance = this.diffuseReflectance;
+        float3 diffuseReflectance = this.diffuseReflectance;
         if (this.diffuseReflectanceTexture >= 0)
         {
-            bsdf.diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
+            diffuseReflectance = gTextures[NonUniformResourceIndex(this.diffuseReflectanceTexture)].Sample(uv).rgb;
         }
 
-        return bsdf;
+        return DiffuseBSDF(diffuseReflectance);
     }
 
     float3 diffuseReflectance;
@@ -978,28 +1019,27 @@ struct SmoothConductorMaterial : IMaterial
 
     SmoothConductorBSDF createBxDF(const float2 uv)
     {
-        SmoothConductorBSDF bsdf;
-        bsdf.specularReflectance = this.specularReflectance;
+        float3 specularReflectance = this.specularReflectance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+            specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = this.eta;
-        bsdf.k = this.k;
+        float3 eta = this.eta;
+        float3 k = this.k;
         if (this.etaTexture >= 0)
         {
-            bsdf.eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
+            eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
         }
         if (this.kTexture >= 0)
         {
-            bsdf.k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
+            k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = max(bsdf.eta, float3(EPSILON)); // FIXME: This could be handled better
-        bsdf.k = max(bsdf.k, float3(EPSILON)); // FIXME: This could be handled better
+        eta = max(eta, float3(EPSILON)); // FIXME: This could be handled better
+        k = max(k, float3(EPSILON)); // FIXME: This could be handled better
 
-        return bsdf;
+        return SmoothConductorBSDF(specularReflectance, eta, k);
     }
 
     float3 specularReflectance;
@@ -1028,12 +1068,25 @@ struct RoughConductorMaterial : IMaterial
 
     RoughConductorBSDF createBxDF(const float2 uv)
     {
-        RoughConductorBSDF bsdf;
-        bsdf.specularReflectance = this.specularReflectance;
+        float3 specularReflectance = this.specularReflectance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+            specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
+
+        float3 eta = this.eta;
+        float3 k = this.k;
+        if (this.etaTexture >= 0)
+        {
+            eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
+        }
+        if (this.kTexture >= 0)
+        {
+            k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
+        }
+
+        eta = max(eta, float3(EPSILON)); // FIXME: This could be handled better
+        k = max(k, float3(EPSILON)); // FIXME: This could be handled better
 
         float alphaU = alpha.x;
         float alphaV = alpha.y;
@@ -1044,23 +1097,9 @@ struct RoughConductorMaterial : IMaterial
             alphaV = alphaT.y;
         }
 
-        bsdf.distr = GGXDistribution(alphaU, alphaV);
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
-        bsdf.eta = this.eta;
-        bsdf.k = this.k;
-        if (this.etaTexture >= 0)
-        {
-            bsdf.eta = gTextures[NonUniformResourceIndex(this.etaTexture)].Sample(uv).rgb;
-        }
-        if (this.kTexture >= 0)
-        {
-            bsdf.k = gTextures[NonUniformResourceIndex(this.kTexture)].Sample(uv).rgb;
-        }
-
-        bsdf.eta = max(bsdf.eta, float3(EPSILON)); // FIXME: This could be handled better
-        bsdf.k = max(bsdf.k, float3(EPSILON)); // FIXME: This could be handled better
-
-        return bsdf;
+        return RoughConductorBSDF(specularReflectance, eta, k, distr);
     }
 
     float3 specularReflectance;
@@ -1089,21 +1128,20 @@ struct SmoothDielectricMaterial : IMaterial
 
     SmoothDielectricBSDF createBxDF(const float2 uv)
     {
-        SmoothDielectricBSDF bsdf;
-        bsdf.specularReflectance = this.specularReflectance;
-        bsdf.specularTransmittance = this.specularTransmittance;
+        float3 specularReflectance = this.specularReflectance;
+        float3 specularTransmittance = this.specularTransmittance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+            specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
         if (this.specularTransmittanceTexture >= 0)
         {
-            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+            specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = this.eta;
+        float eta = this.eta;
 
-        return bsdf;
+        return SmoothDielectricBSDF(specularReflectance, specularTransmittance, eta);
     }
 
     float3 specularReflectance;
@@ -1128,21 +1166,20 @@ struct SmoothThinPlateDielectricMaterial : IMaterial
 
     SmoothThinPlateDielectricBSDF createBxDF(const float2 uv)
     {
-        SmoothThinPlateDielectricBSDF bsdf;
-        bsdf.specularReflectance = this.specularReflectance;
-        bsdf.specularTransmittance = this.specularTransmittance;
+        float3 specularReflectance = this.specularReflectance;
+        float3 specularTransmittance = this.specularTransmittance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+            specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
         if (this.specularTransmittanceTexture >= 0)
         {
-            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+            specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
 
-        bsdf.eta = this.eta;
+        float eta = this.eta;
 
-        return bsdf;
+        return SmoothThinPlateDielectricBSDF(specularReflectance, specularTransmittance, eta);
     }
 
     float3 specularReflectance;
@@ -1169,17 +1206,18 @@ struct RoughDielectricMaterial : IMaterial
 
     RoughDielectricBSDF createBxDF(const float2 uv)
     {
-        RoughDielectricBSDF bsdf;
-        bsdf.specularReflectance = this.specularReflectance;
-        bsdf.specularTransmittance = this.specularTransmittance;
+        float3 specularReflectance = this.specularReflectance;
+        float3 specularTransmittance = this.specularTransmittance;
         if (this.specularReflectanceTexture >= 0)
         {
-            bsdf.specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
+            specularReflectance = gTextures[NonUniformResourceIndex(this.specularReflectanceTexture)].Sample(uv).rgb;
         }
         if (this.specularTransmittanceTexture >= 0)
         {
-            bsdf.specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
+            specularTransmittance = gTextures[NonUniformResourceIndex(this.specularTransmittanceTexture)].Sample(uv).rgb;
         }
+
+        float eta = this.eta;
 
         float alphaU = alpha.x;
         float alphaV = alpha.y;
@@ -1190,11 +1228,9 @@ struct RoughDielectricMaterial : IMaterial
             alphaV = alphaT.y;
         }
 
-        bsdf.distr = GGXDistribution(alphaU, alphaV);
+        GGXDistribution distr = GGXDistribution(alphaU, alphaV);
 
-        bsdf.eta = this.eta;
-
-        return bsdf;
+        return RoughDielectricBSDF(specularReflectance, specularTransmittance, eta, distr);
     }
 
     float3 specularReflectance;
