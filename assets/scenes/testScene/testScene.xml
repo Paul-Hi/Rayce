@@ -2,7 +2,6 @@
 
     <bsdf type="twosided" id="light_gray">
         <bsdf type="diffuse">
-            <rgb name="reflectance" value="0.85, 0.84, 0.8" />
         </bsdf>
     </bsdf>
 
@@ -12,15 +11,20 @@
     </bsdf>
 
     <bsdf type="plastic" id="some_plastic">
-        <rgb name="diffuse_reflectance" value="0.6, 0.6, 0.6" />
+        <rgb name="diffuse_reflectance" value="0.8, 0.8, 0.8" />
         <string name="int_ior" value="polypropylene" />
+        <string name="ext_ior" value="air" />
+    </bsdf>
+
+    <bsdf type="dielectric" id="water">
+        <string name="int_ior" value="water" />
         <string name="ext_ior" value="air" />
     </bsdf>
 
     <bsdf type="roughdielectric" id="rough_glass">
         <string name="int_ior" value="bk7" />
         <string name="ext_ior" value="air" />
-        <float name="alpha" value="0.025" />
+        <float name="alpha" value="0.1" />
     </bsdf>
 
     <bsdf type="roughconductor" id="gold">
@@ -53,6 +57,17 @@
         </bsdf>
     </bsdf>
 
+    <bsdf type="twosided" id="rbTexRoughPlastic">
+        <bsdf type="roughplastic">
+            <texture name="diffuse_reflectance" type="bitmap">
+                <string name="filename" value="wood.jpg" />
+            </texture>
+            <float name="int_ior" value="1.1" />
+            <string name="ext_ior" value="air" />
+            <float name="alpha" value="0.15" />
+        </bsdf>
+    </bsdf>
+
     <bsdf type="diffuse" id="light">
         <rgb name="reflectance" value="0, 0, 0" />
     </bsdf>
@@ -62,7 +77,7 @@
             <scale x="2" y="2" />
             <rotate x="1" angle="-90" />
         </transform>
-        <ref id="rbTexDiffuse" />
+        <ref id="rbTexRoughPlastic" />
     </shape>
 
     <shape type="rectangle" id="ceiling">
@@ -102,31 +117,37 @@
 
     <shape type="rectangle" id="main_light_source">
         <transform name="to_world">
-            <scale x="0.4" y="0.4" />
+            <scale x="0.5" y="0.5" />
             <rotate x="1" angle="90" />
             <translate x="0" y="3.99" />
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="14, 13, 12" />
+            <rgb name="radiance" value="16, 15, 14" />
         </emitter>
         <ref id="light" />
     </shape>
 
-    <shape type="sphere" id="large_sphere">
+    <shape type="cube" id="rough_glass_cube">
         <transform name="to_world">
-            <scale x="0.65" y="0.65" z="0.65" />
-            <translate x="-0.75" y="1.5" z="-0.75" />
+            <scale x="0.4" y="0.4" z="0.1" />
+            <rotate y="1" angle="16" />
+            <translate x="-1.2" y="0.4" z="1" />
         </transform>
         <ref id="rough_glass" />
+    </shape>
+
+    <shape type="sphere" id="water_sphere">
+        <transform name="to_world">
+            <scale x="0.4" y="0.4" z="0.4" />
+            <translate x="1" y="0.4" z="1" />
+        </transform>
+        <ref id="water" />
     </shape>
 
     <shape type="ply" id="bunny">
         <string name="filename" value="bunny.ply" />
         <transform name="to_world">
-            <rotate y="1" angle="18" />
-            <rotate z="1" angle="-21" />
-            <rotate x="1" angle="-16" />
-            <translate x="0.5" y="0.76" z="-1" />
+            <translate x="0.9" y="-0.01" z="-1" />
         </transform>
         <ref id="gold" />
     </shape>
@@ -136,21 +157,18 @@
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
             <rotate y="1" angle="55" />
-            <rotate z="1" angle="12" />
-            <translate x="0" z="0.25" y="1.2" />
+            <translate x="-0.8" y="0.0" z="-0.9" />
         </transform>
         <ref id="acrylic_glass" />
     </shape>
-    <!--<shape type="obj" id="teapot_kettle">
+    <shape type="obj" id="teapot_kettle">
         <string name="filename" value="teapot1.obj" />
         <transform name="to_world">
             <scale x="0.15" y="0.15" z="0.15" />
             <rotate y="1" angle="55" />
-            <rotate x="1" angle="32" />
-            <rotate z="1" angle="12" />
-            <translate x="0" z="0.25" y="0.6"/>
+            <translate x="-0.8" y="0.0" z="-0.9" />
         </transform>
         <ref id="some_plastic" />
-    </shape>-->
+    </shape>
 
 </scene>

@@ -757,6 +757,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         break;
     }
     case EBxDFType::smoothPlastic:
+    case EBxDFType::roughPlastic:
     {
         if (props.contains("int_ior"))
         {
@@ -845,6 +846,107 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
                     if (textureProperty.first == "filename")
                     {
                         bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                        imagesToLoad.push_back(textureProperty.second.getString());
+                    }
+                }
+            }
+        }
+
+        if (bsdf.type == EBxDFType::roughPlastic)
+        {
+            // alpha, alpha_u, alpha_v
+            if (props.contains("alpha"))
+            {
+                auto alpha = props.at("alpha");
+
+                if (alpha.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha = vec3(alpha.getNumber(), alpha.getNumber(), 0.0);
+                }
+                else
+                {
+                    bsdf.possibleData.alpha = vec3(1.0, 1.0, 0.0);
+                }
+            }
+            if (props.contains("alpha_u"))
+            {
+                auto alphaU = props.at("alpha_u");
+
+                if (alphaU.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.x() = alphaU.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.x() = 1.0;
+                }
+            }
+            if (props.contains("alpha_v"))
+            {
+                auto alphaV = props.at("alpha_v");
+
+                if (alphaV.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.y() = alphaV.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.y() = 1.0;
+                }
+            }
+
+            // alpha, alpha_u, alpha_v
+            if (props.contains("alpha"))
+            {
+                auto alpha = props.at("alpha");
+
+                if (alpha.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha = vec3(alpha.getNumber(), alpha.getNumber(), 0.0);
+                }
+                else
+                {
+                    bsdf.possibleData.alpha = vec3(1.0, 1.0, 0.0);
+                }
+            }
+            if (props.contains("alpha_u"))
+            {
+                auto alphaU = props.at("alpha_u");
+
+                if (alphaU.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.x() = alphaU.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.x() = 1.0;
+                }
+            }
+            if (props.contains("alpha_v"))
+            {
+                auto alphaV = props.at("alpha_v");
+
+                if (alphaV.type() == mp::PT_NUMBER) // <float></float>
+                {
+                    bsdf.possibleData.alpha.y() = alphaV.getNumber();
+                }
+                else
+                {
+                    bsdf.possibleData.alpha.y() = 1.0;
+                }
+            }
+            for (const auto& textureChild : bsdfObject->namedChildren())
+            {
+                // texture
+                if (textureChild.first != "alpha" || textureChild.second->type() != mp::OT_TEXTURE)
+                {
+                    continue;
+                }
+                for (const auto& textureProperty : textureChild.second->properties())
+                {
+                    if (textureProperty.first == "filename")
+                    {
+                        bsdf.possibleData.alphaTexture = imagesToLoad.size();
                         imagesToLoad.push_back(textureProperty.second.getString());
                     }
                 }
@@ -1505,6 +1607,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             break;
         }
         case EBxDFType::smoothPlastic:
+        case EBxDFType::roughPlastic:
         {
             if (bsdf.possibleData.diffuseReflectanceTexture >= 0)
             {
@@ -1607,6 +1710,61 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 mImageViews[bsdf.possibleData.specularReflectanceTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
                 mImageSamplers[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
                                                                                                           VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+            }
+
+            if (bsdf.type == EBxDFType::roughPlastic)
+            {
+                if (bsdf.possibleData.alphaTexture >= 0)
+                {
+                    // load image;
+                    str name = bsdf.id + "_alpha";
+
+                    if (mImageCache[name])
+                    {
+                        continue;
+                    }
+
+                    str imageFile = imagesToLoad[bsdf.possibleData.alphaTexture];
+
+                    int32 w, h, c;
+
+                    if (!fs::exists(imageFile))
+                    {
+                        imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                        if (!fs::exists(imageFile))
+                        {
+                            RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.alphaTexture].c_str(), imageFile.c_str());
+                        }
+                    }
+
+                    mImageCache[name] =
+                        stbi_load(imageFile.c_str(), &w, &h, &c, STBI_rgb_alpha);
+                    if (!mImageCache[name])
+                    {
+                        RAYCE_LOG_ERROR("Can not load: %s", imageFile.c_str());
+                    }
+                    RAYCE_LOG_INFO("Loaded %s as %s", imageFile.c_str(), name.c_str());
+
+                    uint32 width      = static_cast<uint32>(w);
+                    uint32 height     = static_cast<uint32>(h);
+                    uint32 components = STBI_rgb_alpha;
+                    uint32 imageSize  = width * height * components;
+
+                    VkFormat format = getImageFormat(components, false);
+
+                    VkExtent2D extent{ width, height };
+                    mImages[bsdf.possibleData.alphaTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
+                    auto& addedImage                        = mImages[bsdf.possibleData.alphaTexture];
+                    addedImage->allocateMemory(logicalDevice, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                    addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                    VkExtent3D extent3D{ width, height, 1 };
+                    Image::uploadImageDataWithStagingBuffer(logicalDevice, commandPool, *addedImage, mImageCache[name], imageSize, extent3D);
+                    addedImage->adaptImageLayout(logicalDevice, commandPool, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                    mImageViews[bsdf.possibleData.alphaTexture]    = (std::make_unique<ImageView>(logicalDevice, *addedImage, format, VK_IMAGE_ASPECT_COLOR_BIT));
+                    mImageSamplers[bsdf.possibleData.alphaTexture] = (std::make_unique<Sampler>(logicalDevice, VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                                                                                                VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR, true, false, VK_COMPARE_OP_ALWAYS)); // default sampler
+                }
             }
             break;
         }

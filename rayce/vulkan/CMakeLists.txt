@@ -21,7 +21,7 @@ target_include_directories(rayceVulkan
     PUBLIC
     $<BUILD_INTERFACE:${eigen_SOURCE_DIR}>
     $<BUILD_INTERFACE:${glfw_INCLUDE_DIRS}>
-    ../../assets/shaders/src/slang
+    ../../assets/shaders/src/slang/core
     PRIVATE
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
 )
