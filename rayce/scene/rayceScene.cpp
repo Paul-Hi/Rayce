@@ -54,6 +54,7 @@ struct MitsubaShape
     EShapeType type;
     str filename;
     mat4 transformationMatrix;
+    bool faceNormals;
     MitsubaRef bsdf;
     int32 emitter{ -1 };
 };
@@ -110,7 +111,11 @@ static EBxDFType bsdfFromPluginType(const str& pluginType)
     {
         return EBxDFType::bsdfTypeCount;
     }
-    RAYCE_ASSERT(false, "Unknown BSDF Type");
+    else
+    {
+        RAYCE_LOG_WARN("We do not support BSDF Type %s!", pluginType.c_str());
+        return EBxDFType::bsdfTypeCount;
+    }
 }
 
 static ELightType lightFromPluginType(const str& pluginType)
@@ -154,7 +159,11 @@ static ELightType lightFromPluginType(const str& pluginType)
         RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
         return ELightType::lightTypeCount;
     }
-    RAYCE_ASSERT(false, "Unknown BSDF Type");
+    else
+    {
+        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::lightTypeCount;
+    }
 }
 
 struct IOREntry
@@ -454,7 +463,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         }
         if (props.contains("specular_transmittance"))
         {
-            auto specularTransmittance = props.at("specular_reflectance");
+            auto specularTransmittance = props.at("specular_transmittance");
 
             if (specularTransmittance.type() == mp::PT_COLOR) // <rgb></rgb>
             {
@@ -1099,6 +1108,11 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                             shape.transformationMatrix(i, j) = transform(i, j);
                         }
                     }
+                }
+
+                if (prop.first == "face_normals")
+                {
+                    shape.faceNormals = prop.second.getBool();
                 }
             }
 
@@ -2040,6 +2054,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
                 }
                 mMaterials[materialId]->canUseUv = hasUVs;
+                mMaterials[materialId]->faceNormals = shape.faceNormals;
                 pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 
@@ -2189,6 +2204,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
                 }
                 mMaterials[materialId]->canUseUv = hasUVs;
+                mMaterials[materialId]->faceNormals = shape.faceNormals;
                 pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 

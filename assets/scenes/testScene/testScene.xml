@@ -27,10 +27,12 @@
         <float name="alpha" value="0.1" />
     </bsdf>
 
-    <bsdf type="roughconductor" id="gold">
-        <string name="material" value="Au" />
-        <float name="alpha_u" value="0.1" />
-        <float name="alpha_v" value="0.1" />
+    <bsdf type="twosided" id="gold">
+        <bsdf type="roughconductor" id="gold">
+            <string name="material" value="Au" />
+            <float name="alpha_u" value="0.1" />
+            <float name="alpha_v" value="0.1" />
+        </bsdf>
     </bsdf>
 
     <bsdf type="twosided" id="blue">
@@ -49,7 +51,8 @@
         <bsdf type="diffuse">
             <texture name="reflectance" type="bitmap">
                 <string name="filename" value="rb_checkerboard.bmp" />
-                <!--<transform name="to_uv">
+                <!--<transform
+                name="to_uv">
                     <scale x="2" y="2"/>
                     <translate x="0.5" y="1.0"/>
                 </transform>-->
@@ -62,7 +65,7 @@
             <texture name="diffuse_reflectance" type="bitmap">
                 <string name="filename" value="wood.jpg" />
             </texture>
-            <float name="int_ior" value="1.1" />
+            <float name="int_ior" value="1.5" />
             <string name="ext_ior" value="air" />
             <float name="alpha" value="0.15" />
         </bsdf>

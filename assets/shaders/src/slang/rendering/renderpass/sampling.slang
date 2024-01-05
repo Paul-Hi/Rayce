@@ -188,7 +188,7 @@ bool lightSampleOrientationValid(const int lightId, const float3 surfacePoint, c
     return false;
 }
 
-Optional<LightSample> sampleLights(const float3 p, const int lightId, const CoordinateSpace space)
+Optional<LightSample> sampleLights(const float3 p, const int lightId, const CoordinateSpace space, bool twoSided)
 {
     LightSample lightSample;
     if(lightId >= 0 && gPushConstants.lightCount == 1)
@@ -225,9 +225,14 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
     wDir = normalize(wDir);
 
     lightSample.wi = space.worldToTangentFrame(wDir);
-    const float nDotL = cosThetaTS(lightSample.wi);
+    float cosTheta = cosThetaTS(lightSample.wi);
 
-    if(lightSample.pdf <= 0.0 || nDotL <= 0.0)
+    if(twoSided && cosTheta < 0.0)
+    {
+        cosTheta *= -1.0;
+    }
+
+    if(lightSample.pdf <= 0.0 || cosTheta <= 0.0)
     {
         return none;
     }
@@ -255,7 +260,7 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         return none;
     }
 
-    lightSample.radiance = nDotL * gPushConstants.lightCount * sampledLight.radiance;
+    lightSample.radiance = cosTheta * gPushConstants.lightCount * sampledLight.radiance;
 
     lightSample.valid = lightSample.pdf > 0.0;
     return lightSample;

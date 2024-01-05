@@ -245,7 +245,7 @@ namespace rayce
         float3 conductorK;
         int conductorKTexture;
 
-        uint nonlinear;
+        uint faceNormals;
 
         uint canUseUv;
 
@@ -269,7 +269,7 @@ namespace rayce
             , conductorEtaTexture(-1)
             , conductorK(float3(1.0, 1.0, 1.0))
             , conductorKTexture(-1)
-            , nonlinear(0)
+            , faceNormals(0)
             , canUseUv(0)
         {
         }
@@ -292,7 +292,7 @@ namespace rayce
             this.conductorEtaTexture = -1;
             this.conductorK = float3(1.0, 1.0, 1.0);
             this.conductorKTexture = -1;
-            this.nonlinear = 0;
+            this.faceNormals = 0;
             this.canUseUv = 0;
         }
 #endif
