@@ -244,12 +244,10 @@ namespace rayce
         int conductorEtaTexture;
         float3 conductorK;
         int conductorKTexture;
-
-        uint faceNormals;
+        float3 pad;
 
         uint canUseUv;
 
-        float2 pad;
 
 #ifdef __cplusplus
         Material()
@@ -269,7 +267,6 @@ namespace rayce
             , conductorEtaTexture(-1)
             , conductorK(float3(1.0, 1.0, 1.0))
             , conductorKTexture(-1)
-            , faceNormals(0)
             , canUseUv(0)
         {
         }
@@ -292,7 +289,6 @@ namespace rayce
             this.conductorEtaTexture = -1;
             this.conductorK = float3(1.0, 1.0, 1.0);
             this.conductorKTexture = -1;
-            this.faceNormals = 0;
             this.canUseUv = 0;
         }
 #endif

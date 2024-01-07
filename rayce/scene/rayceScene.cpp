@@ -608,6 +608,13 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         {
             auto eta = props.at("eta");
 
+            if (eta.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c = eta.getColor();
+
+                bsdf.possibleData.conductorEta = vec3(c.r, c.g, c.b);
+            }
+
             if (eta.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
                 auto& spec = eta.getSpectrum();
@@ -620,6 +627,13 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
         if (props.contains("k"))
         {
             auto k = props.at("k");
+
+            if (k.type() == mp::PT_COLOR) // <rgb></rgb>
+            {
+                auto& c = k.getColor();
+
+                bsdf.possibleData.conductorK = vec3(c.r, c.g, c.b);
+            }
 
             if (k.type() == mp::PT_SPECTRUM) // <spectrum></spectrum>
             {
@@ -2007,7 +2021,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     Vertex vertex;
 
                     vertex.position = positions[v];
-                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
+                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(0.0, 0.0, 0.0);
                     vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
 
                     vertices[v] = vertex;
@@ -2054,7 +2068,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
                 }
                 mMaterials[materialId]->canUseUv = hasUVs;
-                mMaterials[materialId]->faceNormals = shape.faceNormals;
+
                 pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 
@@ -2157,7 +2171,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     Vertex vertex;
 
                     vertex.position = positions[v];
-                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(1.0, 1.0, 1.0).normalized();
+                    vertex.normal   = hasNormals ? normals[v].normalized() : vec3(0.0, 0.0, 0.0);
                     vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
 
                     vertices[v] = vertex;
@@ -2204,7 +2218,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     }
                 }
                 mMaterials[materialId]->canUseUv = hasUVs;
-                mMaterials[materialId]->faceNormals = shape.faceNormals;
+
                 pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
             }
 
@@ -2241,6 +2255,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 }
             }
             mMaterials[materialId]->canUseUv = false;
+
             pGeometry->add(std::move(sphere), std::move(boundingBox), materialId, lightId, { mat4::Identity() });
 
             sphereId++;

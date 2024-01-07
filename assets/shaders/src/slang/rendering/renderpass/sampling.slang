@@ -6,6 +6,7 @@ struct GeometrySample
 {
     float3 point;
     float pdf;
+    float3 normal;
 };
 
 bool finalizeSolidAngleSampling(inout float pdf, const float3 normal, const float3 point, const float3 samplePoint)
@@ -27,6 +28,8 @@ interface ISampler
     static float samplePdf(const float3 point, const Light lightData, const float3 samplePoint = float3(0.0));
 
     static bool sampleOrientationValid(const float3 point, const Light lightData, const float3 samplePoint = float3(0.0));
+
+    static GeometrySample sampleArea(const Light lightData);
 };
 
 struct SphereSampler : ISampler
@@ -41,6 +44,7 @@ struct SphereSampler : ISampler
         const float3 unitPoint = float3(r * cos(phi), r * sin(phi), z);
         sample.point = center + unitPoint * radius;
         sample.pdf = 1.0 / surfaceArea;
+        sample.normal = normalize(unitPoint);
         return sample;
     }
 
@@ -77,6 +81,7 @@ struct SphereSampler : ISampler
         samplePoint = space.flipped().tangentToWorld(samplePoint);
 
         sample.point = lightData.wCenter + samplePoint * radius;
+        sample.normal = normalize(samplePoint);
 
         return sample;
     }
@@ -110,6 +115,15 @@ struct SphereSampler : ISampler
 
         return (dist > radius);
     }
+
+    static GeometrySample sampleArea(const Light lightData)
+    {
+        GeometrySample sample;
+
+        const float radius = (mul(lightData.lightToWorld, float4(1.0, 0.0, 0.0, 1.0)).xyz - lightData.wCenter).x;
+
+        return SphereSampler::sampleUniform(lightData.wCenter, radius, lightData.surfaceArea);
+    }
 }
 
 struct RectangleSampler : ISampler
@@ -129,6 +143,7 @@ struct RectangleSampler : ISampler
         {
             sample.pdf = 0.0;
         }
+        sample.normal = normal;
 
         return sample;
     }
@@ -152,6 +167,21 @@ struct RectangleSampler : ISampler
         const float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
 
         return dot(w, normal) > 0.0;
+    }
+
+    static GeometrySample sampleArea(const Light lightData)
+    {
+        GeometrySample sample;
+        // sample in -1, 1
+        const float2 uv = Random::rand2() * 2.0 - 1.0;
+        sample.point = mul(lightData.lightToWorld, float4(uv.x, uv.y, 0.0, 1.0)).xyz;
+
+        sample.pdf = 1.0 / lightData.surfaceArea;
+
+        const float3 normal = normalize(mul(lightData.lightToWorld, float4(0.0, 0.0, 1.0, 0.0)).xyz);
+        sample.normal = normal;
+
+        return sample;
     }
 }
 
@@ -191,7 +221,7 @@ bool lightSampleOrientationValid(const int lightId, const float3 surfacePoint, c
 Optional<LightSample> sampleLights(const float3 p, const int lightId, const CoordinateSpace space, bool twoSided)
 {
     LightSample lightSample;
-    if(lightId >= 0 && gPushConstants.lightCount == 1)
+    if((lightId >= 0 && gPushConstants.lightCount == 1) || gPushConstants.lightCount == 0)
     {
         return none;
     }
@@ -216,6 +246,11 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         lightSample.pdf = sample.pdf;
     }
     else
+    {
+        return none;
+    }
+
+    if(!lightSampleOrientationValid(lightIndex, p, sample.point))
     {
         return none;
     }
@@ -260,8 +295,34 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         return none;
     }
 
-    lightSample.radiance = cosTheta * gPushConstants.lightCount * sampledLight.radiance;
+    lightSample.radiance = cosTheta * sampledLight.radiance;
 
     lightSample.valid = lightSample.pdf > 0.0;
     return lightSample;
 };
+
+Optional<GeometrySample> sampleLightVertex(out float3 radiance)
+{
+    if(gPushConstants.lightCount == 0)
+    {
+        radiance = float3(0.0);
+        return none;
+    }
+
+    int lightIndex = int(Random::rand() * gPushConstants.lightCount);
+    const Light sampledLight = gLights[lightIndex];
+
+    GeometrySample sample;
+    if(sampledLight.type == ELightType::analyticSphere)
+    {
+        sample = SphereSampler::sampleArea(sampledLight);
+    }
+    else if(sampledLight.type == ELightType::analyticRectangle)
+    {
+        sample = RectangleSampler::sampleArea(sampledLight);
+    }
+
+    radiance = sampledLight.radiance;
+
+    return sample;
+}

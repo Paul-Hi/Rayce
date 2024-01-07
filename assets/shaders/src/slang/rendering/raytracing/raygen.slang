@@ -14,7 +14,7 @@ void main()
     Random::init(uint4(DispatchRaysIndex().xy, gPushConstants.frame, 2907));
 
     // Anti Aliasing
-    float2 uv = (pixelCorner + Random::rand()) / float2(DispatchRaysDimensions().xy - uint2(1));
+    float2 uv = (pixelCorner + Random::rand2()) / float2(DispatchRaysDimensions().xy - uint2(1));
     uv = uv * 2.0 - 1.0;
 
     // FIXME: Precompiling the different integrator shaders should increase performance...

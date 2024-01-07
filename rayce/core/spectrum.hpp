@@ -348,7 +348,6 @@ namespace rayce
     template <typename Spec>
     vec3 RAYCE_API_EXPORT spectrumToXYZ(const Spec& spectrum)
     {
-        std::cout << " 0 " << innerProduct(spectrum, Spectra::CIEY) << std::endl;
         return vec3(innerProduct(spectrum, Spectra::CIEX), innerProduct(spectrum, Spectra::CIEY), innerProduct(spectrum, Spectra::CIEZ)) / Spectra::CIEYIntegral;
     }
 

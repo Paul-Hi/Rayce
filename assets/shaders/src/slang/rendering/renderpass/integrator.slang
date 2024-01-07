@@ -29,7 +29,7 @@ void getIntersectionInfo(const RayPayload payload, out IntersectionInfo iInfo)
         iInfo.material = gMaterials[triangle.materialId];
         iInfo.uv = triangle.interpolatedUV;
         iInfo.lightId = triangle.lightId;
-        iInfo.space = CoordinateSpace(iInfo.material.faceNormals == 1 ? triangle.geometryNormal : triangle.interpolatedNormal, iInfo.material.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+        iInfo.space = CoordinateSpace(!any(triangle.interpolatedNormal > 0.0) ? triangle.geometryNormal : triangle.interpolatedNormal, iInfo.material.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
     }
     else if(payload.hitKind == EHitKind::proceduralSphere)
     {
@@ -74,10 +74,10 @@ struct PathIntegrator : IIntegrator
 
         if(gCamera.pbData.x > 0.0)
         {
-            float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+            const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
 
-            float focalD = gCamera.pbData.y / ray.direction.z;
-            float3 focusPoint = ray.origin - focalD * ray.direction;
+            const float focalD = gCamera.pbData.y / ray.direction.z;
+            const float3 focusPoint = ray.origin - focalD * ray.direction;
 
             ray.origin = float3(pointOnLens, 0.0);
             ray.direction = normalize(focusPoint - ray.origin);
@@ -118,7 +118,6 @@ struct PathIntegrator : IIntegrator
 
         float pdfBxDF = 1.0;
         bool specularBounce = false;
-        bool anyNonSpecularBounces = false;
         float etaScale = 1.0;
 
         RayPayload payload;
@@ -144,7 +143,6 @@ struct PathIntegrator : IIntegrator
                     const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
                     if(orientationValid)
                     {
-
                         if(depth == 0 || specularBounce)
                         {
                             pathState.L += pathState.throughput * gLights[iInfo.lightId].radiance;
@@ -194,7 +192,6 @@ struct PathIntegrator : IIntegrator
                 pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / bxdfSample.pdf;
                 pdfBxDF = bxdfSample.proportionalPDF ? adapter.pdf(materialInstance, wo, bxdfSample.wi) : bxdfSample.pdf;
                 specularBounce = bxdfSample.isSpecular();
-                anyNonSpecularBounces |= !specularBounce;
 
                 if(bxdfSample.isTransmission())
                 {
@@ -226,7 +223,7 @@ struct PathIntegrator : IIntegrator
     }
 };
 
-struct BidirectionIntegrator : IIntegrator
+struct LightIntegrator : IIntegrator
 {
     struct PathState
     {
@@ -252,26 +249,56 @@ struct BidirectionIntegrator : IIntegrator
 
     Ray createPrimaryRay(const float2 uv)
     {
+        return Ray(); // unused
+    }
+
+    Optional<Ray> initLightPath(out float pdf, out float3 radiance)
+    {
+        const Optional<GeometrySample> vertexSample = sampleLightVertex(radiance);
+        if(vertexSample == none)
+        {
+            pdf = 0.0;
+            radiance = float3(0.0);
+            return none;
+        }
+
+        Ray ray;
+        ray.origin = vertexSample.value.point;
+
+        ray.direction = cosineHemisphereSample();
+        pdf = cosineHemispherePdf(abs(cosThetaTS(ray.direction)));
+
+        const CoordinateSpace lightSpace = CoordinateSpace(vertexSample.value.normal);
+        ray.direction = lightSpace.tangentToWorld(ray.direction);
+
+        return ray;
+    }
+
+    float3 sampleCameraWi(const float2 uv, out float pdf) // sampling the current uv?
+    {
         Ray ray;
         ray.origin = float3(0.0, 0.0, 0.0);
         const float4 imagePlane = mul(gCamera.inverseProjection, float4(uv.x, uv.y, 1.0, 1.0));
         ray.direction = normalize(imagePlane.xyz);
 
-        if(gCamera.pbData.x > 0.0)
-        {
-            float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+        const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
 
-            float focalD = gCamera.pbData.y / ray.direction.z;
-            float3 focusPoint = ray.origin - focalD * ray.direction;
+        const float focalD = gCamera.pbData.y / ray.direction.z;
+        const float3 focusPoint = ray.origin - focalD * ray.direction;
 
-            ray.origin = float3(pointOnLens, 0.0);
-            ray.direction = normalize(focusPoint - ray.origin);
-        }
+        ray.origin = float3(pointOnLens, 0.0);
+        const float d = length(focusPoint - ray.origin);
+        ray.direction = (focusPoint - ray.origin) / d;
 
-        ray.origin = mul(gCamera.inverseView, float4(ray.origin, 1.0)).xyz;
+        const float lensArea = gCamera.pbData.x > 0.0 ? PI * sqr(gCamera.pbData.x) : 1.0;
+
+        const float dSqrd = sqr(d);
+        const float cosTheta = cosThetaTS(ray.direction);
+
+        pdf = dSqrd / (cosTheta * lensArea);
         ray.direction = normalize(mul(gCamera.inverseView, float4(ray.direction, 0.0)).xyz);
 
-        return ray;
+        return ray.direction;
     }
 
     void traceRay(const Ray ray, inout RayPayload payload)
@@ -299,11 +326,21 @@ struct BidirectionIntegrator : IIntegrator
         const int russianRouletteStart = min(1, maxDepth - 1);
 
         PathState pathState;
-        pathState.scatterRay = createPrimaryRay(uv);
+        float pdf = 0.0;
+        const Optional<Ray> optionalLightPathStart = initLightPath(pdf, pathState.L);
+        if(optionalLightPathStart == none)
+        {
+            return pathState;
+        }
+
+        // sample camera
+        // check if connection is possible
+        // add radiance
+
+        pathState.scatterRay = optionalLightPathStart.value;
 
         float pdfBxDF = 1.0;
         bool specularBounce = false;
-        bool anyNonSpecularBounces = false;
         float etaScale = 1.0;
 
         RayPayload payload;
@@ -316,33 +353,11 @@ struct BidirectionIntegrator : IIntegrator
 
             if(payload.hitKind == EHitKind::miss)
             {
-                // incorporate infinite lights?
-                pathState.L += pathState.throughput * float3(0.01, 0.01, 0.05);
                 break;
             }
             else
             {
                 getIntersectionInfo(payload, iInfo);
-
-                if(iInfo.lightId >= 0)
-                {
-                    const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
-                    if(orientationValid)
-                    {
-
-                        if(depth == 0 || specularBounce)
-                        {
-                            pathState.L += pathState.throughput * gLights[iInfo.lightId].radiance;
-                        }
-                        else
-                        {
-                            const float lightPdf = pdfLight(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
-                            const float miWeight = powerHeuristic(pdfBxDF, lightPdf);
-
-                            pathState.L += pathState.throughput * miWeight * gLights[iInfo.lightId].radiance;
-                        }
-                    }
-                }
 
                 if (depth++ == maxDepth)
                 {
@@ -357,14 +372,9 @@ struct BidirectionIntegrator : IIntegrator
 
                 if(isNonSpecular(materialInstance.flags()))
                 {
-                    const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space, iInfo.material.twoSided == 1);
-                    if(lightSample != none)
-                    {
-                        const float bsdfPdf = adapter.pdf(materialInstance, wo, lightSample.value.wi);
-                        const float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
-                        const float3 f = adapter.f(materialInstance, wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
-                        pathState.L += pathState.throughput * miWeight * f * lightSample.value.radiance / lightSample.value.pdf;
-                    }
+                    // sample camera
+                    // check if connection is possible
+                    // add radiance
                 }
 
                 const Optional<BxDFSample> optionalSample = adapter.sample(materialInstance, wo);
@@ -379,7 +389,6 @@ struct BidirectionIntegrator : IIntegrator
                 pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / bxdfSample.pdf;
                 pdfBxDF = bxdfSample.proportionalPDF ? adapter.pdf(materialInstance, wo, bxdfSample.wi) : bxdfSample.pdf;
                 specularBounce = bxdfSample.isSpecular();
-                anyNonSpecularBounces |= !specularBounce;
 
                 if(bxdfSample.isTransmission())
                 {
@@ -436,10 +445,10 @@ struct DirectIntegrator : IIntegrator
 
         if(gCamera.pbData.x > 0.0)
         {
-            float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+            const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
 
-            float focalD = gCamera.pbData.y / ray.direction.z;
-            float3 focusPoint = ray.origin - focalD * ray.direction;
+            const float focalD = gCamera.pbData.y / ray.direction.z;
+            const float3 focusPoint = ray.origin - focalD * ray.direction;
 
             ray.origin = float3(pointOnLens, 0.0);
             ray.direction = normalize(focusPoint - ray.origin);
@@ -557,10 +566,10 @@ struct DebugIntegrator : IIntegrator
 
         if(gCamera.pbData.x > 0.0)
         {
-            float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+            const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
 
-            float focalD = gCamera.pbData.y / ray.direction.z;
-            float3 focusPoint = ray.origin - focalD * ray.direction;
+            const float focalD = gCamera.pbData.y / ray.direction.z;
+            const float3 focusPoint = ray.origin - focalD * ray.direction;
 
             ray.origin = float3(pointOnLens, 0.0);
             ray.direction = normalize(focusPoint - ray.origin);
