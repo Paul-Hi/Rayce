@@ -70,7 +70,7 @@ struct GGXDistribution
 
         const float phi = TWO_PI * rand.x;
         const float z = 1.0 - (rand.y * (1.0 + cosThetaO));
-        const float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
+        const float sinTheta = sqrt(saturate(1.0 - z * z));
         const float x = sinTheta * cos(phi);
         const float y = sinTheta * sin(phi);
         const float3 c = float3(x, y, z);

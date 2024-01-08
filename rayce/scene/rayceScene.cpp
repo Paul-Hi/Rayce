@@ -321,7 +321,7 @@ static std::tuple<vec3, vec3> conductorComplexIorFromString(str materialName)
     return { vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0) };
 }
 
-static LinearInterpolatedSpectrum convertMitsubaSpectrumToLIS(const tinyparser_mitsuba::Spectrum& spec)
+static LinearInterpolatedSpectrum convertMitsubaSpectrumToLIS(const mp::Spectrum& spec)
 {
     auto wvl = spec.wavelengths();
     auto wts = spec.weights();
@@ -342,7 +342,7 @@ static LinearInterpolatedSpectrum convertMitsubaSpectrumToLIS(const tinyparser_m
     return spectrum;
 }
 
-static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
+static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<mp::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
 {
     MitsubaBSDF bsdf;
     bsdf.id                    = bsdfObject->id();
@@ -985,7 +985,7 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<tinyparser_mitsuba::Obj
     return bsdf;
 }
 
-static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<tinyparser_mitsuba::Object>& emitterObject, std::vector<str>& imagesToLoad)
+static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<mp::Object>& emitterObject, std::vector<str>& imagesToLoad)
 {
     MitsubaEmitter emitter;
     emitter.type = lightFromPluginType(emitterObject->pluginType());

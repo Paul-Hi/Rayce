@@ -53,7 +53,7 @@ struct LayeredBSDF : IBxDF
         for(int depth = 0; depth < maxDepth; ++depth)
         {
             // russian roulette
-            const float maxRRBeta = max(max(f.x, f.y), f.z) / pdf;
+            const float maxRRBeta = averageLuminance(f / pdf);
             if (maxRRBeta < 0.25 && depth > 3)
             {
                 const float q = max(1.0 - maxRRBeta, 0.0);
@@ -175,7 +175,7 @@ struct LayeredBSDF : IBxDF
             for(int depth = 0; depth < maxDepth; ++depth)
             {
                 // russian roulette
-                const float maxRRBeta = max(max(throughput.x, throughput.y), throughput.z);
+                const float maxRRBeta = averageLuminance(throughput);
                 if (maxRRBeta < 0.25 && depth > 3)
                 {
                     const float q = max(1.0 - maxRRBeta, 0.0);

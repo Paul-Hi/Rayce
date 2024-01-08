@@ -29,7 +29,7 @@ void getIntersectionInfo(const RayPayload payload, out IntersectionInfo iInfo)
         iInfo.material = gMaterials[triangle.materialId];
         iInfo.uv = triangle.interpolatedUV;
         iInfo.lightId = triangle.lightId;
-        iInfo.space = CoordinateSpace(!any(triangle.interpolatedNormal > 0.0) ? triangle.geometryNormal : triangle.interpolatedNormal, iInfo.material.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+        iInfo.space = CoordinateSpace(!any(abs(triangle.interpolatedNormal) > 0.0) ? triangle.geometryNormal : triangle.interpolatedNormal, iInfo.material.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
     }
     else if(payload.hitKind == EHitKind::proceduralSphere)
     {
@@ -47,15 +47,10 @@ struct PathIntegrator : IIntegrator
     {
         __init()
         {
-            this.bounces = 0;
-            this.length = 0;
             this.scatterRay = Ray();
             this.throughput = float3(1.0);
             this.L = float3(0.0);
         }
-
-        uint bounces;
-        float length;
 
         Ray scatterRay;
 
@@ -200,7 +195,7 @@ struct PathIntegrator : IIntegrator
 
                 // russian roulette
                 const float3 rrBeta = etaScale * pathState.throughput;
-                const float maxRRBeta = max(max(rrBeta.x, rrBeta.y), rrBeta.z);
+                const float maxRRBeta = averageLuminance(rrBeta);
                 if (maxRRBeta < 1.0 && depth > russianRouletteStart)
                 {
                     const float q = max(1.0 - maxRRBeta, 0.0);
@@ -212,8 +207,6 @@ struct PathIntegrator : IIntegrator
                     pathState.throughput *= 1.0 / (1.0 - q);
                 }
 
-                pathState.bounces++;
-                pathState.length += length(payload.hitPoint - pathState.scatterRay.origin);
                 pathState.scatterRay.origin = payload.hitPoint;
                 pathState.scatterRay.direction = iInfo.space.tangentToWorld(bxdfSample.wi);
             }
