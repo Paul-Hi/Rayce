@@ -36,6 +36,12 @@ void main()
                 color += integrator.estimate(uv).L;
                 break;
             }
+        case EIntegratorType::bdptSimple:
+            {
+                SimpleBidirectionalIntegrator integrator;
+                color += integrator.estimate(uv).L;
+                break;
+            }
         case EIntegratorType::debugDepth:
             {
                 DebugIntegrator integrator;

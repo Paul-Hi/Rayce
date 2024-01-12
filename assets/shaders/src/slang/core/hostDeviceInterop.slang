@@ -43,10 +43,11 @@ namespace rayce
     {
         direct           = 0,
         path             = 1,
-        debugDepth       = 2,
-        debugNormals     = 3,
-        debugReflectance = 4,
-        debugEmission    = 5,
+        bdptSimple       = 2,
+        debugDepth       = 3,
+        debugNormals     = 4,
+        debugReflectance = 5,
+        debugEmission    = 6,
     };
 
     struct RAYCE_API_EXPORT Vertex

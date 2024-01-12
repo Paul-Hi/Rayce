@@ -142,6 +142,17 @@ struct LightSample
     bool valid = false;
 };
 
+struct VertexLightSample
+{
+    float3 radiance;
+    float pdf = 0.0;
+    float3 wi;
+    float cosTheta;
+    float3 point;
+    float pdfDirection;
+    float3 normal;
+    float pad;
+};
 
 struct SphereIntersectionAttributes {};
 

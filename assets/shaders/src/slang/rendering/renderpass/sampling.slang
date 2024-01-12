@@ -233,17 +233,17 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         lightIndex = int(Random::rand() * gPushConstants.lightCount);
     } while(lightIndex == lightId);
 
+    const float pdf = 1.0 / gPushConstants.lightCount;
+
     const Light sampledLight = gLights[lightIndex];
     GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
     {
         sample = SphereSampler::sampleSolidAngle(p, sampledLight);
-        lightSample.pdf = sample.pdf;
     }
     else if(sampledLight.type == ELightType::analyticRectangle)
     {
         sample = RectangleSampler::sampleSolidAngle(p, sampledLight);
-        lightSample.pdf = sample.pdf;
     }
     else
     {
@@ -254,6 +254,8 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
     {
         return none;
     }
+
+    lightSample.pdf = pdf * sample.pdf;
 
     float3 wDir = sample.point - p;
     const float pointDistance = length(wDir);
@@ -301,16 +303,19 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
     return lightSample;
 };
 
-Optional<GeometrySample> sampleLightVertex(out float3 radiance)
+Optional<VertexLightSample> sampleLightVertex(out int lightIndex)
 {
+    VertexLightSample lightSample;
     if(gPushConstants.lightCount == 0)
     {
-        radiance = float3(0.0);
+        lightIndex = -1;
         return none;
     }
 
-    int lightIndex = int(Random::rand() * gPushConstants.lightCount);
+    lightIndex = int(Random::rand() * gPushConstants.lightCount);
     const Light sampledLight = gLights[lightIndex];
+
+    const float pdf = 1.0 / gPushConstants.lightCount;
 
     GeometrySample sample;
     if(sampledLight.type == ELightType::analyticSphere)
@@ -322,7 +327,16 @@ Optional<GeometrySample> sampleLightVertex(out float3 radiance)
         sample = RectangleSampler::sampleArea(sampledLight);
     }
 
-    radiance = sampledLight.radiance;
+    lightSample.point = sample.point;
 
-    return sample;
+    lightSample.pdf = pdf * sample.pdf;
+
+    lightSample.radiance = sampledLight.radiance;
+
+    lightSample.wi = cosineHemisphereSample();
+    lightSample.cosTheta = cosThetaTS(lightSample.wi);
+    lightSample.pdfDirection = cosineHemispherePdf(abs(lightSample.cosTheta));
+    lightSample.normal = sample.normal;
+
+    return lightSample;
 }

@@ -414,7 +414,7 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::SliderInt("Max. Depth", &mMaxDepth, 1, 16);
 
     ImGui::Separator();
-    const char* integrators[]  = { "Direct", "Path", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };
+    const char* integrators[]  = { "Direct", "Path", "Simple BDPT", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };
     static const char* current = integrators[1];
 
     if (ImGui::BeginCombo("Integrator##IntegratorSelection", current))

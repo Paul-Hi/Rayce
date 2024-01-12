@@ -126,7 +126,6 @@ struct PathIntegrator : IIntegrator
             if(payload.hitKind == EHitKind::miss)
             {
                 // incorporate infinite lights?
-                pathState.L += pathState.throughput * float3(0.01, 0.01, 0.05);
                 break;
             }
             else
@@ -216,21 +215,17 @@ struct PathIntegrator : IIntegrator
     }
 };
 
-struct LightIntegrator : IIntegrator
+struct SimpleBidirectionalIntegrator : IIntegrator
 {
+    // 1 < s < max, t = 1
     struct PathState
     {
         __init()
         {
-            this.bounces = 0;
-            this.length = 0;
             this.scatterRay = Ray();
             this.throughput = float3(1.0);
             this.L = float3(0.0);
         }
-
-        uint bounces;
-        float length;
 
         Ray scatterRay;
 
@@ -238,60 +233,61 @@ struct LightIntegrator : IIntegrator
         float3 L;
     };
 
+    struct LightPathVertex
+    {
+        float3 position;
+        float pdfFwd;
+        float3 normal;
+        float pdfBwd;
+        float3 throughput;
+        int lightId;
+    };
+
+    static const int maxLightPathLength = 7;
+
+    struct LightPath
+    {
+        LightPathVertex vertices[maxLightPathLength];
+        uint length;
+    };
+
     typedef PathState IntegratorPathState;
 
     Ray createPrimaryRay(const float2 uv)
-    {
-        return Ray(); // unused
-    }
-
-    Optional<Ray> initLightPath(out float pdf, out float3 radiance)
-    {
-        const Optional<GeometrySample> vertexSample = sampleLightVertex(radiance);
-        if(vertexSample == none)
-        {
-            pdf = 0.0;
-            radiance = float3(0.0);
-            return none;
-        }
-
-        Ray ray;
-        ray.origin = vertexSample.value.point;
-
-        ray.direction = cosineHemisphereSample();
-        pdf = cosineHemispherePdf(abs(cosThetaTS(ray.direction)));
-
-        const CoordinateSpace lightSpace = CoordinateSpace(vertexSample.value.normal);
-        ray.direction = lightSpace.tangentToWorld(ray.direction);
-
-        return ray;
-    }
-
-    float3 sampleCameraWi(const float2 uv, out float pdf) // sampling the current uv?
     {
         Ray ray;
         ray.origin = float3(0.0, 0.0, 0.0);
         const float4 imagePlane = mul(gCamera.inverseProjection, float4(uv.x, uv.y, 1.0, 1.0));
         ray.direction = normalize(imagePlane.xyz);
 
-        const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+        if(gCamera.pbData.x > 0.0)
+        {
+            const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
 
-        const float focalD = gCamera.pbData.y / ray.direction.z;
-        const float3 focusPoint = ray.origin - focalD * ray.direction;
+            const float focalD = gCamera.pbData.y / ray.direction.z;
+            const float3 focusPoint = ray.origin - focalD * ray.direction;
 
-        ray.origin = float3(pointOnLens, 0.0);
-        const float d = length(focusPoint - ray.origin);
-        ray.direction = (focusPoint - ray.origin) / d;
+            ray.origin = float3(pointOnLens, 0.0);
+            ray.direction = normalize(focusPoint - ray.origin);
+        }
 
-        const float lensArea = gCamera.pbData.x > 0.0 ? PI * sqr(gCamera.pbData.x) : 1.0;
-
-        const float dSqrd = sqr(d);
-        const float cosTheta = cosThetaTS(ray.direction);
-
-        pdf = dSqrd / (cosTheta * lensArea);
+        ray.origin = mul(gCamera.inverseView, float4(ray.origin, 1.0)).xyz;
         ray.direction = normalize(mul(gCamera.inverseView, float4(ray.direction, 0.0)).xyz);
 
-        return ray.direction;
+        return ray;
+    }
+
+    Optional<VertexLightSample> initLightPath(out int lightIndex)
+    {
+        return sampleLightVertex(lightIndex);
+    }
+
+    float convertDensity(float pdf, const float3 nextPos, const float3 nextN, const float3 pos)
+    {
+        float3 w = nextPos - pos;
+       float invDistSqrd = 1.0 / dot(w, w);
+       pdf *= abs(dot(nextN, w * sqrt(invDistSqrd)));
+        return pdf * invDistSqrd;
     }
 
     void traceRay(const Ray ray, inout RayPayload payload)
@@ -315,24 +311,36 @@ struct LightIntegrator : IIntegrator
 
     PathState estimate(const float2 uv)
     {
-        const int maxDepth = gPushConstants.maxDepth; // hopyfully never reached
-        const int russianRouletteStart = min(1, maxDepth - 1);
+        const int russianRouletteStart = min(1, maxLightPathLength - 1);
 
         PathState pathState;
-        float pdf = 0.0;
-        const Optional<Ray> optionalLightPathStart = initLightPath(pdf, pathState.L);
+/*
+        int lightIndex = -1;
+        const Optional<VertexLightSample> optionalLightPathStart = initLightPath(lightIndex);
         if(optionalLightPathStart == none)
         {
             return pathState;
         }
 
-        // sample camera
-        // check if connection is possible
-        // add radiance
+        LightPath lightPath;
 
-        pathState.scatterRay = optionalLightPathStart.value;
+        lightPath.vertices[lightPath.length].lightId = lightIndex;
+        lightPath.vertices[lightPath.length].normal = float3(0.0);
+        lightPath.vertices[lightPath.length].pdfFwd = optionalLightPathStart.value.pdf;
+        lightPath.vertices[lightPath.length].pdfBwd = 0.0;
+        lightPath.vertices[lightPath.length].position = optionalLightPathStart.value.point;
 
-        float pdfBxDF = 1.0;
+        lightPath.vertices[lightPath.length].throughput = optionalLightPathStart.value.radiance;
+        lightPath.length++;
+
+        float3 wo = -optionalLightPathStart.value.wi;
+        const CoordinateSpace lightSpace = CoordinateSpace(optionalLightPathStart.value.normal);
+        pathState.scatterRay.origin = optionalLightPathStart.value.point;
+        pathState.scatterRay.direction = lightSpace.tangentToWorld(-wo);
+        pathState.throughput = optionalLightPathStart.value.radiance * abs(optionalLightPathStart.value.cosTheta) / (optionalLightPathStart.value.pdf * optionalLightPathStart.value.pdfDirection);
+
+        float pdfFwd = optionalLightPathStart.value.pdf * optionalLightPathStart.value.pdfDirection;
+        float pdfBwd = 0.0;
         bool specularBounce = false;
         float etaScale = 1.0;
 
@@ -352,7 +360,7 @@ struct LightIntegrator : IIntegrator
             {
                 getIntersectionInfo(payload, iInfo);
 
-                if (depth++ == maxDepth)
+                if (depth++ == maxLightPathLength)
                 {
                     break;
                 }
@@ -363,12 +371,13 @@ struct LightIntegrator : IIntegrator
                 let materialInstance = material.getMaterialInstance(iInfo.uv);
                 let adapter = material.getAdapter(iInfo.material.twoSided == 1);
 
-                if(isNonSpecular(materialInstance.flags()))
-                {
-                    // sample camera
-                    // check if connection is possible
-                    // add radiance
-                }
+                // compute vertex
+                lightPath.vertices[lightPath.length].lightId = iInfo.lightId;
+                lightPath.vertices[lightPath.length].normal = iInfo.space.normal;
+                lightPath.vertices[lightPath.length].position = payload.hitPoint;
+                lightPath.vertices[lightPath.length].pdfFwd = convertDensity(pdfFwd, lightPath.vertices[lightPath.length].position, lightPath.vertices[lightPath.length].normal, lightPath.vertices[lightPath.length - 1].position);
+                lightPath.vertices[lightPath.length].pdfBwd = 0.0;
+                lightPath.vertices[lightPath.length].throughput = pathState.throughput;
 
                 const Optional<BxDFSample> optionalSample = adapter.sample(materialInstance, wo);
 
@@ -379,9 +388,19 @@ struct LightIntegrator : IIntegrator
 
                 const BxDFSample bxdfSample = optionalSample.value;
 
-                pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / bxdfSample.pdf;
-                pdfBxDF = bxdfSample.proportionalPDF ? adapter.pdf(materialInstance, wo, bxdfSample.wi) : bxdfSample.pdf;
+                pdfFwd = bxdfSample.pdf;
+                pathState.throughput *= bxdfSample.f * abs(cosThetaTS(bxdfSample.wi)) / pdfFwd;
                 specularBounce = bxdfSample.isSpecular();
+
+                pdfBwd = adapter.pdf(materialInstance, bxdfSample.wi, wo);
+                if(isSpecular(materialInstance.flags()))
+                {
+                    pdfFwd = pdfBwd = 0.0;
+                }
+
+                // FIXME: Correct Shading normal?
+
+                lightPath.vertices[lightPath.length - 1].pdfBwd = convertDensity(pdfBwd, lightPath.vertices[lightPath.length].position, lightPath.vertices[lightPath.length].normal, lightPath.vertices[lightPath.length - 1].position);
 
                 if(bxdfSample.isTransmission())
                 {
@@ -402,13 +421,42 @@ struct LightIntegrator : IIntegrator
                     pathState.throughput *= 1.0 / (1.0 - q);
                 }
 
-                pathState.bounces++;
-                pathState.length += length(payload.hitPoint - pathState.scatterRay.origin);
                 pathState.scatterRay.origin = payload.hitPoint;
                 pathState.scatterRay.direction = iInfo.space.tangentToWorld(bxdfSample.wi);
+                lightPath.length++;
             }
         }
 
+        pathState.scatterRay = createPrimaryRay(uv);
+        traceRay(pathState.scatterRay, payload);
+        if(payload.hitKind == EHitKind::miss)
+        {
+            return pathState;
+        }
+        else
+        {
+            getIntersectionInfo(payload, iInfo);
+
+            const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+
+            let material = iInfo.material.getMaterial();
+            let materialInstance = material.getMaterialInstance(iInfo.uv);
+            let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+
+            if(!isNonSpecular(materialInstance.flags()))
+            {
+                return pathState;
+            }
+
+            for(int c = 0; c < lightPath.length; ++c)
+            {
+                // connect
+                const float3 p = payload.hitPoint;
+                const float3 normal = iInfo.space.normal;
+
+            }
+        }
+*/
         return pathState;
     }
 };
