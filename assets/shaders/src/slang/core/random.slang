@@ -1,66 +1,60 @@
 struct Random
 {
+    // https://prng.di.unimi.it/xoshiro128starstar.c
+    // This is a Xoshiro128StarStar initialized with a SplitMix64 similarly executed to Nvidias Falcor
     static uint4 gState;
 
-    static void init(uint4 seed)
+    static inline uint64_t splitMix64Rand(uint64_t state)
     {
-        gState = seed;
+        uint64_t z = (state += 0x9E3779B97F4A7C15ull);
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+        return z ^ (z >> 31);
     }
 
-    // http://www.jcgt.org/published/0009/03/02/
-    static uint4 pcg4d()
+    static void init(uint2 seed)
     {
-        gState = gState * 1664525u + 1013904223u;
-
-        gState.x += gState.y * gState.w;
-        gState.y += gState.z * gState.x;
-        gState.z += gState.x * gState.y;
-        gState.w += gState.y * gState.z;
-
-        gState ^= gState >> 16u;
-
-        gState.x += gState.y * gState.w;
-        gState.y += gState.z * gState.x;
-        gState.z += gState.x * gState.y;
-        gState.w += gState.y * gState.z;
-
-        return gState;
+        uint64_t solitMix64State = (uint64_t(seed.x) << 32) | uint64_t(seed.y);
+        uint64_t s0 = splitMix64Rand(solitMix64State);
+        uint64_t s1 = splitMix64Rand(solitMix64State);
+        gState = { uint(s0), uint(s0 >> 32), uint(s1), uint(s1 >> 32) };
     }
 
-    static float4 rand4()
+    static inline uint rotl(const uint x, int k)
     {
-        const uint4 rInt = pcg4d();
-        gState.w++;
-        return float4(asfloat(rInt.x >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.y >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.z >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.w >> 9 | 0x3f800000) - 1.0
-                      );
+        return (x << k) | (x >> (32 - k));
     }
 
-    static float3 rand3()
+    static uint nextUint()
     {
-        uint4 rInt = pcg4d();
-        gState.w++;
-        return float3(asfloat(rInt.x >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.y >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.z >> 9 | 0x3f800000) - 1.0
-                      );
-    }
+        const uint32_t result = rotl(gState.y * 5, 7) * 9;
 
-    static float2 rand2()
-    {
-        uint4 rInt = pcg4d();
-        gState.w++;
-        return float2(asfloat(rInt.x >> 9 | 0x3f800000) - 1.0,
-                      asfloat(rInt.y >> 9 | 0x3f800000) - 1.0
-                      );
+        const uint32_t t = gState.y << 9;
+
+        gState.z ^= gState.x;
+        gState.w ^= gState.y;
+        gState.y ^= gState.z;
+        gState.x ^= gState.w;
+
+        gState.z ^= t;
+
+        gState.w = rotl(gState.w, 11);
+
+        return result;
     }
 
     static float rand()
     {
-        uint4 rInt = pcg4d();
-        gState.w++;
-        return asfloat(rInt.x >> 9 | 0x3f800000) - 1.0;
+        // Upper 24 bits + divide by 2^24 to get a random number in [0,1).
+        uint bits = nextUint();
+        return (bits >> 8) * 0x1p-24;
+    }
+
+    static float2 rand2()
+    {
+        float2 result;
+        result.x = rand();
+        result.y = rand();
+        return result;
     }
 };

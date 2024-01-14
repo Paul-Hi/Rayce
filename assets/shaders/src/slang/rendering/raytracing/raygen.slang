@@ -11,16 +11,14 @@ void main()
     const float2 pixelCorner = float2(DispatchRaysIndex().xy);
 
     float3 color = float3(0.0);
-    Random::init(uint4(DispatchRaysIndex().xy, gPushConstants.frame, 2907));
+    Random::init(uint2(interleave32Bit(DispatchRaysIndex().xy), gPushConstants.frame + 290797));
 
     // Anti Aliasing
-    float2 uv = (pixelCorner + Random::rand2()) / float2(DispatchRaysDimensions().xy - uint2(1));
+    float2 uv = (pixelCorner + shirley(Random::rand2())) / float2(DispatchRaysDimensions().xy - uint2(1));
     uv = uv * 2.0 - 1.0;
 
     // FIXME: Precompiling the different integrator shaders should increase performance...
     let integratorT = gPushConstants.integrator;
-    // (gPushConstants.frame == 0 && gPushConstants.integrator == EIntegratorType::path)
-    //                        ? EIntegratorType::direct : gPushConstants.integrator;
 
     switch(integratorT)
     {

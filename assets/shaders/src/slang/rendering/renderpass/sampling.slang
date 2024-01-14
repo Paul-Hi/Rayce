@@ -230,7 +230,7 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
 
     do
     {
-        lightIndex = int(Random::rand() * gPushConstants.lightCount);
+        lightIndex = min(int(Random::rand() * gPushConstants.lightCount), gPushConstants.lightCount - 1);
     } while(lightIndex == lightId);
 
     const float pdf = 1.0 / gPushConstants.lightCount;
@@ -312,7 +312,7 @@ Optional<VertexLightSample> sampleLightVertex(out int lightIndex)
         return none;
     }
 
-    lightIndex = int(Random::rand() * gPushConstants.lightCount);
+    lightIndex = min(int(Random::rand() * gPushConstants.lightCount), gPushConstants.lightCount - 1);
     const Light sampledLight = gLights[lightIndex];
 
     const float pdf = 1.0 / gPushConstants.lightCount;

@@ -61,3 +61,26 @@ func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<
 {
     return -a * b + c;
 }
+
+// 32-bit bit interleave (Morton code) from Nvidias Falcor.
+uint interleave32Bit(uint2 v)
+{
+    uint x = v.x & 0x0000ffff;
+    x = (x | (x << 8)) & 0x00FF00FF;
+    x = (x | (x << 4)) & 0x0F0F0F0F;
+    x = (x | (x << 2)) & 0x33333333;
+    x = (x | (x << 1)) & 0x55555555;
+
+    uint y = v.y & 0x0000ffff;
+    y = (y | (y << 8)) & 0x00FF00FF;
+    y = (y | (y << 4)) & 0x0F0F0F0F;
+    y = (y | (y << 2)) & 0x33333333;
+    y = (y | (y << 1)) & 0x55555555;
+
+    return x | (y << 1);
+}
+
+float2 shirley(const float2 uv)
+{
+    return select(uv < 0.5, -0.5 + sqrt(2.0 * uv), 1.5 - sqrt(2.0 - 2.0 * uv));
+}
