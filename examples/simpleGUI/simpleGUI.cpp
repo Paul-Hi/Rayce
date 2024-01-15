@@ -60,7 +60,7 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str testScene = ".\\assets\\scenes\\staircase\\scene.xml";
+    const str testScene = ".\\assets\\scenes\\testScene\\testScene.xml";
 
     pScene->loadFromMitsubaFile(testScene, device, commandPool, 1.0f);
 

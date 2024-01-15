@@ -12,35 +12,6 @@ interface IIntegrator
     IntegratorPathState estimate(const float2 uv);
 };
 
-struct IntersectionInfo
-{
-    float2 uv;
-    Material material;
-    CoordinateSpace space;
-
-    int lightId;
-};
-
-void getIntersectionInfo(const RayPayload payload, out IntersectionInfo iInfo)
-{
-    if(payload.hitKind == EHitKind::triangleMesh)
-    {
-        DeviceTriangle triangle = getTriangle(payload.primitiveId, payload.instanceCustomIndex, payload.hitAttributes, payload.worldToObject);
-        iInfo.material = gMaterials[triangle.materialId];
-        iInfo.uv = triangle.interpolatedUV;
-        iInfo.lightId = triangle.lightId;
-        iInfo.space = CoordinateSpace(!any(abs(triangle.interpolatedNormal) > 0.0) ? triangle.geometryNormal : triangle.interpolatedNormal, iInfo.material.canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
-    }
-    else if(payload.hitKind == EHitKind::proceduralSphere)
-    {
-        DeviceSphere sphere = getSphere(payload.hitPoint, payload.primitiveId, payload.instanceCustomIndex, payload.worldToObject);
-        iInfo.material = gMaterials[sphere.materialId];
-        iInfo.uv = sphere.uv;
-        iInfo.lightId = sphere.lightId;
-        iInfo.space = CoordinateSpace(sphere.normal, true);
-    }
-}
-
 struct PathIntegrator : IIntegrator
 {
     struct PathState
@@ -116,7 +87,6 @@ struct PathIntegrator : IIntegrator
         float etaScale = 1.0;
 
         RayPayload payload;
-        IntersectionInfo iInfo;
         uint depth = 0;
 
         while(true)
@@ -130,23 +100,21 @@ struct PathIntegrator : IIntegrator
             }
             else
             {
-                getIntersectionInfo(payload, iInfo);
-
-                if(iInfo.lightId >= 0)
+                if(payload.lightId >= 0)
                 {
-                    const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                    const bool orientationValid = lightSampleOrientationValid(payload.lightId, pathState.scatterRay.origin, payload.hitPoint);
                     if(orientationValid)
                     {
                         if(depth == 0 || specularBounce)
                         {
-                            pathState.L += pathState.throughput * gLights[iInfo.lightId].radiance;
+                            pathState.L += pathState.throughput * gLights[payload.lightId].radiance;
                         }
                         else
                         {
-                            const float lightPdf = pdfLight(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                            const float lightPdf = pdfLight(payload.lightId, pathState.scatterRay.origin, payload.hitPoint);
                             const float miWeight = powerHeuristic(pdfBxDF, lightPdf);
 
-                            pathState.L += pathState.throughput * miWeight * gLights[iInfo.lightId].radiance;
+                            pathState.L += pathState.throughput * miWeight * gLights[payload.lightId].radiance;
                         }
                     }
                 }
@@ -156,15 +124,17 @@ struct PathIntegrator : IIntegrator
                     break;
                 }
 
-                const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+                const float3 wo = payload.space.worldToTangentFrame(-pathState.scatterRay.direction);
 
-                let material = iInfo.material.getMaterial();
-                let materialInstance = material.getMaterialInstance(iInfo.uv);
-                let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+                let materialData = gMaterials[payload.materialId];
+                let material = materialData.getMaterial();
+                let materialInstance = material.getMaterialInstance(payload.uv);
+                let twoSided = materialData.twoSided == 1;
+                let adapter = material.getAdapter(twoSided);
 
                 if(isNonSpecular(materialInstance.flags()))
                 {
-                    const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space, iInfo.material.twoSided == 1);
+                    const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, payload.lightId, payload.space, twoSided);
                     if(lightSample != none)
                     {
                         const float bsdfPdf = adapter.pdf(materialInstance, wo, lightSample.value.wi);
@@ -207,7 +177,7 @@ struct PathIntegrator : IIntegrator
                 }
 
                 pathState.scatterRay.origin = payload.hitPoint;
-                pathState.scatterRay.direction = iInfo.space.tangentToWorld(bxdfSample.wi);
+                pathState.scatterRay.direction = payload.space.tangentToWorld(bxdfSample.wi);
             }
         }
 
@@ -345,7 +315,6 @@ struct SimpleBidirectionalIntegrator : IIntegrator
         float etaScale = 1.0;
 
         RayPayload payload;
-        IntersectionInfo iInfo;
         uint depth = 0;
 
         while(true)
@@ -358,22 +327,22 @@ struct SimpleBidirectionalIntegrator : IIntegrator
             }
             else
             {
-                getIntersectionInfo(payload, iInfo);
+                getIntersectionInfo(payload, payload.iInfo);
 
                 if (depth++ == maxLightPathLength)
                 {
                     break;
                 }
 
-                const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+                const float3 wo = payload.space.worldToTangentFrame(-pathState.scatterRay.direction);
 
-                let material = iInfo.material.getMaterial();
-                let materialInstance = material.getMaterialInstance(iInfo.uv);
-                let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+                let material = gMaterials[payload.materialId].getMaterial();
+                let materialInstance = material.getMaterialInstance(payload.uv);
+                let adapter = material.getAdapter(gMaterials[payload.materialId].twoSided == 1);
 
                 // compute vertex
-                lightPath.vertices[lightPath.length].lightId = iInfo.lightId;
-                lightPath.vertices[lightPath.length].normal = iInfo.space.normal;
+                lightPath.vertices[lightPath.length].lightId = payload.lightId;
+                lightPath.vertices[lightPath.length].normal = payload.space.normal;
                 lightPath.vertices[lightPath.length].position = payload.hitPoint;
                 lightPath.vertices[lightPath.length].pdfFwd = convertDensity(pdfFwd, lightPath.vertices[lightPath.length].position, lightPath.vertices[lightPath.length].normal, lightPath.vertices[lightPath.length - 1].position);
                 lightPath.vertices[lightPath.length].pdfBwd = 0.0;
@@ -422,7 +391,7 @@ struct SimpleBidirectionalIntegrator : IIntegrator
                 }
 
                 pathState.scatterRay.origin = payload.hitPoint;
-                pathState.scatterRay.direction = iInfo.space.tangentToWorld(bxdfSample.wi);
+                pathState.scatterRay.direction = payload.space.tangentToWorld(bxdfSample.wi);
                 lightPath.length++;
             }
         }
@@ -435,13 +404,13 @@ struct SimpleBidirectionalIntegrator : IIntegrator
         }
         else
         {
-            getIntersectionInfo(payload, iInfo);
+            getIntersectionInfo(payload, payload.iInfo);
 
-            const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+            const float3 wo = payload.space.worldToTangentFrame(-pathState.scatterRay.direction);
 
-            let material = iInfo.material.getMaterial();
-            let materialInstance = material.getMaterialInstance(iInfo.uv);
-            let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+            let material = gMaterials[payload.materialId].getMaterial();
+            let materialInstance = material.getMaterialInstance(payload.uv);
+            let adapter = material.getAdapter(gMaterials[payload.materialId].twoSided == 1);
 
             if(!isNonSpecular(materialInstance.flags()))
             {
@@ -452,7 +421,7 @@ struct SimpleBidirectionalIntegrator : IIntegrator
             {
                 // connect
                 const float3 p = payload.hitPoint;
-                const float3 normal = iInfo.space.normal;
+                const float3 normal = payload.space.normal;
 
             }
         }
@@ -526,7 +495,6 @@ struct DirectIntegrator : IIntegrator
         pathState.scatterRay = createPrimaryRay(uv);
 
         RayPayload payload;
-        IntersectionInfo iInfo;
 
         traceRay(pathState.scatterRay, payload);
 
@@ -537,26 +505,26 @@ struct DirectIntegrator : IIntegrator
         }
         else
         {
-            getIntersectionInfo(payload, iInfo);
-
-            if(iInfo.lightId >= 0)
+            if(payload.lightId >= 0)
             {
-                const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                const bool orientationValid = lightSampleOrientationValid(payload.lightId, pathState.scatterRay.origin, payload.hitPoint);
                 if(orientationValid)
                 {
-                    pathState.L += gLights[iInfo.lightId].radiance;
+                    pathState.L += gLights[payload.lightId].radiance;
                 }
             }
 
-            const float3 wo = iInfo.space.worldToTangentFrame(-pathState.scatterRay.direction);
+            const float3 wo = payload.space.worldToTangentFrame(-pathState.scatterRay.direction);
 
-            let material = iInfo.material.getMaterial();
-            let materialInstance = material.getMaterialInstance(iInfo.uv);
-            let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+            let materialData = gMaterials[payload.materialId];
+            let material = materialData.getMaterial();
+            let materialInstance = material.getMaterialInstance(payload.uv);
+            let twoSided = materialData.twoSided == 1;
+            let adapter = material.getAdapter(twoSided);
 
             if(isNonSpecular(materialInstance.flags()))
             {
-                const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, iInfo.lightId, iInfo.space, iInfo.material.twoSided == 1);
+                const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, payload.lightId, payload.space, twoSided);
                 if(lightSample != none)
                 {
                     const float bsdfPdf = adapter.pdf(materialInstance, wo, lightSample.value.wi);
@@ -649,7 +617,6 @@ struct DebugIntegrator : IIntegrator
         const Ray cameraRay = createPrimaryRay(uv);
 
         RayPayload payload;
-        IntersectionInfo iInfo;
 
         traceRay(cameraRay, payload);
 
@@ -660,26 +627,24 @@ struct DebugIntegrator : IIntegrator
         }
         else
         {
-            getIntersectionInfo(payload, iInfo);
-
-            let material = iInfo.material.getMaterial();
+            let material = gMaterials[payload.materialId].getMaterial();
 
             pathState.depth = (length(payload.hitPoint - cameraRay.origin) - gCamera.pbData.z) / (gCamera.pbData.w - gCamera.pbData.z);
-            pathState.normal = iInfo.space.normal;
+            pathState.normal = payload.space.normal;
 
-            if(iInfo.lightId >= 0)
+            if(payload.lightId >= 0)
             {
-                const bool orientationValid = lightSampleOrientationValid(iInfo.lightId, cameraRay.origin, payload.hitPoint);
+                const bool orientationValid = lightSampleOrientationValid(payload.lightId, cameraRay.origin, payload.hitPoint);
                 if(orientationValid)
                 {
-                    pathState.emission = gLights[iInfo.lightId].radiance;
+                    pathState.emission = gLights[payload.lightId].radiance;
                 }
             }
 
-            const float3 wi = iInfo.space.worldToTangentFrame(-cameraRay.direction);
+            const float3 wi = payload.space.worldToTangentFrame(-cameraRay.direction);
 
-            let materialInstance = material.getMaterialInstance(iInfo.uv);
-            let adapter = material.getAdapter(iInfo.material.twoSided == 1);
+            let materialInstance = material.getMaterialInstance(payload.uv);
+            let adapter = material.getAdapter(gMaterials[payload.materialId].twoSided == 1);
 
             const Optional<BxDFSample> optionalSample = adapter.sample(materialInstance, wi);
             pathState.reflectance = optionalSample != none ? optionalSample.value.f : float3(0.0);

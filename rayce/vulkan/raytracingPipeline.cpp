@@ -63,7 +63,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingVertexBuffer.binding         = VERTEX_BINDING;
     layoutBindingVertexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingVertexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
-    layoutBindingVertexBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    layoutBindingVertexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     bindings = { layoutBindingVertexBuffer };
 
@@ -73,7 +73,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingIndexBuffer.binding         = INDEX_BINDING;
     layoutBindingIndexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingIndexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
-    layoutBindingIndexBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    layoutBindingIndexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     bindings = { layoutBindingIndexBuffer };
 
@@ -99,7 +99,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorInstanceDataBuffer.binding         = INSTANCE_BINDING;
     layoutBindingDescriptorInstanceDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorInstanceDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    layoutBindingDescriptorInstanceDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorMaterialDataBuffer{};
     layoutBindingDescriptorMaterialDataBuffer.binding         = MATERIAL_BINDING;
@@ -117,7 +117,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorSphereDataBuffer.binding         = SPHERE_BINDING;
     layoutBindingDescriptorSphereDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorSphereDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorSphereDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+    layoutBindingDescriptorSphereDataBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
 
     bindings = { layoutBindingDescriptorTextures, layoutBindingDescriptorInstanceDataBuffer, layoutBindingDescriptorMaterialDataBuffer, layoutBindingDescriptorLightDataBuffer, layoutBindingDescriptorSphereDataBuffer };
 
