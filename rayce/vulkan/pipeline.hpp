@@ -6,31 +6,69 @@
 
 #pragma once
 
+#include "vulkan/shader.hpp"
+
 #ifndef PIPELINE_HPP
 #define PIPELINE_HPP
 
-class GraphicsPipelineSettings;
-class ComputePipelineSettings;
-class RTPipelineSettings;
-
-enum class EPipelineType : uint8
-{
-    Graphics,
-    Compute,
-    Raytracing
-};
-
 namespace rayce
 {
+    struct RAYCE_API_EXPORT GraphicsPipelineSettings
+    {
+        std::vector<std::shared_ptr<class Shader>> shaders = {};
+        ShaderSpecialization specialization;
+
+        VkViewport viewport;
+        VkRect2D scissorRectangle;
+
+        VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPolygonMode polygonMode             = VK_POLYGON_MODE_FILL;
+        float lineWidth                       = 1.0;
+        VkCullModeFlagBits cullMode           = VK_CULL_MODE_BACK_BIT;
+        VkFrontFace frontFace                 = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+        VkSampleCountFlagBits rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkClearValue clearColor        = { 0.0, 0.0, 0.0, 0.0 };
+        VkClearValue clearDepthStencil = { 0.0, 0.0, 0.0, 0.0 };
+
+        std::vector<std::shared_ptr<class Buffer>> vertexBuffers = {};
+        std::shared_ptr<class Buffer> indexBuffer                = {};
+        VkIndexType indexType                                    = VK_INDEX_TYPE_UINT32;
+
+        std::vector<VkBool32> attachmentBlending                          = {};
+        std::vector<std::shared_ptr<class Texture2D>> colorOutputTextures = {};
+        std::shared_ptr<class Texture2D> depthStencilOutputTexture        = {};
+
+        VkBool32 depthTest       = VK_TRUE;
+        VkBool32 depthWrite      = VK_TRUE;
+        VkCompareOp depthCompare = VK_COMPARE_OP_LESS_OR_EQUAL;
+        // VkBool32 stencilTest;
+    };
+
+    struct RAYCE_API_EXPORT ComputePipelineSettings;
+    struct RAYCE_API_EXPORT RTPipelineSettings;
+
+    enum class RAYCE_API_EXPORT EPipelineType : byte
+    {
+        Graphics,
+        Compute,
+        Raytracing
+    };
+
     /// @brief A vulkan pipeline.
     class RAYCE_API_EXPORT Pipeline
     {
     public:
         RAYCE_DISABLE_COPY_MOVE(Pipeline)
 
-        static std::shared_ptr<Pipeline> createGraphicsPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const GraphicsPipelineSettings& settings);
-        static std::shared_ptr<Pipeline> createComputePipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const ComputePipelineSettings& settings);
-        static std::shared_ptr<Pipeline> createRTPipeline(const std::unique_ptr<class Device>& logicalDevice, const std::unique_ptr<class Swapchain>& swapchain, const RTPipelineSettings& settings);
+        static std::shared_ptr<Pipeline> createGraphicsPipeline(const std::unique_ptr<class Device>& logicalDevice, const GraphicsPipelineSettings& settings);
+        static std::shared_ptr<Pipeline> createComputePipeline(const std::unique_ptr<class Device>& logicalDevice, const ComputePipelineSettings& settings);
+        static std::shared_ptr<Pipeline> createRTPipeline(const std::unique_ptr<class Device>& logicalDevice, const RTPipelineSettings& settings);
+
+        Pipeline(const std::unique_ptr<class Device>& logicalDevice, const GraphicsPipelineSettings& settings);
+        Pipeline(const std::unique_ptr<class Device>& logicalDevice, const ComputePipelineSettings& settings);
+        Pipeline(const std::unique_ptr<class Device>& logicalDevice, const RTPipelineSettings& settings);
 
         ~Pipeline() = default;
 
@@ -41,12 +79,11 @@ namespace rayce
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
 
-        std::vector<class DescriptorSetLayout> mDescriptorSetLayouts;
+        //std::vector<class DescriptorSetLayout> mDescriptorSetLayouts;
 
-        std::unique_ptr<class RTFunctions> pRTF = nullptr;
+        //std::unique_ptr<class RTFunctions> pRTF = nullptr;
 
     private:
-        Pipeline() = default;
     };
 } // namespace rayce
 

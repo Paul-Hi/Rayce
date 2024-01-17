@@ -23,6 +23,7 @@ target_include_directories(rayceVulkan
     $<BUILD_INTERFACE:${glfw_INCLUDE_DIRS}>
     ../../assets/shaders/src/slang/core
     PRIVATE
+    $<BUILD_INTERFACE:${SLANG_INCLUDE_DIRECTORIES}>
     $<BUILD_INTERFACE:${RAYCE_INCLUDE_DIR}>
 )
 
@@ -35,6 +36,7 @@ target_link_libraries(rayceVulkan
     PUBLIC
     Vulkan::Vulkan
     PRIVATE
+    ${SLANG_LIB}
     rayce::core
 )
 
@@ -43,11 +45,13 @@ target_precompile_headers(rayceVulkan
     ${RAYCE_PRECOMPILED_HEADER}
 )
 
+set(SLANG_SHADER_BASEPATH "${CMAKE_SOURCE_DIR}/assets/shaders/src/slang/")
 target_compile_definitions(rayceVulkan
     PUBLIC
     $<$<CONFIG:Debug>:RAYCE_DEBUG>
     $<$<BOOL:${RAYCE_BUILD_TESTS}>:RAYCE_TEST>
     $<$<CXX_COMPILER_ID:MSVC>: _CRT_SECURE_NO_WARNINGS>
+    SLANG_SHADER_BASEPATH="${SLANG_SHADER_BASEPATH}"
     PRIVATE
     $<$<BOOL:${WIN32}>:RAYCE_LIBRARY>
     $<$<BOOL:${WIN32}>:WIN32>

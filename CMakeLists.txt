@@ -68,17 +68,21 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET TRUE)
 set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 
-cmake_language(GET_MESSAGE_LOG_LEVEL CMAKE_MESSAGE_LOG_LEVEL_BACKUP)
-set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
-set(FETCHCONTENT_QUIET ON)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
+
+# Slang
+find_package(Slang REQUIRED)
 
 # USD
 # set(PXR_DIR $ENV{PXR_DIR} CACHE STRING "The root directory of the USD installation")
 # set(MATERIALX_DIR $ENV{MATERIALX_DIR} CACHE STRING "PXR_DIR/lib/cmake/MaterialX")
 # find_package(PXR REQUIRED)
+
+cmake_language(GET_MESSAGE_LOG_LEVEL CMAKE_MESSAGE_LOG_LEVEL_BACKUP)
+set(CMAKE_MESSAGE_LOG_LEVEL ERROR)
+set(FETCHCONTENT_QUIET ON)
 
 # imgui
 FetchContent_Declare(
@@ -90,7 +94,8 @@ FetchContent_Declare(
 )
 
 # Eigen
-FetchContent_Declare(eigen
+FetchContent_Declare(
+    eigen
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG 3.4.0
     GIT_SHALLOW ON
@@ -108,6 +113,7 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(imgui eigen glfw)
+set(CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL_BACKUP})
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
 set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
@@ -129,7 +135,6 @@ target_include_directories(imgui PUBLIC . ${glfw_INCLUDE_DIRS} ${Vulkan_INCLUDE_
 target_link_directories(imgui PRIVATE ${CMAKE_BINARY_DIR})
 target_link_libraries(imgui PUBLIC glfw Vulkan::Vulkan)
 
-set(CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL_BACKUP})
 message(STATUS "Added dear imgui in: " ${imgui_SOURCE_DIR})
 
 unset(BUILD_TESTING CACHE)

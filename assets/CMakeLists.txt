@@ -31,7 +31,6 @@ foreach(SHADER ${GLSL_SOURCE_FILES})
     list(APPEND SPIRV_BINARY_FILES ${OUTPUT_SPIRV_FILE})
 endforeach(SHADER)
 foreach(SHADER ${SLANG_SOURCE_FILES})
-    find_program(SLANGC slangc)
     get_filename_component(FILE_NAME ${SHADER} NAME)
     set(OUTPUT_SPIRV_FILE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${FILE_NAME}.spv")
     add_custom_command(
