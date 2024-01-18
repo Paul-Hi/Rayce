@@ -9,6 +9,10 @@
 #ifndef DEVICE_HPP
 #define DEVICE_HPP
 
+namespace slang
+{
+    struct IGlobalSession;
+};
 namespace rayce
 {
     class RAYCE_API_EXPORT Device
@@ -64,6 +68,11 @@ namespace rayce
             return mProperties;
         }
 
+        slang::IGlobalSession* getSlangGlobalSession() const
+        {
+            return mSlangGlobalSession;
+        }
+
     private:
         VkDevice mVkDevice;
         VkQueue mVkGraphicsQueue;
@@ -78,6 +87,9 @@ namespace rayce
         VkPhysicalDeviceProperties mProperties;
 
         VkDeviceQueueCreateInfo createVkQueue(uint32 queueFamilyIndex);
+
+        // Slang GlobalSession
+        slang::IGlobalSession* mSlangGlobalSession;
     };
 } // namespace rayce
 

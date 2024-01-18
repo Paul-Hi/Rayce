@@ -13,7 +13,7 @@ add_library(rayceVulkan
 )
 
 # Depends on assets target
-add_dependencies(rayceVulkan assets)
+add_dependencies(rayceVulkan assets copySlangBinaries)
 
 add_library(rayce::vulkan ALIAS rayceVulkan)
 

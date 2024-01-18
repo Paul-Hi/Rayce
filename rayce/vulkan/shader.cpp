@@ -46,26 +46,43 @@ static SlangStage getSlangStage(const ShaderStage& stage)
     }
 }
 
-bool Shader::compileAndReflect(const ShaderSpecialization& shaderSpecialization)
+bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, const ShaderSpecialization& shaderSpecialization)
 {
-    mShaderSpecialization = shaderSpecialization;
-
-    SlangSession* session = spCreateSession();
-
     constexpr SlangCompileTarget compileTarget = SLANG_SPIRV; // Always SpirV
     constexpr SlangSourceLanguage source       = SLANG_SOURCE_LANGUAGE_SLANG;
 
-    SlangCompileRequest* request = spCreateCompileRequest(session);
-    int target                   = spAddCodeGenTarget(request, compileTarget);
-    SlangProfileID profileID     = spFindProfile(session, "glsl_460");
-    spSetTargetProfile(request, target, profileID);
+    mShaderSpecialization = shaderSpecialization;
 
-    spAddSearchPath(request, SLANG_SHADER_BASEPATH);
+    SlangSession* globalSession = logicalDevice->getSlangGlobalSession();
+    RAYCE_ASSERT(globalSession);
+
+    slang::SessionDesc sessionDesc;
+    sessionDesc.searchPathCount          = 1;
+    std::vector<const char*> searchPaths = { SLANG_SHADER_BASEPATH };
+    sessionDesc.searchPaths              = searchPaths.data();
+
+    sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+
+    slang::TargetDesc targetDesc;
+
+    targetDesc.format                      = compileTarget;
+    targetDesc.forceGLSLScalarBufferLayout = true;
+    targetDesc.profile                     = globalSession->findProfile("glsl_460");
+
+    // FIXME: Continue: https://github.com/NVIDIAGameWorks/Falcor/blob/58ce2d1eafce67b4cb9d304029068c7fb31bd831/Source/Falcor/Core/Program/ProgramManager.cpp#L624 addSlangDefine()
+
+    slang::ISession* session;
+    globalSession->createSession(sessionDesc, &session);
+    RAYCE_ASSERT(session);
+
+    SlangCompileRequest* request;
+    session->createCompileRequest(&request);
+    RAYCE_ASSERT(request);
+    int target = spAddCodeGenTarget(request, compileTarget);
+
     spSetDebugInfoLevel(request, SLANG_DEBUG_INFO_LEVEL_STANDARD);
     spSetDiagnosticFlags(request, SLANG_DIAGNOSTIC_FLAG_TREAT_WARNINGS_AS_ERRORS);
     spSetOptimizationLevel(request, SLANG_OPTIMIZATION_LEVEL_DEFAULT); // FIXME: Revisit Higher Levels
-    spSetMatrixLayoutMode(request, SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
-    spSetTargetForceGLSLScalarBufferLayout(request, target, true);
 
     // add the compile macros
     for (auto& macro : shaderSpecialization.macros)
@@ -101,7 +118,7 @@ bool Shader::compileAndReflect(const ShaderSpecialization& shaderSpecialization)
     mSpirvBinary.resize(dataSize);
     std::memcpy(mSpirvBinary.data(), data, dataSize);
 
-    // FIXME Next: Still to fill! We should also see to use more c++ API to not create a global session thing everytime ...
+    // FIXME Next: Still to fill! We should also see to use more c++ API
     mStage;
     mBindingMask;
     mDescriptorTypes;
@@ -112,14 +129,14 @@ bool Shader::compileAndReflect(const ShaderSpecialization& shaderSpecialization)
     mLocalSizeZ;
     mReflected;
 
-    spDestroyCompileRequest(request);
+    free(request);
 
-    spDestroySession(session);
+    free(session);
 
     return true;
 }
 
-VkShaderModule Shader::createShaderModule(const std::unique_ptr<class Device>& logicalDevice) const
+VkShaderModule Shader::createShaderModule(const std::unique_ptr<Device>& logicalDevice) const
 {
     VkShaderModule shaderModule;
     VkShaderModuleCreateInfo createInfo{};

@@ -40,6 +40,7 @@ if(NOT DEFINED SLANGC)
             NAMES slang
             PATHS ${slangbuild_SOURCE_DIR}/bin/windows-x64/release ${slangbuild_SOURCE_DIR}/bin/linux-x64/release NO_DEFAULT_PATH
         )
+
     endif()
 
     if(NOT SLANGC)
@@ -55,5 +56,10 @@ execute_process(COMMAND ${SLANGC} "-v" ERROR_VARIABLE SLANG_VERSION RESULTS_VARI
 message(STATUS "SLANGC version is ${SLANG_VERSION}")
 
 if(NOT EXTRACT_RESULT EQUAL 0)
-    message("Envoking Slang compiler failed with: ${EXTRACT_RESULT}")
+message("Envoking Slang compiler failed with: ${EXTRACT_RESULT}")
 endif()
+
+add_custom_target(copySlangBinaries
+    COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang.dll ${CMAKE_BINARY_DIR}/debug/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang.dll ${CMAKE_BINARY_DIR}/release/bin
+)

@@ -48,7 +48,7 @@ namespace rayce
         Shader(const str& slangFilename);
         ~Shader() = default;
 
-        bool compileAndReflect(const ShaderSpecialization& shaderSpecialization);
+        bool compileAndReflect(const std::unique_ptr<class Device>& logicalDevice, const ShaderSpecialization& shaderSpecialization);
         VkShaderModule createShaderModule(const std::unique_ptr<class Device>& logicalDevice) const;
 
     private:

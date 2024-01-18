@@ -5,6 +5,7 @@
 /// @copyright Apache License 2.0
 
 #include <set>
+#include <slang.h>
 #include <vulkan/device.hpp>
 
 using namespace rayce;
@@ -135,6 +136,10 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     vkGetDeviceQueue(mVkDevice, mGraphicsFamilyIndex, 0, &mVkGraphicsQueue);
     vkGetDeviceQueue(mVkDevice, mComputeFamilyIndex, 0, &mVkComputeQueue);
     vkGetDeviceQueue(mVkDevice, mPresentFamilyIndex, 0, &mVkPresentQueue);
+
+    // Slang Global Session
+    mSlangGlobalSession = nullptr;
+    slang::createGlobalSession(&mSlangGlobalSession);
 
     RAYCE_LOG_INFO("Created logical device!");
 }
