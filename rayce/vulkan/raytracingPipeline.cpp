@@ -20,6 +20,7 @@
 #include <vulkan/sampler.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
+#include <vulkan/shader.hpp>
 
 using namespace rayce;
 
@@ -29,6 +30,14 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
 {
+    // TESTING
+    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\raytracing\\raygen.slang");
+    ShaderSpecialization specialization;
+    specialization.entryPoint = "main";
+    specialization.stage = ShaderStage::RayGenerationStage;
+    test.compileAndReflect(logicalDevice, specialization);
+    //
+
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
 
     // accumulation image

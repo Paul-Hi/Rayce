@@ -62,4 +62,7 @@ endif()
 add_custom_target(copySlangBinaries
     COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang.dll ${CMAKE_BINARY_DIR}/debug/bin
     COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang.dll ${CMAKE_BINARY_DIR}/release/bin
+
+    COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang-glslang.dll ${CMAKE_BINARY_DIR}/debug/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${SLANG_INCLUDE_DIRECTORIES}/bin/windows-x64/release/slang-glslang.dll ${CMAKE_BINARY_DIR}/release/bin
 )
