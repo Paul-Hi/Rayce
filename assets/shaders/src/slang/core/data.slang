@@ -46,10 +46,10 @@ StructuredBuffer<Light> gLights;
 StructuredBuffer<Sphere> gSpheres;
 // layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
-[[vk::binding(VERTEX_BINDING,VERTEX_SET)]]
+[[vk::binding(VERTEX_BINDING,INPUT_SET)]]
 StructuredBuffer<Vertex> gVertices[];
 // layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };p
-[[vk::binding(INDEX_BINDING,INDEX_SET)]]
+[[vk::binding(INDEX_BINDING,INPUT_SET)]]
 StructuredBuffer<uint> gIndices[];
 // layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 

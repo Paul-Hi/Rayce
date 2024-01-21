@@ -51,6 +51,8 @@ namespace rayce
         bool compileAndReflect(const std::unique_ptr<class Device>& logicalDevice, const ShaderSpecialization& shaderSpecialization);
         VkShaderModule createShaderModule(const std::unique_ptr<class Device>& logicalDevice) const;
 
+        bool compiled() { return mReflected; }
+
     private:
         friend class Pipeline;
 
@@ -60,13 +62,12 @@ namespace rayce
 
         std::vector<uint32> mSpirvBinary = {};
         ShaderSpecialization mShaderSpecialization;
-        VkShaderStageFlagBits mStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-        uint32 mBindingMask          = 0;
-        VkDescriptorType mDescriptorTypes[32];
+        VkShaderStageFlagBits mStage                                                                             = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+        std::vector<std::pair<uint32, VkDescriptorSetLayoutBinding>> mDescriptorSetLayoutBindings                = {};
         std::vector<VkPushConstantRange> mPushConstantRanges                                                     = {}; // push constants available at this stage
         std::vector<std::pair<VkVertexInputBindingDescription, VkVertexInputAttributeDescription>> mVertexInputs = {};
         // work packages for compute
-        int32 mLocalSizeX = 0, mLocalSizeY = 0, mLocalSizeZ = 0;
+        uint32 mLocalSizeX = 0, mLocalSizeY = 0, mLocalSizeZ = 0;
     };
 } // namespace rayce
 

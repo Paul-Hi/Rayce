@@ -48,6 +48,90 @@ static SlangStage getSlangStage(const ShaderStage& stage)
     }
 }
 
+static VkShaderStageFlagBits getVkStage(const ShaderStage& stage)
+{
+    switch (stage)
+    {
+    case ShaderStage::VertexStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
+    case ShaderStage::FragmentStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
+    case ShaderStage::GeometryStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT;
+    case ShaderStage::ComputeStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
+    case ShaderStage::RayGenerationStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    case ShaderStage::ClosestHitStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    case ShaderStage::MissStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_MISS_BIT_KHR;
+    case ShaderStage::AnyHitStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+    case ShaderStage::IntersectionStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+    case ShaderStage::CallableStage:
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+    case ShaderStage::StageCount:
+    default:
+        RAYCE_ASSERT(false, "Unknown ShaderStage!");
+        return VkShaderStageFlagBits::VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    }
+}
+
+static str getParameterCategoryName(slang::ParameterCategory category)
+{
+    switch (category)
+    {
+
+    // TODO: these aren't scoped...
+    case slang::ParameterCategory::None:
+        return "None";
+    case slang::ParameterCategory::Mixed:
+        return "Mixed";
+    case slang::ParameterCategory::ConstantBuffer:
+        return "ConstantBuffer";
+    case slang::ParameterCategory::ShaderResource:
+        return "ShaderResource";
+    case slang::ParameterCategory::UnorderedAccess:
+        return "UnorderedAccess";
+    case slang::ParameterCategory::VaryingInput:
+        return "VaryingInput";
+    case slang::ParameterCategory::VaryingOutput:
+        return "VaryingOutput";
+    case slang::ParameterCategory::SamplerState:
+        return "SamplerState";
+    case slang::ParameterCategory::Uniform:
+        return "Uniform";
+    case slang::ParameterCategory::DescriptorTableSlot:
+        return "DescriptorTableSlot";
+    case slang::ParameterCategory::SpecializationConstant:
+        return "SpecializationConstant";
+    case slang::ParameterCategory::PushConstantBuffer:
+        return "PushConstantBuffer";
+    case slang::ParameterCategory::RegisterSpace:
+        return "RegisterSpace";
+    case slang::ParameterCategory::GenericResource:
+        return "GenericResource";
+    case slang::ParameterCategory::RayPayload:
+        return "RayPayload";
+    case slang::ParameterCategory::HitAttributes:
+        return "HitAttributes";
+    case slang::ParameterCategory::CallablePayload:
+        return "CallablePayload";
+    case slang::ParameterCategory::ShaderRecord:
+        return "ShaderRecord";
+    case slang::ParameterCategory::ExistentialTypeParam:
+        return "ExistentialTypeParam";
+    case slang::ParameterCategory::ExistentialObjectParam:
+        return "ExistentialObjectParam";
+    case slang::ParameterCategory::SubElementRegisterSpace:
+        return "SubElementRegisterSpace";
+    default:
+        return "";
+    }
+}
+
 bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, const ShaderSpecialization& shaderSpecialization)
 {
     constexpr SlangCompileTarget compileTarget = SLANG_SPIRV; // Always SpirV
@@ -128,8 +212,7 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
     mSpirvBinary.resize(dataSize);
     std::memcpy(mSpirvBinary.data(), data, dataSize);
 
-    // FIXME Next: Still to fill! We should also see to use more c++ API
-    mStage;
+    mStage = getVkStage(mShaderSpecialization.stage);
 
     slang::ShaderReflection* shaderReflection = slang::ShaderReflection::get(request);
 
@@ -139,9 +222,9 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
     {
         SlangUInt sizes[3];
         entryPointReflection->getComputeThreadGroupSize(3, sizes);
-        mLocalSizeX = sizes[0];
-        mLocalSizeY = sizes[1];
-        mLocalSizeZ = sizes[2];
+        mLocalSizeX = static_cast<uint32>(sizes[0]);
+        mLocalSizeY = static_cast<uint32>(sizes[1]);
+        mLocalSizeZ = static_cast<uint32>(sizes[2]);
     }
 
     uint32 entryPointParams = entryPointReflection->getParameterCount();
@@ -161,7 +244,7 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
 
         slang::TypeReflection::Kind kind = typeReflection->getKind();
 
-        RAYCE_LOG_INFO("EntryPoint: At (set/binding) = (%d/%d) we got a %s!", set, binding, typeReflection->getName());
+        RAYCE_LOG_INFO("EntryPoint: At (set/binding) = (%d/%d) we got a %s %s named %s!", set, binding, getParameterCategoryName(parameterCategory).c_str(), typeReflection->getName(), parameterReflection->getName());
     }
 
     uint32 shaderParams = shaderReflection->getParameterCount();
@@ -181,9 +264,10 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
 
         slang::TypeReflection::Kind kind = typeReflection->getKind();
 
-        RAYCE_LOG_INFO("Shader: At (set/binding) = (%d/%d) we got a %s!", set, binding, typeReflection->getName());
+        RAYCE_LOG_INFO("Shader: At (set/binding) = (%d/%d) we got a %s %s named %s!", set, binding, getParameterCategoryName(parameterCategory).c_str(), typeReflection->getName(), parameterReflection->getName());
     }
 
+    // FIXME Next: Still to fill!
     mBindingMask;
     mDescriptorTypes;
     mPushConstantRanges;

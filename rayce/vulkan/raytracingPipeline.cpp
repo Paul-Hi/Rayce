@@ -18,9 +18,9 @@
 #include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/rtFunctions.hpp>
 #include <vulkan/sampler.hpp>
+#include <vulkan/shader.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
-#include <vulkan/shader.hpp>
 
 using namespace rayce;
 
@@ -31,10 +31,10 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     , mFramesInFlight(framesInFlight)
 {
     // TESTING
-    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\raytracing\\raygen.slang");
+    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\raytracing\\closestHit.slang");
     ShaderSpecialization specialization;
     specialization.entryPoint = "main";
-    specialization.stage = ShaderStage::RayGenerationStage;
+    specialization.stage      = ShaderStage::ClosestHitStage;
     test.compileAndReflect(logicalDevice, specialization);
     //
 
@@ -74,19 +74,15 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingVertexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
     layoutBindingVertexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
-    bindings = { layoutBindingVertexBuffer };
-
-    pDescriptorSetLayoutVertex = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0, layoutBindingVertexBuffer.descriptorCount);
-
     VkDescriptorSetLayoutBinding layoutBindingIndexBuffer{};
     layoutBindingIndexBuffer.binding         = INDEX_BINDING;
     layoutBindingIndexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingIndexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
     layoutBindingIndexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
-    bindings = { layoutBindingIndexBuffer };
+    bindings = { layoutBindingVertexBuffer, layoutBindingIndexBuffer };
 
-    pDescriptorSetLayoutIndex = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0, layoutBindingIndexBuffer.descriptorCount);
+    pDescriptorSetLayoutInput = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0, layoutBindingVertexBuffer.descriptorCount);
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorCameraBuffer{};
     layoutBindingDescriptorCameraBuffer.binding         = CAMERA_BINDING;
@@ -132,12 +128,11 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     pDescriptorSetLayoutModel = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
-    VkDescriptorSetLayout descriptorSetLayoutVertex = pDescriptorSetLayoutVertex->getVkDescriptorLayout();
-    VkDescriptorSetLayout descriptorSetLayoutIndex  = pDescriptorSetLayoutIndex->getVkDescriptorLayout();
+    VkDescriptorSetLayout descriptorSetLayoutInput  = pDescriptorSetLayoutInput->getVkDescriptorLayout();
     VkDescriptorSetLayout descriptorSetLayoutRT     = pDescriptorSetLayoutRT->getVkDescriptorLayout();
     VkDescriptorSetLayout descriptorSetLayoutCamera = pDescriptorSetLayoutCamera->getVkDescriptorLayout();
     VkDescriptorSetLayout descriptorSetLayoutModel  = pDescriptorSetLayoutModel->getVkDescriptorLayout();
-    VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutVertex, descriptorSetLayoutIndex, descriptorSetLayoutRT, descriptorSetLayoutCamera, descriptorSetLayoutModel };
+    VkDescriptorSetLayout setLayouts[]              = { descriptorSetLayoutInput, descriptorSetLayoutRT, descriptorSetLayoutCamera, descriptorSetLayoutModel };
 
     VkPushConstantRange bufferReferencePushConstantRange{};
     bufferReferencePushConstantRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
@@ -146,7 +141,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount         = 5;
+    pipelineLayoutCreateInfo.setLayoutCount         = 4;
     pipelineLayoutCreateInfo.pSetLayouts            = setLayouts;
     pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
     pipelineLayoutCreateInfo.pPushConstantRanges    = &bufferReferencePushConstantRange;
@@ -257,8 +252,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
     pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);
     pDescriptorSetsModel  = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutModel, framesInFlight);
-    pDescriptorSetsVertex = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutVertex, framesInFlight);
-    pDescriptorSetsIndex  = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutIndex, framesInFlight);
+    pDescriptorSetsInput  = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutInput, framesInFlight);
 
     // buffers
     mCameraBuffers.resize(framesInFlight);
@@ -366,12 +360,10 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
         std::vector<VkWriteDescriptorSet> writeDescriptorSets = { accelerationStructureWrite, accumImageWrite, resultImageWrite };
         pDescriptorSetsRT->update(writeDescriptorSets);
 
-        vertexBufferWrite.dstSet = pDescriptorSetsVertex->operator[](static_cast<uint32>(i));
-        writeDescriptorSets      = { vertexBufferWrite };
-        pDescriptorSetsVertex->update(writeDescriptorSets);
-        indexBufferWrite.dstSet = pDescriptorSetsIndex->operator[](static_cast<uint32>(i));
-        writeDescriptorSets     = { indexBufferWrite };
-        pDescriptorSetsIndex->update(writeDescriptorSets);
+        vertexBufferWrite.dstSet = pDescriptorSetsInput->operator[](static_cast<uint32>(i));
+        indexBufferWrite.dstSet  = pDescriptorSetsInput->operator[](static_cast<uint32>(i));
+        writeDescriptorSets      = { vertexBufferWrite, indexBufferWrite };
+        pDescriptorSetsInput->update(writeDescriptorSets);
 
         memcpy(mCameraBuffersMapped[i], &cameraData, bufferSize);
         cameraBufferInfo.buffer       = mCameraBuffers[i]->getVkBuffer();
@@ -541,7 +533,7 @@ void RaytracingPipeline::updateCameraData(CameraDataRT& cameraData)
 
 std::vector<VkDescriptorSet> RaytracingPipeline::getVkDescriptorSets(uint32 idx) const
 {
-    return { pDescriptorSetsVertex->operator[](idx), pDescriptorSetsIndex->operator[](idx), pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx), pDescriptorSetsModel->operator[](idx) };
+    return { pDescriptorSetsInput->operator[](idx), pDescriptorSetsRT->operator[](idx), pDescriptorSetsCamera->operator[](idx), pDescriptorSetsModel->operator[](idx) };
 }
 
 RaytracingPipeline::~RaytracingPipeline()
@@ -552,8 +544,7 @@ RaytracingPipeline::~RaytracingPipeline()
     pDescriptorSetLayoutRT.reset();
     pDescriptorSetLayoutCamera.reset();
     pDescriptorSetLayoutModel.reset();
-    pDescriptorSetsVertex.reset();
-    pDescriptorSetsIndex.reset();
+    pDescriptorSetsInput.reset();
     pDescriptorPool.reset();
     if (mVkPipeline)
     {

@@ -17,21 +17,19 @@ namespace rayce
 #endif
 
 // binding points
-    static const int VERTEX_SET     = 0;
+    static const int INPUT_SET     = 0;
     static const int VERTEX_BINDING = 0;
+    static const int INDEX_BINDING = 1;
 
-    static const int INDEX_SET     = 1;
-    static const int INDEX_BINDING = 0;
-
-    static const int RT_SET         = 2;
+    static const int RT_SET         = 1;
     static const int TLAS_BINDING   = 0;
     static const int ACCUM_BINDING  = 1;
     static const int RESULT_BINDING = 2;
 
-    static const int CAMERA_SET     = 3;
+    static const int CAMERA_SET     = 2;
     static const int CAMERA_BINDING = 0;
 
-    static const int MODEL_SET        = 4;
+    static const int MODEL_SET        = 3;
     static const int TEXTURE_BINDING  = 0; // Combined Image Sampler
     // static const int SAMPLER_BINDING  = 0; // Combined Image Sampler
     static const int INSTANCE_BINDING = 1;

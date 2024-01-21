@@ -46,8 +46,17 @@ namespace rayce
         // VkBool32 stencilTest;
     };
 
-    struct RAYCE_API_EXPORT ComputePipelineSettings;
-    struct RAYCE_API_EXPORT RTPipelineSettings;
+    struct RAYCE_API_EXPORT ComputePipelineSettings
+    {
+        std::shared_ptr<class Shader> shader = nullptr;
+        ShaderSpecialization specialization;
+    };
+
+    struct RAYCE_API_EXPORT RTPipelineSettings
+    {
+        std::vector<std::shared_ptr<class Shader>> shaders = {};
+        ShaderSpecialization specialization;
+    };
 
     enum class RAYCE_API_EXPORT EPipelineType : byte
     {
@@ -70,7 +79,7 @@ namespace rayce
         Pipeline(const std::unique_ptr<class Device>& logicalDevice, const ComputePipelineSettings& settings);
         Pipeline(const std::unique_ptr<class Device>& logicalDevice, const RTPipelineSettings& settings);
 
-        ~Pipeline() = default;
+        ~Pipeline();
 
     private:
         VkDevice mVkLogicalDeviceRef;
@@ -79,9 +88,10 @@ namespace rayce
         VkPipelineLayout mVkPipelineLayout;
         VkPipeline mVkPipeline;
 
-        //std::vector<class DescriptorSetLayout> mDescriptorSetLayouts;
+        std::vector<std::unique_ptr<class DescriptorSetLayout>> mDescriptorSetLayouts;
+        std::vector<VkPushConstantRange> mPushConstantRanges;
 
-        //std::unique_ptr<class RTFunctions> pRTF = nullptr;
+        // std::unique_ptr<class RTFunctions> pRTF = nullptr;
 
     private:
     };
