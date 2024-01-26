@@ -1,7 +1,7 @@
 /// @file      shader.cpp
 /// @author    Paul Himmler
 /// @version   0.01
-/// @date      2023
+/// @date      2024
 /// @copyright Apache License 2.0
 
 #include <fstream>
@@ -132,6 +132,69 @@ static str getParameterCategoryName(slang::ParameterCategory category)
     }
 }
 
+static VkFormat getVertexAttribFormat(slang::TypeReflection::ScalarType scalarType, uint32 elements)
+{
+    switch (scalarType)
+    {
+    case slang::TypeReflection::ScalarType::Int8:
+        return elements == 1 ? VK_FORMAT_R8_SINT : (elements == 2 ? VK_FORMAT_R8G8_SINT : (elements == 3 ? VK_FORMAT_R8G8B8_SINT : VK_FORMAT_R8G8B8A8_SINT));
+    case slang::TypeReflection::ScalarType::Int16:
+        return elements == 1 ? VK_FORMAT_R16_SINT : (elements == 2 ? VK_FORMAT_R16G16_SINT : (elements == 3 ? VK_FORMAT_R16G16B16_SINT : VK_FORMAT_R16G16B16A16_SINT));
+    case slang::TypeReflection::ScalarType::Int32:
+        return elements == 1 ? VK_FORMAT_R32_SINT : (elements == 2 ? VK_FORMAT_R32G32_SINT : (elements == 3 ? VK_FORMAT_R32G32B32_SINT : VK_FORMAT_R32G32B32A32_SINT));
+    case slang::TypeReflection::ScalarType::Int64:
+        return elements == 1 ? VK_FORMAT_R64_SINT : (elements == 2 ? VK_FORMAT_R64G64_SINT : (elements == 3 ? VK_FORMAT_R64G64B64_SINT : VK_FORMAT_R64G64B64A64_SINT));
+        break;
+    case slang::TypeReflection::ScalarType::UInt8:
+        return elements == 1 ? VK_FORMAT_R8_UINT : (elements == 2 ? VK_FORMAT_R8G8_UINT : (elements == 3 ? VK_FORMAT_R8G8B8_UINT : VK_FORMAT_R8G8B8A8_UINT));
+    case slang::TypeReflection::ScalarType::UInt16:
+        return elements == 1 ? VK_FORMAT_R16_UINT : (elements == 2 ? VK_FORMAT_R16G16_UINT : (elements == 3 ? VK_FORMAT_R16G16B16_UINT : VK_FORMAT_R16G16B16A16_UINT));
+    case slang::TypeReflection::ScalarType::UInt32:
+        return elements == 1 ? VK_FORMAT_R32_UINT : (elements == 2 ? VK_FORMAT_R32G32_UINT : (elements == 3 ? VK_FORMAT_R32G32B32_UINT : VK_FORMAT_R32G32B32A32_UINT));
+    case slang::TypeReflection::ScalarType::UInt64:
+        return elements == 1 ? VK_FORMAT_R64_UINT : (elements == 2 ? VK_FORMAT_R64G64_UINT : (elements == 3 ? VK_FORMAT_R64G64B64_UINT : VK_FORMAT_R64G64B64A64_UINT));
+        break;
+    case slang::TypeReflection::ScalarType::Float16:
+        return elements == 1 ? VK_FORMAT_R16_SFLOAT : (elements == 2 ? VK_FORMAT_R16G16_SFLOAT : (elements == 3 ? VK_FORMAT_R16G16B16_SFLOAT : VK_FORMAT_R16G16B16A16_SFLOAT));
+    case slang::TypeReflection::ScalarType::Float32:
+        return elements == 1 ? VK_FORMAT_R32_SFLOAT : (elements == 2 ? VK_FORMAT_R32G32_SFLOAT : (elements == 3 ? VK_FORMAT_R32G32B32_SFLOAT : VK_FORMAT_R32G32B32A32_SFLOAT));
+    case slang::TypeReflection::ScalarType::Float64:
+        return elements == 1 ? VK_FORMAT_R64_SFLOAT : (elements == 2 ? VK_FORMAT_R64G64_SFLOAT : (elements == 3 ? VK_FORMAT_R64G64B64_SFLOAT : VK_FORMAT_R64G64B64A64_SFLOAT));
+    case slang::TypeReflection::ScalarType::None:
+    case slang::TypeReflection::ScalarType::Void:
+    case slang::TypeReflection::ScalarType::Bool:
+    default:
+        return VK_FORMAT_UNDEFINED;
+    }
+}
+
+static uint32 getScalarByteSize(slang::TypeReflection::ScalarType scalarType)
+{
+    switch (scalarType)
+    {
+    case slang::TypeReflection::ScalarType::Int8:
+    case slang::TypeReflection::ScalarType::UInt8:
+        return 1;
+    case slang::TypeReflection::ScalarType::Int16:
+    case slang::TypeReflection::ScalarType::UInt16:
+    case slang::TypeReflection::ScalarType::Float16:
+        return 2;
+    case slang::TypeReflection::ScalarType::Int32:
+    case slang::TypeReflection::ScalarType::UInt32:
+    case slang::TypeReflection::ScalarType::Float32:
+        return 4;
+    case slang::TypeReflection::ScalarType::Int64:
+    case slang::TypeReflection::ScalarType::UInt64:
+    case slang::TypeReflection::ScalarType::Float64:
+        return 8;
+    case slang::TypeReflection::ScalarType::None:
+    case slang::TypeReflection::ScalarType::Void:
+    case slang::TypeReflection::ScalarType::Bool:
+    default:
+        return 0;
+    }
+}
+
 bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, const ShaderSpecialization& shaderSpecialization)
 {
     constexpr SlangCompileTarget compileTarget = SLANG_SPIRV; // Always SpirV
@@ -229,7 +292,7 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
 
     uint32 entryPointParams = entryPointReflection->getParameterCount();
 
-    for (uint32 i = 0; i < entryPointParams; ++i)
+    for (uint32 i = 0; i < entryPointParams; ++i) // In theory we have to check for uniforms I guess - but lets only handle the vertex input?
     {
         slang::VariableLayoutReflection* parameterReflection = entryPointReflection->getParameterByIndex(i);
 
@@ -242,9 +305,38 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
 
         slang::TypeReflection* typeReflection = typeLayout->getType();
 
-        slang::TypeReflection::Kind kind = typeReflection->getKind();
+        //  Vertex Inputs
+        mVertexInputBinding           = {};
+        mVertexInputBinding.binding   = 0;
+        mVertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // FIXME: Correct?
 
-        RAYCE_LOG_INFO("EntryPoint: At (set/binding) = (%d/%d) we got a %s %s named %s!", set, binding, getParameterCategoryName(parameterCategory).c_str(), typeReflection->getName(), parameterReflection->getName());
+        uint32 attributeBindings = static_cast<uint32>(typeLayout->getBindingRangeCount());
+        mVertexInputAttributes.resize(attributeBindings);
+
+        mVertexInputBinding.stride = 0;
+        for (uint32 a = 0; a < attributeBindings; ++a)
+        {
+            slang::VariableLayoutReflection* bindingReflection                = typeLayout->getFieldByIndex(a);
+            VkVertexInputAttributeDescription vertexInputAttributeDescription = {};
+            vertexInputAttributeDescription.binding                           = 0;
+            vertexInputAttributeDescription.location                          = a;
+            vertexInputAttributeDescription.offset                            = static_cast<uint32>(bindingReflection->getOffset());
+
+            slang::TypeLayoutReflection* bindingTypeLayout = bindingReflection->getTypeLayout();
+
+            slang::TypeReflection* bindingTypeReflection = bindingTypeLayout->getType();
+
+            slang::TypeReflection::ScalarType scalarType = bindingTypeReflection->getElementType()->getScalarType();
+            uint32 elements                              = static_cast<uint32>(bindingTypeReflection->getElementCount());
+
+            vertexInputAttributeDescription.format = getVertexAttribFormat(scalarType, elements);
+
+            mVertexInputAttributes[a] = vertexInputAttributeDescription;
+
+            mVertexInputBinding.stride += elements * getScalarByteSize(scalarType);
+        }
+
+        RAYCE_LOG_DINFO("EntryPoint: At (set/binding) = (%d/%d) we got a %s %s named %s!", set, binding, getParameterCategoryName(parameterCategory).c_str(), typeReflection->getName(), parameterReflection->getName());
     }
 
     uint32 shaderParams = shaderReflection->getParameterCount();
@@ -260,19 +352,35 @@ bool Shader::compileAndReflect(const std::unique_ptr<Device>& logicalDevice, con
 
         slang::ParameterCategory parameterCategory = typeLayout->getParameterCategory();
 
-        slang::TypeReflection* typeReflection = typeLayout->getType();
+        if (parameterCategory == slang::ParameterCategory::PushConstantBuffer)
+        {
+            // push constants - will get merged later
+            VkPushConstantRange pushConstantRange{};
+            pushConstantRange.stageFlags = mStage;
+            pushConstantRange.offset     = static_cast<uint32>(parameterReflection->getOffset()); // FIXME: Correct?
+            pushConstantRange.size       = 0;                                                     // FIXME: FUCK!
 
-        slang::TypeReflection::Kind kind = typeReflection->getKind();
+            mPushConstantRanges.push_back(pushConstantRange);
+            std::cout << pushConstantRange.offset << " offset\n";
+            std::cout << pushConstantRange.size << " size\n";
+        }
+        else if (parameterCategory == slang::ParameterCategory::DescriptorTableSlot)
+        {
+        }
+        else
+        {
+            RAYCE_LOG_ERROR("We do not support %s!", getParameterCategoryName(parameterCategory).c_str());
+        }
+
+        slang::TypeReflection* typeReflection = typeLayout->getType();
 
         RAYCE_LOG_INFO("Shader: At (set/binding) = (%d/%d) we got a %s %s named %s!", set, binding, getParameterCategoryName(parameterCategory).c_str(), typeReflection->getName(), parameterReflection->getName());
     }
 
     // FIXME Next: Still to fill!
-    mBindingMask;
-    mDescriptorTypes;
-    mPushConstantRanges;
-    mVertexInputs;
-    mReflected;
+    mDescriptorSetLayoutBindings;
+
+    mReflected = true;
 
     spDestroyCompileRequest(request);
 

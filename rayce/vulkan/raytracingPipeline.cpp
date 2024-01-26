@@ -1,7 +1,7 @@
 /// @file      raytracingPipeline.cpp
 /// @author    Paul Himmler
 /// @version   0.01
-/// @date      2023
+/// @date      2024
 /// @copyright Apache License 2.0
 
 #include <core/utils.hpp>
@@ -31,10 +31,10 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     , mFramesInFlight(framesInFlight)
 {
     // TESTING
-    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\raytracing\\closestHit.slang");
+    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\basic\\vertex.slang");
     ShaderSpecialization specialization;
     specialization.entryPoint = "main";
-    specialization.stage      = ShaderStage::ClosestHitStage;
+    specialization.stage      = ShaderStage::VertexStage;
     test.compileAndReflect(logicalDevice, specialization);
     //
 

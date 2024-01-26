@@ -1,7 +1,7 @@
 /// @file      shader.hpp
 /// @author    Paul Himmler
 /// @version   0.01
-/// @date      2023
+/// @date      2024
 /// @copyright Apache License 2.0
 
 #pragma once
@@ -62,10 +62,11 @@ namespace rayce
 
         std::vector<uint32> mSpirvBinary = {};
         ShaderSpecialization mShaderSpecialization;
-        VkShaderStageFlagBits mStage                                                                             = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-        std::vector<std::pair<uint32, VkDescriptorSetLayoutBinding>> mDescriptorSetLayoutBindings                = {};
-        std::vector<VkPushConstantRange> mPushConstantRanges                                                     = {}; // push constants available at this stage
-        std::vector<std::pair<VkVertexInputBindingDescription, VkVertexInputAttributeDescription>> mVertexInputs = {};
+        VkShaderStageFlagBits mStage                                                              = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+        std::vector<std::pair<uint32, VkDescriptorSetLayoutBinding>> mDescriptorSetLayoutBindings = {};
+        std::vector<VkPushConstantRange> mPushConstantRanges                                      = {}; // push constants available at this stage
+        VkVertexInputBindingDescription mVertexInputBinding                                       = {};
+        std::vector<VkVertexInputAttributeDescription> mVertexInputAttributes                     = {};
         // work packages for compute
         uint32 mLocalSizeX = 0, mLocalSizeY = 0, mLocalSizeZ = 0;
     };

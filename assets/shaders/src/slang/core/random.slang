@@ -27,9 +27,9 @@ struct Random
 
     static uint nextUint()
     {
-        const uint32_t result = rotl(gState.y * 5, 7) * 9;
+        const uint result = rotl(gState.y * 5, 7) * 9;
 
-        const uint32_t t = gState.y << 9;
+        const uint t = gState.y << 9;
 
         gState.z ^= gState.x;
         gState.w ^= gState.y;

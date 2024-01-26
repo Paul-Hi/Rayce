@@ -1,7 +1,7 @@
 /// @file      simpleGUI.cpp
 /// @author    Paul Himmler
 /// @version   0.01
-/// @date      2023
+/// @date      2024
 /// @copyright Apache License 2.0
 
 #include "simpleGUI.hpp"

@@ -1,7 +1,7 @@
 /// @file      pipeline.cpp
 /// @author    Paul Himmler
 /// @version   0.01
-/// @date      2023
+/// @date      2024
 /// @copyright Apache License 2.0
 
 #include <vulkan/descriptorSetLayout.hpp>
@@ -56,21 +56,18 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const GraphicsP
     const std::shared_ptr<Shader>& vertexShader = settings.shaders[vertexShaderIdx];
     RAYCE_ASSERT(vertexShader->mReflected, "Vertex shader not reflected for graphics pipeline creation.");
 
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    bindingDescriptions.reserve(vertexShader->mVertexInputs.size());
-    attributeDescriptions.reserve(vertexShader->mVertexInputs.size());
-    for (auto& [bindingDesc, attribDesc] : vertexShader->mVertexInputs)
+    attributeDescriptions.reserve(vertexShader->mVertexInputAttributes.size());
+    for (auto& attribDesc : vertexShader->mVertexInputAttributes)
     {
-        bindingDescriptions.push_back(bindingDesc);
         attributeDescriptions.push_back(attribDesc);
     }
 
     // Vertex Input State
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateCreateInfo.vertexBindingDescriptionCount   = static_cast<uint32>(bindingDescriptions.size());
-    vertexInputStateCreateInfo.pVertexBindingDescriptions      = bindingDescriptions.data();
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount   = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions      = &(vertexShader->mVertexInputBinding);
     vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32>(attributeDescriptions.size());
     vertexInputStateCreateInfo.pVertexAttributeDescriptions    = attributeDescriptions.data();
 
@@ -174,8 +171,10 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const GraphicsP
         mPushConstantRanges.insert(mPushConstantRanges.end(), shader->mPushConstantRanges.begin(), shader->mPushConstantRanges.end());
     }
 
+    mergePushConstantRanges();
+
     // create set layouts
-    mDescriptorSetLayouts.resize(setBindings.size(), nullptr);
+    mDescriptorSetLayouts.resize(setBindings.size());
     std::vector<VkDescriptorSetLayout> vkLayouts(mDescriptorSetLayouts.size());
     for (auto& [set, bindings] : setBindings)
     {
@@ -185,9 +184,9 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const GraphicsP
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount         = vkLayouts.size();
+    pipelineLayoutCreateInfo.setLayoutCount         = static_cast<uint32>(vkLayouts.size());
     pipelineLayoutCreateInfo.pSetLayouts            = vkLayouts.data();
-    pipelineLayoutCreateInfo.pushConstantRangeCount = mPushConstantRanges.size();
+    pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32>(mPushConstantRanges.size());
     pipelineLayoutCreateInfo.pPushConstantRanges    = mPushConstantRanges.data();
 
     // create pipeline layout
@@ -196,7 +195,7 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const GraphicsP
     // create pipeline
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount          = vkShaderStageCreateInfos.size();
+    pipelineCreateInfo.stageCount          = static_cast<uint32>(vkShaderStageCreateInfos.size());
     pipelineCreateInfo.pStages             = vkShaderStageCreateInfos.data();
     pipelineCreateInfo.pVertexInputState   = &vertexInputStateCreateInfo;
     pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
@@ -248,8 +247,10 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const ComputePi
 
     mPushConstantRanges.insert(mPushConstantRanges.end(), settings.shader->mPushConstantRanges.begin(), settings.shader->mPushConstantRanges.end());
 
+    mergePushConstantRanges();
+
     // create set layouts
-    mDescriptorSetLayouts.resize(setBindings.size(), nullptr);
+    mDescriptorSetLayouts.resize(setBindings.size());
     std::vector<VkDescriptorSetLayout> vkLayouts(mDescriptorSetLayouts.size());
     for (auto& [set, bindings] : setBindings)
     {
@@ -259,9 +260,9 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const ComputePi
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount         = vkLayouts.size();
+    pipelineLayoutCreateInfo.setLayoutCount         = static_cast<uint32>(vkLayouts.size());
     pipelineLayoutCreateInfo.pSetLayouts            = vkLayouts.data();
-    pipelineLayoutCreateInfo.pushConstantRangeCount = mPushConstantRanges.size();
+    pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32>(mPushConstantRanges.size());
     pipelineLayoutCreateInfo.pPushConstantRanges    = mPushConstantRanges.data();
 
     // create pipeline layout
@@ -308,7 +309,7 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const RTPipelin
         vkShaderStageCreateInfos.push_back(createInfo);
 
         VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo{};
-        groupCreateInfo.type               = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        groupCreateInfo.sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
         groupCreateInfo.anyHitShader       = VK_SHADER_UNUSED_KHR;
         groupCreateInfo.closestHitShader   = VK_SHADER_UNUSED_KHR;
         groupCreateInfo.generalShader      = VK_SHADER_UNUSED_KHR;
@@ -361,13 +362,13 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const RTPipelin
 
         mPushConstantRanges.insert(mPushConstantRanges.end(), shader->mPushConstantRanges.begin(), shader->mPushConstantRanges.end());
 
+        mergePushConstantRanges();
+
         stageIdx++;
     }
 
-    // Fixme: Next Continue here - compute -> rt
-
     // create set layouts
-    mDescriptorSetLayouts.resize(setBindings.size(), nullptr);
+    mDescriptorSetLayouts.resize(setBindings.size());
     std::vector<VkDescriptorSetLayout> vkLayouts(mDescriptorSetLayouts.size());
     for (auto& [set, bindings] : setBindings)
     {
@@ -377,28 +378,39 @@ Pipeline::Pipeline(const std::unique_ptr<Device>& logicalDevice, const RTPipelin
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount         = vkLayouts.size();
+    pipelineLayoutCreateInfo.setLayoutCount         = static_cast<uint32>(vkLayouts.size());
     pipelineLayoutCreateInfo.pSetLayouts            = vkLayouts.data();
-    pipelineLayoutCreateInfo.pushConstantRangeCount = mPushConstantRanges.size();
+    pipelineLayoutCreateInfo.pushConstantRangeCount = static_cast<uint32>(mPushConstantRanges.size());
     pipelineLayoutCreateInfo.pPushConstantRanges    = mPushConstantRanges.data();
 
     // create pipeline layout
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
     // create pipeline
-    VkComputePipelineCreateInfo pipelineCreateInfo{};
-    pipelineCreateInfo.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stage              = vkShaderStageCreateInfo;
-    pipelineCreateInfo.layout             = mVkPipelineLayout;
-    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-    pipelineCreateInfo.basePipelineIndex  = -1;
+    VkRayTracingPipelineCreateInfoKHR pipelineCreateInfo{};
+    pipelineCreateInfo.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.stageCount                   = static_cast<uint32>(vkShaderStageCreateInfos.size());
+    pipelineCreateInfo.pStages                      = vkShaderStageCreateInfos.data();
+    pipelineCreateInfo.groupCount                   = static_cast<uint32>(vkRTShaderGroupCreateInfos.size());
+    pipelineCreateInfo.pGroups                      = vkRTShaderGroupCreateInfos.data();
+    pipelineCreateInfo.maxPipelineRayRecursionDepth = 1;
+    pipelineCreateInfo.layout                       = mVkPipelineLayout;
+    pipelineCreateInfo.basePipelineHandle           = VK_NULL_HANDLE;
+    pipelineCreateInfo.basePipelineIndex            = -1;
 
-    RAYCE_CHECK_VK(vkCreateComputePipelines(mVkLogicalDeviceRef, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mVkPipeline), "Creating raytracing pipeline failed!");
+    RAYCE_CHECK_VK(vkCreateRayTracingPipelinesKHR(mVkLogicalDeviceRef, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mVkPipeline), "Creating raytracing pipeline failed!");
 
-    // cleanup shader module
-    vkDestroyShaderModule(mVkLogicalDeviceRef, vkShaderStageCreateInfo.module, nullptr);
+    // cleanup shader modulea
+    for (auto& stageCreateInfo : vkShaderStageCreateInfos)
+    {
+        vkDestroyShaderModule(mVkLogicalDeviceRef, stageCreateInfo.module, nullptr);
+    }
 
     RAYCE_LOG_INFO("Created raytracing pipeline!");
+}
+
+void Pipeline::mergePushConstantRanges()
+{ // FIXME: Implement!!!!
 }
 
 Pipeline::~Pipeline()
