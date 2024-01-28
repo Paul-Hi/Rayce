@@ -61,14 +61,11 @@ namespace rayce
         bool mReflected = false;
 
         std::vector<uint32> mSpirvBinary = {};
+
+        VkShaderStageFlagBits mStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
         ShaderSpecialization mShaderSpecialization;
-        VkShaderStageFlagBits mStage                                                              = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-        std::vector<std::pair<uint32, VkDescriptorSetLayoutBinding>> mDescriptorSetLayoutBindings = {};
-        std::vector<VkPushConstantRange> mPushConstantRanges                                      = {}; // push constants available at this stage
-        VkVertexInputBindingDescription mVertexInputBinding                                       = {};
-        std::vector<VkVertexInputAttributeDescription> mVertexInputAttributes                     = {};
-        // work packages for compute
-        uint32 mLocalSizeX = 0, mLocalSizeY = 0, mLocalSizeZ = 0;
+
+        std::vector<std::shared_ptr<class ShaderParameterBlockReflection>> mReflection;
     };
 } // namespace rayce
 
