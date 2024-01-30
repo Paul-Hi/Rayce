@@ -78,8 +78,6 @@ namespace rayce
             int32 width;
             /// @brief @a Window height in pixels.
             int32 height;
-            /// @brief @a Window content scale.
-            vec2 contentScale;
             /// @brief @a Window title.
             const char* title;
 

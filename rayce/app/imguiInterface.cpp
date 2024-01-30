@@ -57,9 +57,7 @@ ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const 
     io.ConfigViewportsNoAutoMerge   = false;
     io.ConfigViewportsNoTaskBarIcon = true;
 
-    vec2 scaleFactorFont = static_cast<Window::WindowData*>(glfwGetWindowUserPointer(nativeWindowHandle))->contentScale;
-
-    setupImGuiStyle(scaleFactorFont.maxCoeff());
+    setupImGuiStyle(1.0f);
 
     ImGui_ImplGlfw_InitForVulkan(nativeWindowHandle, true);
 

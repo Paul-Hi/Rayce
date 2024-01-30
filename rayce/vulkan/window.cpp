@@ -19,7 +19,10 @@ Window::Window(int32 width, int32 height, const str& name, const std::shared_ptr
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_TRUE);
+    glfwWindowHint(GLFW_SAMPLES, 1);
 
     mWindowData.width  = width;
     mWindowData.height = height;
@@ -35,7 +38,6 @@ Window::Window(int32 width, int32 height, const str& name, const std::shared_ptr
 
     glfwMakeContextCurrent(mWindowData.pWindow);
     glfwSwapInterval(0);
-    glfwGetWindowContentScale(mWindowData.pWindow, &mWindowData.contentScale.x(), &mWindowData.contentScale.y());
 
     {
         // Error callback

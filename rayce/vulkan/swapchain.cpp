@@ -116,26 +116,15 @@ VkSurfaceFormatKHR Swapchain::chooseSurfaceFormat(const std::vector<VkSurfaceFor
 
 VkPresentModeKHR Swapchain::choosePresentMode(const std::vector<VkPresentModeKHR>& presentModes)
 {
-    for (const VkPresentModeKHR& mode : presentModes)
-    {
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-        {
-            return mode;
-        }
-    }
+    const VkPresentModeKHR requestedModes[] = {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR};
+    const int32 requestedModesCount = 3;
 
-#ifndef WIN32 // On linux Nvidia does not support mailbox - but in our case I really don't want to be capped to 16ms per frame ... so
-    for (const VkPresentModeKHR& mode : presentModes)
-    {
-        if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
-        {
-            return mode;
-        }
-    }
-#endif
+    for (int32 requestedI = 0; requestedI < requestedModesCount; requestedI++)
+        for (uint32 availableI = 0; availableI < presentModes.size(); availableI++)
+            if (requestedModes[requestedI] == presentModes[availableI])
+                return requestedModes[requestedI];
 
-    // Usually available default.
-    return VK_PRESENT_MODE_FIFO_KHR;
+    return VK_PRESENT_MODE_FIFO_KHR; // Always available
 }
 
 VkExtent2D Swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* nativeWindowHandle)
