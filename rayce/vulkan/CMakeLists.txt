@@ -13,8 +13,11 @@ add_library(rayceVulkan
 )
 
 # Depends on assets target
-add_dependencies(rayceVulkan assets copySlangBinaries)
-
+if(WIN32)
+add_dependencies(rayceVulkan copySlangBinaries)
+else()
+add_dependencies(rayceVulkan assets)
+endif()
 add_library(rayce::vulkan ALIAS rayceVulkan)
 
 target_include_directories(rayceVulkan

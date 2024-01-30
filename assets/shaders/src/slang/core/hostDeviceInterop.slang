@@ -4,7 +4,7 @@
 #ifdef __cplusplus
 #include <core/types.hpp>
 using uint     = rayce::uint32;
-using uint64_t = rayce::uint64;
+// using uint64_t = rayce::uint64;
 using float3   = rayce::vec3;
 using float4   = rayce::vec4;
 using float2   = rayce::vec2;

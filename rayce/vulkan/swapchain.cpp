@@ -124,6 +124,16 @@ VkPresentModeKHR Swapchain::choosePresentMode(const std::vector<VkPresentModeKHR
         }
     }
 
+#ifndef WIN32 // On linux Nvidia does not support mailbox - but in our case I really don't want to be capped to 16ms per frame ... so
+    for (const VkPresentModeKHR& mode : presentModes)
+    {
+        if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        {
+            return mode;
+        }
+    }
+#endif
+
     // Usually available default.
     return VK_PRESENT_MODE_FIFO_KHR;
 }

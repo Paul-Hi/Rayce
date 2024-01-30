@@ -41,6 +41,7 @@ namespace rayce
 
     class Shader;
 
+    class ShaderReflectionType;
     class ShaderReflectionArrayType;
     class ShaderReflectionStructType;
     class ShaderReflectionBasicType;
@@ -654,11 +655,11 @@ namespace rayce
     private:
         std::shared_ptr<ShaderReflectionType> mElementType;
 
-        DefaultConstantBufferBindingInfo mDefaultConstantBufferBindingInfo;
-
-        std::vector<ResourceRangeBindingInfo> mResourceRanges;
-
-        std::vector<DescriptorSetInfo> mDescriptorSets;
+        // DefaultConstantBufferBindingInfo mDefaultConstantBufferBindingInfo;
+        //
+        // std::vector<ResourceRangeBindingInfo> mResourceRanges;
+        //
+        // std::vector<DescriptorSetInfo> mDescriptorSets;
 
         bool mBuildDescriptorSets = false;
 

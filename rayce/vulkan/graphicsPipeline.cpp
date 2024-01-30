@@ -137,8 +137,8 @@ GraphicsPipeline::GraphicsPipeline(const std::unique_ptr<Device>& logicalDevice,
     pRenderPass = std::make_unique<RenderPass>(logicalDevice, swapchain, VK_ATTACHMENT_LOAD_OP_CLEAR);
 
     // shader stages
-    pBaseVertexShader   = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\basic.vert.spv");
-    pBaseFragmentShader = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\basic.frag.spv");
+    pBaseVertexShader   = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/basic.vert.spv");
+    pBaseFragmentShader = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/basic.frag.spv");
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { pBaseVertexShader->createShaderStage(VK_SHADER_STAGE_VERTEX_BIT), pBaseFragmentShader->createShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT) };
 

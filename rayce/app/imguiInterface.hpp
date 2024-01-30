@@ -73,7 +73,8 @@ namespace rayce
         std::unique_ptr<class RenderPass> pRenderPass;
 
         /// @brief Sets the Imgui style - default setup done in code, settings could be exposed.
-        void setupImGuiStyle();
+        /// @param[in] scaleFactorFont The font scaling factor to apply.
+        void setupImGuiStyle(float scaleFactorFont);
     };
 } // namespace rayce
 

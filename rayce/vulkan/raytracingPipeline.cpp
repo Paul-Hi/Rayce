@@ -31,11 +31,11 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     , mFramesInFlight(framesInFlight)
 {
     // TESTING
-    Shader test(".\\assets\\shaders\\src\\slang\\rendering\\basic\\vertex.slang");
-    ShaderSpecialization specialization;
-    specialization.entryPoint = "main";
-    specialization.stage      = ShaderStage::VertexStage;
-    test.compileAndReflect(logicalDevice, specialization);
+    // Shader test("./assets/shaders/src/slang/rendering/basic/vertex.slang");
+    // ShaderSpecialization specialization;
+    // specialization.entryPoint = "main";
+    // specialization.stage      = ShaderStage::VertexStage;
+    // test.compileAndReflect(logicalDevice, specialization);
     //
 
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
@@ -149,12 +149,12 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     RAYCE_CHECK_VK(vkCreatePipelineLayout(mVkLogicalDeviceRef, &pipelineLayoutCreateInfo, nullptr, &mVkPipelineLayout), "Creating pipeline layout failed!");
 
     // shader stages
-    pRayGenShader             = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\raygen.slang.spv");
-    pClosestHitShader         = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHit.slang.spv");
-    pSphereIntersectionShader = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\sphereIntersection.slang.spv");
-    pClosestHitSphereShader   = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\closestHitSphere.slang.spv");
-    pMissShader               = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\miss.slang.spv");
-    pMissShadowShader         = std::make_unique<ShaderModule>(logicalDevice, ".\\assets\\shaders\\missShadow.slang.spv");
+    pRayGenShader             = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/raygen.slang.spv");
+    pClosestHitShader         = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/closestHit.slang.spv");
+    pSphereIntersectionShader = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/sphereIntersection.slang.spv");
+    pClosestHitSphereShader   = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/closestHitSphere.slang.spv");
+    pMissShader               = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/miss.slang.spv");
+    pMissShadowShader         = std::make_unique<ShaderModule>(logicalDevice, "./assets/shaders/missShadow.slang.spv");
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { pRayGenShader->createShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_KHR), pClosestHitShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR),
                                                        pClosestHitSphereShader->createShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR), pSphereIntersectionShader->createShaderStage(VK_SHADER_STAGE_INTERSECTION_BIT_KHR),

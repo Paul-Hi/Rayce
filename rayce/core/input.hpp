@@ -9,7 +9,7 @@
 #ifndef RAYCE_INPUT_HPP
 #define RAYCE_INPUT_HPP
 
-#include <core/Signal.hpp>
+#include <core/signal.hpp>
 #include <core/inputCodes.hpp>
 
 namespace rayce

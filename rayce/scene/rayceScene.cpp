@@ -1075,12 +1075,12 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             if (pluginType == "rectangle")
             {
                 shape.type     = EShapeType::rectangle;
-                shape.filename = "assets\\internal\\rectangle.ply";
+                shape.filename = "assets/internal/rectangle.ply";
             }
             if (pluginType == "cube")
             {
                 shape.type     = EShapeType::cube;
-                shape.filename = "assets\\internal\\cube.obj";
+                shape.filename = "assets/internal/cube.obj";
             }
 
             shape.transformationMatrix = mat4::Identity();
@@ -1089,12 +1089,12 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 if (pluginType == "ply" && prop.first == "filename")
                 {
                     shape.type     = EShapeType::triangleMesh;
-                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string();
+                    shape.filename = fs::path(filename).parent_path().concat("/" + prop.second.getString()).string();
                 }
                 if (pluginType == "obj" && prop.first == "filename")
                 {
                     shape.type     = EShapeType::triangleMesh;
-                    shape.filename = fs::path(filename).parent_path().concat("\\" + prop.second.getString()).string();
+                    shape.filename = fs::path(filename).parent_path().concat("/" + prop.second.getString()).string();
                 }
 
                 if (pluginType == "sphere")
@@ -1220,7 +1220,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.diffuseReflectanceTexture].c_str(), imageFile.c_str());
@@ -1277,7 +1277,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
@@ -1328,7 +1328,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularTransmittanceTexture].c_str(), imageFile.c_str());
@@ -1382,7 +1382,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     if (!fs::exists(imageFile))
                     {
-                        imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                        imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                         if (!fs::exists(imageFile))
                         {
                             RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.alphaTexture].c_str(), imageFile.c_str());
@@ -1440,7 +1440,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
@@ -1491,7 +1491,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.conductorEtaTexture].c_str(), imageFile.c_str());
@@ -1542,7 +1542,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.conductorKTexture].c_str(), imageFile.c_str());
@@ -1596,7 +1596,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     if (!fs::exists(imageFile))
                     {
-                        imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                        imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                         if (!fs::exists(imageFile))
                         {
                             RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.alphaTexture].c_str(), imageFile.c_str());
@@ -1653,7 +1653,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.diffuseReflectanceTexture].c_str(), imageFile.c_str());
@@ -1704,7 +1704,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.specularReflectanceTexture].c_str(), imageFile.c_str());
@@ -1758,7 +1758,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     if (!fs::exists(imageFile))
                     {
-                        imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                        imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                         if (!fs::exists(imageFile))
                         {
                             RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[bsdf.possibleData.alphaTexture].c_str(), imageFile.c_str());
@@ -1858,7 +1858,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                 if (!fs::exists(imageFile))
                 {
-                    imageFile = fs::path(filename).parent_path().concat("\\" + imageFile).string();
+                    imageFile = fs::path(filename).parent_path().concat("/" + imageFile).string();
                     if (!fs::exists(imageFile))
                     {
                         RAYCE_LOG_ERROR("Can not find %s nor %s", imagesToLoad[emitter.possibleData.radianceTexture].c_str(), imageFile.c_str());

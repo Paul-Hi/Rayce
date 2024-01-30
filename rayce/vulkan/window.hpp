@@ -64,6 +64,7 @@ namespace rayce
         }
 
     private:
+        friend class ImguiInterface;
         struct WindowData
         {
             /// @brief The native handle to the GLFWWindow.
@@ -73,10 +74,12 @@ namespace rayce
             int32 x;
             /// @brief Vertical screen position.
             int32 y;
-            /// @brief @a Window width.
+            /// @brief @a Window width in pixels.
             int32 width;
-            /// @brief @a Window height.
+            /// @brief @a Window height in pixels.
             int32 height;
+            /// @brief @a Window content scale.
+            vec2 contentScale;
             /// @brief @a Window title.
             const char* title;
 

@@ -4,8 +4,8 @@
 /// @date      2024
 /// @copyright Apache License 2.0
 
-#include <app/imguiInterface.hpp>
 #include <app/imguiImpl.hpp>
+#include <app/imguiInterface.hpp>
 #include <imstb_truetype.h>
 #include <vulkan/commandPool.hpp>
 #include <vulkan/device.hpp>
@@ -57,7 +57,9 @@ ImguiInterface::ImguiInterface(const std::unique_ptr<Instance>& instance, const 
     io.ConfigViewportsNoAutoMerge   = false;
     io.ConfigViewportsNoTaskBarIcon = true;
 
-    setupImGuiStyle();
+    vec2 scaleFactorFont = static_cast<Window::WindowData*>(glfwGetWindowUserPointer(nativeWindowHandle))->contentScale;
+
+    setupImGuiStyle(scaleFactorFont.maxCoeff());
 
     ImGui_ImplGlfw_InitForVulkan(nativeWindowHandle, true);
 
@@ -152,18 +154,18 @@ void ImguiInterface::end(VkCommandBuffer commandBuffer, const std::unique_ptr<Fr
     vkCmdEndRenderPass(commandBuffer);
 }
 
-void ImguiInterface::setupImGuiStyle()
+void ImguiInterface::setupImGuiStyle(float scaleFactorFont)
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-VariableFont_slnt,wght.ttf", 18.0);
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-VariableFont_slnt,wght.ttf", 18.0 * scaleFactorFont);
 
     static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     ImFontConfig iconsConfig;
     iconsConfig.MergeMode  = true;
     iconsConfig.PixelSnapH = true;
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAR, 16.0f, &iconsConfig, iconsRanges);
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, 16.0f, &iconsConfig, iconsRanges);
+    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAR, 16.0f * scaleFactorFont, &iconsConfig, iconsRanges);
+    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, 16.0f * scaleFactorFont, &iconsConfig, iconsRanges);
 
     io.ConfigWindowsMoveFromTitleBarOnly = true; // Only move from title bar
 
@@ -220,11 +222,11 @@ void ImguiInterface::setupImGuiStyle()
     colors[ImGuiCol_TableRowBg]            = theme::backgroundDark; // Table row background (even rows)
     colors[ImGuiCol_TableRowBgAlt]         = theme::background;     // Table row background (odd rows)
     colors[ImGuiCol_TextSelectedBg]        = theme::brighten;
-    colors[ImGuiCol_DragDropTarget]        = theme::highlight;      // Rectangle highlighting a drop target
-    colors[ImGuiCol_NavHighlight]          = theme::highlight;      // Gamepad/keyboard: current highlighted item
-    colors[ImGuiCol_NavWindowingHighlight] = theme::highlight;      // Highlight window when using CTRL+TAB
-    colors[ImGuiCol_NavWindowingDimBg]     = theme::darken;         // Darken/colorize entire screen behind the CTRL+TAB window list, when active
-    colors[ImGuiCol_ModalWindowDimBg]      = theme::darken;         // Darken/colorize entire screen behind a modal window, when one is active
+    colors[ImGuiCol_DragDropTarget]        = theme::highlight; // Rectangle highlighting a drop target
+    colors[ImGuiCol_NavHighlight]          = theme::highlight; // Gamepad/keyboard: current highlighted item
+    colors[ImGuiCol_NavWindowingHighlight] = theme::highlight; // Highlight window when using CTRL+TAB
+    colors[ImGuiCol_NavWindowingDimBg]     = theme::darken;    // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+    colors[ImGuiCol_ModalWindowDimBg]      = theme::darken;    // Darken/colorize entire screen behind a modal window, when one is active
 
     // Style
     ImGuiStyle& style      = ImGui::GetStyle();
