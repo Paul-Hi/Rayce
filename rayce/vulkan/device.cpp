@@ -63,7 +63,7 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
 
     // Swapchain has to be enabled.
     // Swapchain
-    std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME };
 
     // Adding required extensions for raytracing here.
     if (raytracingSupported)
@@ -81,10 +81,16 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
         deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
     }
 
+    VkPhysicalDeviceShaderFloat16Int8Features shaderFloat16Int8Features{};
+    shaderFloat16Int8Features.sType         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+    shaderFloat16Int8Features.pNext         = nullptr;
+    shaderFloat16Int8Features.shaderFloat16 = VK_TRUE;
+    shaderFloat16Int8Features.shaderInt8    = VK_TRUE;
+
     // additional device features for raytracing
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
     bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-    bufferDeviceAddressFeatures.pNext               = nullptr;
+    bufferDeviceAddressFeatures.pNext               = &shaderFloat16Int8Features;
     bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
 
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};

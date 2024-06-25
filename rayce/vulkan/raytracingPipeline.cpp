@@ -110,7 +110,7 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     layoutBindingDescriptorMaterialDataBuffer.binding         = MATERIAL_BINDING;
     layoutBindingDescriptorMaterialDataBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindingDescriptorMaterialDataBuffer.descriptorCount = 1;
-    layoutBindingDescriptorMaterialDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    layoutBindingDescriptorMaterialDataBuffer.stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingDescriptorLightDataBuffer{};
     layoutBindingDescriptorLightDataBuffer.binding         = LIGHT_BINDING;

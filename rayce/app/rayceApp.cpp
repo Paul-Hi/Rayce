@@ -197,13 +197,26 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
     for (const VkPhysicalDevice& candidate : pInstance->getAvailableVkPhysicalDevices())
     {
         VkPhysicalDeviceProperties deviceProperties;
-        VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(candidate, &deviceProperties);
+
+        VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceFeatures(candidate, &deviceFeatures);
+        VkPhysicalDeviceVulkan12Features deviceFeatures12;
+        //deviceFeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        VkPhysicalDeviceFeatures2 deviceFeatures2;
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.pNext = &deviceFeatures12;
+        vkGetPhysicalDeviceFeatures2(candidate, &deviceFeatures2);
 
         if (!deviceFeatures.geometryShader)
         {
             RAYCE_LOG_INFO("Geometry shader unavailable!");
+            continue;
+        }
+
+        if (!deviceFeatures12.shaderFloat16)
+        {
+            RAYCE_LOG_INFO("Float16 shader operations unavailable!");
             continue;
         }
 
