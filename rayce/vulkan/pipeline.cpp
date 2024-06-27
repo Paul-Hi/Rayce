@@ -4,6 +4,7 @@
 /// @date      2024
 /// @copyright Apache License 2.0
 
+/*
 #include <vulkan/descriptorSetLayout.hpp>
 #include <vulkan/descriptorSets.hpp>
 #include <vulkan/device.hpp>
@@ -424,3 +425,4 @@ Pipeline::~Pipeline()
         vkDestroyPipeline(mVkLogicalDeviceRef, mVkPipeline, nullptr);
     }
 }
+*/

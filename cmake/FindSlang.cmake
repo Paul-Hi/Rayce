@@ -3,7 +3,7 @@
 # Usage:
 # find_package(Slang)
 
-set(SLANG_VERSION "2023.5.5") # Hardcoded
+set(SLANG_VERSION "2024.1.22") # Hardcoded
 
 # Download
 if(WIN32)

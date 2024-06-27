@@ -18,7 +18,6 @@
 #include <vulkan/raytracingPipeline.hpp>
 #include <vulkan/rtFunctions.hpp>
 #include <vulkan/sampler.hpp>
-#include <vulkan/shader.hpp>
 #include <vulkan/shaderModule.hpp>
 #include <vulkan/swapchain.hpp>
 
@@ -30,14 +29,6 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     : mVkLogicalDeviceRef(logicalDevice->getVkDevice())
     , mFramesInFlight(framesInFlight)
 {
-    // TESTING
-    // Shader test("./assets/shaders/src/slang/rendering/basic/vertex.slang");
-    // ShaderSpecialization specialization;
-    // specialization.entryPoint = "main";
-    // specialization.stage      = ShaderStage::VertexStage;
-    // test.compileAndReflect(logicalDevice, specialization);
-    //
-
     pRTF = std::make_unique<RTFunctions>(logicalDevice);
 
     // accumulation image

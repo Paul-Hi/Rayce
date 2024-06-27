@@ -134,7 +134,7 @@
         <transform name="to_world">
             <scale x="0.4" y="0.4" z="0.1" />
             <rotate y="1" angle="16" />
-            <translate x="-1.2" y="0.4" z="1" />
+            <translate x="-1.2" y="0.401" z="1" />
         </transform>
         <ref id="rough_glass" />
     </shape>

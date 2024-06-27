@@ -4,9 +4,8 @@
 /// @date      2024
 /// @copyright Apache License 2.0
 
+/*
 #pragma once
-
-#include "vulkan/shader.hpp"
 
 #ifndef PIPELINE_HPP
 #define PIPELINE_HPP
@@ -15,8 +14,7 @@ namespace rayce
 {
     struct RAYCE_API_EXPORT GraphicsPipelineSettings
     {
-        std::vector<std::shared_ptr<class Shader>> shaders = {};
-        ShaderSpecialization specialization;
+        std::vector<std::unique_ptr<class ShaderModule>> shaders = {};
 
         VkViewport viewport;
         VkRect2D scissorRectangle;
@@ -48,14 +46,12 @@ namespace rayce
 
     struct RAYCE_API_EXPORT ComputePipelineSettings
     {
-        std::shared_ptr<class Shader> shader = nullptr;
-        ShaderSpecialization specialization;
+        std::unique_ptr<class ShaderModule> shader = nullptr;
     };
 
     struct RAYCE_API_EXPORT RTPipelineSettings
     {
-        std::vector<std::shared_ptr<class Shader>> shaders = {};
-        ShaderSpecialization specialization;
+        std::vector<std::unique_ptr<class ShaderModule>> shaders = {};
     };
 
     enum class RAYCE_API_EXPORT EPipelineType : byte
@@ -99,3 +95,4 @@ namespace rayce
 } // namespace rayce
 
 #endif // PIPELINE_HPP
+*/
