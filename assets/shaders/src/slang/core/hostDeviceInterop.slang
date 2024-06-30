@@ -128,14 +128,14 @@ namespace rayce
         area              = 0,
         analyticSphere    = 1,
         analyticRectangle = 2,
+        constant          = 3,
+        envmap            = 4,
         // point           = 2,
-        // constant        = 3,
-        // envmap          = 4,
         // spot            = 5,
         // projector       = 6,
         // directional     = 7,
         // directionalArea = 8,
-        lightTypeCount = 3
+        lightTypeCount = 5
     };
 
     enum RAYCE_API_EXPORT EBxDFType : uint
@@ -176,6 +176,14 @@ namespace rayce
         float    surfaceArea;
         float3   bitangent;
         float    pad0;
+
+
+        // infinite area lights
+        float radius;
+        float scale;
+        float pad1;
+        float pad2;
+
         float4x4 lightToWorld;
         float4x4 worldToLight;
 
@@ -190,6 +198,10 @@ namespace rayce
             , surfaceArea(0.0)
             , bitangent(float3::Zero())
             , pad0(0)
+            , radius(0.0)
+            , scale(1.0)
+            , pad1(0)
+            , pad2(0)
             , lightToWorld(float4x4::Zero())
             , worldToLight(float4x4::Zero())
         {
@@ -205,6 +217,10 @@ namespace rayce
             this.surfaceArea = 0.0;
             this.bitangent = float3(0.0, 0.0, 0.0);
             this.pad0 = 0;
+            this.radius = 0.0;
+            this.scale = 1.0;
+            this.pad1 = 0;
+            this.pad2 = 0;
             this.lightToWorld = float4x4(0.0);
             this.worldToLight = float4x4(0.0);
         }

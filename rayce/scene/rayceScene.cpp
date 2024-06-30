@@ -131,13 +131,13 @@ static ELightType lightFromPluginType(const str& pluginType)
     }
     else if (pluginType == "constant")
     {
-        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
-        return ELightType::lightTypeCount;
+        RAYCE_LOG_WARN("Light type %s is not supported at the moment!", pluginType.c_str());
+        return ELightType::constant;
     }
     else if (pluginType == "envmap")
     {
-        RAYCE_LOG_ERROR("Light type %s is not supported at the moment!", pluginType.c_str());
-        return ELightType::lightTypeCount;
+        RAYCE_LOG_WARN("Light type %s is not completely supported at the moment!", pluginType.c_str());
+        return ELightType::envmap;
     }
     else if (pluginType == "spot")
     {
@@ -994,8 +994,8 @@ static MitsubaEmitter loadMitsubaEmitter(const std::shared_ptr<mp::Object>& emit
     switch (emitter.type)
     {
     case ELightType::area:
+    case ELightType::constant:
     {
-
         if (props.contains("radiance"))
         {
             auto radiance = props.at("radiance");
@@ -1181,7 +1181,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         }
         case mp::OT_EMITTER:
         {
-            RAYCE_LOG_WARN("Only area lights are supported at the moment!");
+            MitsubaEmitter emitter = loadMitsubaEmitter(object, imagesToLoad);
+            mitsubaEmitters.push_back(emitter);
             break;
         }
         default:
@@ -1841,6 +1842,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         switch (emitter.type)
         {
         case ELightType::area:
+        case ELightType::constant:
         {
             if (emitter.possibleData.radianceTexture >= 0)
             {
@@ -2031,8 +2033,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                                                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                                                                                     VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
                 std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(logicalDevice, sizeof(uint32) * indices.size(),
-                                                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                                                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
                 vertexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 indexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -2181,8 +2183,8 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                                                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                                                                                     VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
                 std::unique_ptr<Buffer> indexBuffer  = std::make_unique<Buffer>(logicalDevice, sizeof(uint32) * indices.size(),
-                                                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                                                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                                                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
                 vertexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                 indexBuffer->allocateMemory(logicalDevice, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
