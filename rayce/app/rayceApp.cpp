@@ -196,27 +196,37 @@ VkPhysicalDevice RayceApp::pickPhysicalDevice(bool& raytracingSupported)
     VkPhysicalDevice pickedDevice = nullptr;
     for (const VkPhysicalDevice& candidate : pInstance->getAvailableVkPhysicalDevices())
     {
-        VkPhysicalDeviceProperties deviceProperties;
+        VkPhysicalDeviceProperties deviceProperties{};
         vkGetPhysicalDeviceProperties(candidate, &deviceProperties);
 
-        VkPhysicalDeviceFeatures deviceFeatures;
-        vkGetPhysicalDeviceFeatures(candidate, &deviceFeatures);
-        VkPhysicalDeviceVulkan12Features deviceFeatures12;
-        //deviceFeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        VkPhysicalDeviceFeatures2 deviceFeatures2;
+        VkPhysicalDeviceVulkan12Features deviceFeatures12{};
+        deviceFeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        VkPhysicalDeviceFeatures2 deviceFeatures2{};
         deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         deviceFeatures2.pNext = &deviceFeatures12;
         vkGetPhysicalDeviceFeatures2(candidate, &deviceFeatures2);
 
-        if (!deviceFeatures.geometryShader)
+        if (!deviceFeatures2.features.geometryShader)
         {
             RAYCE_LOG_INFO("Geometry shader unavailable!");
             continue;
         }
 
-        if (!deviceFeatures12.shaderFloat16)
+        if (!deviceFeatures12.shaderFloat16 || !deviceFeatures12.shaderInt8)
         {
-            RAYCE_LOG_INFO("Float16 shader operations unavailable!");
+            RAYCE_LOG_INFO("Float16 or Int8 shader operations unavailable!");
+            continue;
+        }
+
+        if (!deviceFeatures12.bufferDeviceAddress)
+        {
+            RAYCE_LOG_INFO("Buffer device address unavailable!");
+            continue;
+        }
+
+        if (!deviceFeatures12.runtimeDescriptorArray || !deviceFeatures12.shaderSampledImageArrayNonUniformIndexing || !deviceFeatures12.descriptorBindingPartiallyBound || !deviceFeatures12.descriptorBindingVariableDescriptorCount || !deviceFeatures12.descriptorBindingUpdateUnusedWhilePending || !deviceFeatures12.descriptorBindingStorageBufferUpdateAfterBind)
+        {
+            RAYCE_LOG_INFO("Descriptor indexing unavailable!");
             continue;
         }
 

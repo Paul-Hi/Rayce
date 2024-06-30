@@ -98,7 +98,6 @@ Device::Device(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, const std:
     indexingFeatures.pNext                                     = &bufferDeviceAddressFeatures;
     indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
     indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-    // FIXME: The following need support checks?
     indexingFeatures.descriptorBindingPartiallyBound               = VK_TRUE;
     indexingFeatures.descriptorBindingVariableDescriptorCount      = VK_TRUE;
     indexingFeatures.descriptorBindingUpdateUnusedWhilePending     = VK_TRUE;
