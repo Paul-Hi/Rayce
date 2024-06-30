@@ -24,10 +24,10 @@ foreach(SHADER ${GLSL_SOURCE_FILES})
     get_filename_component(FILE_NAME ${SHADER} NAME)
     set(OUTPUT_SPIRV_FILE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${FILE_NAME}.spv")
     add_custom_command(
+        DEPENDS ${SHADER}
         OUTPUT ${OUTPUT_SPIRV_FILE}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_SPIRV_DIR}
-        COMMAND ${GLSLC} --target-env=vulkan1.2 -o ${OUTPUT_SPIRV_FILE} ${SHADER} -Werror
-        DEPENDS ${SHADER}
+        COMMAND ${GLSLC} --target-env=vulkan1.3 -o ${OUTPUT_SPIRV_FILE} ${SHADER} -Werror
     )
     list(APPEND SPIRV_BINARY_FILES ${OUTPUT_SPIRV_FILE})
 endforeach(SHADER)
@@ -35,12 +35,13 @@ endforeach(SHADER)
 foreach(SHADER ${SLANG_SOURCE_FILES})
     get_filename_component(FILE_NAME ${SHADER} NAME)
     set(OUTPUT_SPIRV_FILE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${FILE_NAME}.spv")
+    # https://github.com/shader-slang/slang/blob/master/source/slang/slang-capabilities.capdef
     add_custom_command(
+        DEPENDS ${SHADER} ${SLANG_DEPENDENCIES}
         OUTPUT ${OUTPUT_SPIRV_FILE}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_SPIRV_DIR}
         COMMAND ${SLANGC}
-        -profile glsl_460+_spirv_1_4+fragment+SPV_EXT_fragment_fully_covered+SPV_EXT_descriptor_indexing+SPV_KHR_non_semantic_info+SPV_KHR_ray_tracing+SPV_GOOGLE_user_type+spvSparseResidency+spvMinLod+spvFragmentFullyCoveredEXT+spvRayTracingKHR+spvShaderNonUniformEXT
-        # https://github.com/shader-slang/slang/blob/master/source/slang/slang-capabilities.capdef
+        -profile glsl_460+_spirv_1_4+any_stage+SPV_EXT_fragment_fully_covered+SPV_EXT_descriptor_indexing+SPV_KHR_non_semantic_info+SPV_KHR_ray_tracing+SPV_GOOGLE_user_type+spvSparseResidency+spvMinLod+spvFragmentFullyCoveredEXT+spvRayTracingKHR+spvShaderNonUniformEXT
         -target spirv
         # -O2
         -validate-ir
@@ -50,7 +51,6 @@ foreach(SHADER ${SLANG_SOURCE_FILES})
         -o ${OUTPUT_SPIRV_FILE}
         -entry main
         ${SHADER}
-        DEPENDS ${SHADER} ${SLANG_DEPENDENCIES}
     )
     list(APPEND SPIRV_BINARY_FILES ${OUTPUT_SPIRV_FILE})
 endforeach(SHADER)

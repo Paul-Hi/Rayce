@@ -14,7 +14,7 @@ add_library(rayceVulkan
 
 # Depends on assets target
 if(WIN32)
-add_dependencies(rayceVulkan copySlangBinaries)
+add_dependencies(rayceVulkan assets copySlangBinaries)
 else()
 add_dependencies(rayceVulkan assets)
 endif()
