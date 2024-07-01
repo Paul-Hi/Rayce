@@ -1906,16 +1906,14 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         emitter.lightId = mLights.size();
         mLights.push_back(std::make_unique<Light>(emitter.possibleData));
 
-        if (emitter.type == ELightType::constant)
-        {
-            mLights.back()->wCenter      = float3::Zero();
-            mLights.back()->sceneRadius  = 100.0; // FIXME: Get real scene extends!
-        }
-
         emitterId++;
     }
 
     // shapes -> meshes
+    AxisAlignedBoundingBox sceneBounds;
+    sceneBounds.minimum = vec3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    sceneBounds.maximum = vec3(std::numeric_limits<float>::min(), std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
+
     uint32 meshId   = 0;
     uint32 sphereId = 0;
     for (auto& shape : mitsubaShapes)
@@ -2032,6 +2030,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     vertex.normal   = hasNormals ? normals[v].normalized() : vec3(0.0, 0.0, 0.0);
                     vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
 
+                    sceneBounds.minimum = sceneBounds.minimum.cwiseMin((shape.transformationMatrix * vertex.position.homogeneous()).head<3>());
+                    sceneBounds.maximum = sceneBounds.maximum.cwiseMax((shape.transformationMatrix * vertex.position.homogeneous()).head<3>());
+
                     vertices[v] = vertex;
                 }
 
@@ -2119,9 +2120,6 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f)
                     {
                         size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
-                        positions.resize(positions.size() + fv);
-                        normals.resize(positions.size() + fv);
-                        uvs.resize(positions.size() + fv);
 
                         for (size_t v = 0; v < fv; v++)
                         {
@@ -2142,7 +2140,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                             tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
                             tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
-                            positions[vertIdx] = vec3(vx, vy, vz);
+                            positions.push_back(vec3(vx, vy, vz));
 
                             if (idx.normal_index >= 0)
                             {
@@ -2150,7 +2148,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                 tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
                                 tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
 
-                                normals[vertIdx] = vec3(nx, ny, nz);
+                                normals.push_back(vec3(nx, ny, nz));
                             }
 
                             if (idx.texcoord_index >= 0)
@@ -2158,7 +2156,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                                 tinyobj::real_t tx = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
                                 tinyobj::real_t ty = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
 
-                                uvs[vertIdx] = vec2(tx, ty);
+                                uvs.push_back(vec2(tx, ty));
                             }
                             vertIdx++;
                         }
@@ -2180,6 +2178,9 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     vertex.position = positions[v];
                     vertex.normal   = hasNormals ? normals[v].normalized() : vec3(0.0, 0.0, 0.0);
                     vertex.uv       = hasUVs ? uvs[v] : vec2(1.0, 1.0);
+
+                    sceneBounds.minimum = sceneBounds.minimum.cwiseMin((shape.transformationMatrix * vertex.position.homogeneous()).head<3>());
+                    sceneBounds.maximum = sceneBounds.maximum.cwiseMax((shape.transformationMatrix * vertex.position.homogeneous()).head<3>());
 
                     vertices[v] = vertex;
                 }
@@ -2237,6 +2238,10 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             std::unique_ptr<AxisAlignedBoundingBox> boundingBox = std::make_unique<AxisAlignedBoundingBox>();
             boundingBox->minimum                                = sphere->center - vec3(sphere->radius, sphere->radius, sphere->radius);
             boundingBox->maximum                                = sphere->center + vec3(sphere->radius, sphere->radius, sphere->radius);
+
+            sceneBounds.minimum = sceneBounds.minimum.cwiseMin(boundingBox->minimum);
+            sceneBounds.maximum = sceneBounds.maximum.cwiseMax(boundingBox->maximum);
+
             // materialId is filled before
             uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
             int32 lightId     = -1;
@@ -2264,6 +2269,15 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
             pGeometry->add(std::move(sphere), std::move(boundingBox), materialId, lightId, { mat4::Identity() });
 
             sphereId++;
+        }
+    }
+
+    for (auto& light : mLights)
+    {
+        if (light->type == ELightType::constant)
+        {
+            light->wCenter     = float3::Zero();
+            light->sceneRadius = std::max(sceneBounds.maximum.norm(), sceneBounds.minimum.norm());
         }
     }
 }
