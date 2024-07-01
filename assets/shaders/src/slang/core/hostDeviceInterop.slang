@@ -179,7 +179,7 @@ namespace rayce
 
 
         // infinite area lights
-        float radius;
+        float sceneRadius;
         float scale;
         float pad1;
         float pad2;
@@ -198,7 +198,7 @@ namespace rayce
             , surfaceArea(0.0)
             , bitangent(float3::Zero())
             , pad0(0)
-            , radius(0.0)
+            , sceneRadius(0.0)
             , scale(1.0)
             , pad1(0)
             , pad2(0)
@@ -217,7 +217,7 @@ namespace rayce
             this.surfaceArea = 0.0;
             this.bitangent = float3(0.0, 0.0, 0.0);
             this.pad0 = 0;
-            this.radius = 0.0;
+            this.sceneRadius = 0.0;
             this.scale = 1.0;
             this.pad1 = 0;
             this.pad2 = 0;

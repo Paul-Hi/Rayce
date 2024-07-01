@@ -289,11 +289,15 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
         int32 frame;
         int32 maxDepth;
         int32 lightCount;
+        int32 environmentLightIdx;
     } pushConstants;
-    pushConstants.integrator = mIntegratorType;
-    pushConstants.frame      = mAccumulationFrame;
-    pushConstants.maxDepth   = mMaxDepth;
-    pushConstants.lightCount = pScene->getLights().size();
+    pushConstants.integrator          = mIntegratorType;
+    pushConstants.frame               = mAccumulationFrame;
+    pushConstants.maxDepth            = mMaxDepth;
+    pushConstants.lightCount          = pScene->getLights().size();
+    auto it                           = std::find_if(pScene->getLights().begin(), pScene->getLights().end(), [](const std::unique_ptr<Light>& light)
+                                                     { return light->type == ELightType::constant || light->type == ELightType::envmap; });
+    pushConstants.environmentLightIdx = it != pScene->getLights().end() ? it - pScene->getLights().begin() : -1;
 
     vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(pushConstants), static_cast<void*>(&pushConstants));
 

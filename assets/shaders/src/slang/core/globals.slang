@@ -5,6 +5,7 @@ static const float EPSILON = 1e-6;
 
 static const float PI = 3.14159265358979323846;
 static const float TWO_PI = (2.0 * PI);
+static const float FOUR_PI = (4.0 * PI);
 static const float INV_PI = 0.31830988618379067154;
 static const float INV_TWO_PI = 0.15915494309189533577;
 static const float INV_FOUR_PI = 0.07957747154594766788;
@@ -208,7 +209,6 @@ struct LightSample
     float3 radiance;
     float pdf = 0.0;
     float3 wi;
-    bool valid = false;
 };
 
 struct VertexLightSample

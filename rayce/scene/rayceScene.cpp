@@ -1906,6 +1906,12 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         emitter.lightId = mLights.size();
         mLights.push_back(std::make_unique<Light>(emitter.possibleData));
 
+        if (emitter.type == ELightType::constant)
+        {
+            mLights.back()->wCenter      = float3::Zero();
+            mLights.back()->sceneRadius  = 100.0; // FIXME: Get real scene extends!
+        }
+
         emitterId++;
     }
 
@@ -2049,17 +2055,15 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 // materialId is filled before
                 uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
                 int32 lightId     = -1;
-                if (shape.emitter >= 0 && shape.type == EShapeType::rectangle)
+                if (shape.emitter >= 0)
                 {
-                    lightId = mitsubaEmitters[shape.emitter].lightId;
-
-                    // convert light data to our type
+                    lightId                           = mitsubaEmitters[shape.emitter].lightId;
                     std::unique_ptr<Light>& lightData = mLights[lightId];
-
-                    assert(lightData->type == ELightType::area); // atm analytic rectangle
-
                     if (shape.type == EShapeType::rectangle)
                     {
+                        // convert light data to our type
+                        assert(lightData->type == ELightType::area); // atm analytic rectangle
+
                         lightData->type = ELightType::analyticRectangle;
 
                         lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xy [-1, 1]
@@ -2069,6 +2073,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                         lightData->worldToLight = shape.transformationMatrix.inverse();
                     }
                 }
+
                 mMaterials[materialId]->canUseUv = hasUVs;
 
                 pGeometry->add(std::move(vertexBuffer), maxVertex, std::move(indexBuffer), primitiveCount, materialId, lightId, { shape.transformationMatrix });
@@ -2199,17 +2204,15 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 // materialId is filled before
                 uint32 materialId = mitsubaBSDFs[shape.bsdf].materialId;
                 int32 lightId     = -1;
-                if (shape.emitter >= 0 && shape.type == EShapeType::rectangle)
+                if (shape.emitter >= 0)
                 {
-                    lightId = mitsubaEmitters[shape.emitter].lightId;
-
-                    // convert light data to our type
+                    lightId                           = mitsubaEmitters[shape.emitter].lightId;
                     std::unique_ptr<Light>& lightData = mLights[lightId];
-
-                    assert(lightData->type == ELightType::area); // atm analytic rectangle
-
                     if (shape.type == EShapeType::rectangle)
                     {
+                        // convert light data to our type
+                        assert(lightData->type == ELightType::area); // atm analytic rectangle
+
                         lightData->type = ELightType::analyticRectangle;
 
                         lightData->wCenter      = (shape.transformationMatrix * vec4(0.0, 0.0, 0.0, 1.0)).head<3>(); // rectangle is xy [-1, 1]

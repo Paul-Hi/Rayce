@@ -59,6 +59,7 @@ struct PushConstants
     int frame;
     int maxDepth;
     int lightCount;
+    int environmentLightIdx;
 };
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> gPushConstants;

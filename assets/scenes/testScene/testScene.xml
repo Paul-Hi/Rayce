@@ -174,4 +174,8 @@
         <ref id="some_plastic" />
     </shape>
 
+    <emitter type="constant">
+        <rgb name="radiance" value="0.05, 0.05, 0.3" />
+    </emitter>
+
 </scene>
