@@ -4,7 +4,7 @@ struct Random
     // This is a Xoshiro128StarStar initialized with a SplitMix64 similarly executed to Nvidias Falcor
     static uint4 gState;
 
-    static inline uint64_t splitMix64Rand(uint64_t state)
+    static inline uint64_t splitMix64Rand(inout uint64_t state)
     {
         uint64_t z = (state += 0x9E3779B97F4A7C15ull);
         z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
@@ -14,9 +14,9 @@ struct Random
 
     static void init(uint2 seed)
     {
-        uint64_t solitMix64State = (uint64_t(seed.x) << 32) | uint64_t(seed.y);
-        uint64_t s0 = splitMix64Rand(solitMix64State);
-        uint64_t s1 = splitMix64Rand(solitMix64State);
+        uint64_t splitMix64State = (uint64_t(seed.x) << 32) | uint64_t(seed.y);
+        uint64_t s0 = splitMix64Rand(splitMix64State);
+        uint64_t s1 = splitMix64Rand(splitMix64State);
         gState = { uint(s0), uint(s0 >> 32), uint(s1), uint(s1 >> 32) };
     }
 
