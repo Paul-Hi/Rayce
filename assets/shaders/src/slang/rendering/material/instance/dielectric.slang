@@ -7,30 +7,38 @@ struct SmoothDielectricBSDF : ILayerableBxDF
 {
     __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta)
     {
-        this.specularReflectance = specularReflectance;
+        this.specularReflectance   = specularReflectance;
         this.specularTransmittance = specularTransmittance;
-        this.eta = eta;
+        this.eta                   = eta;
     }
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode, const EBxDFSampleFlags sampleFlags)
     {
         BxDFSample sample;
 
-        float etati = eta;
-        float etait = 0.0;
+        float etati     = eta;
+        float etait     = 0.0;
         float cosThetaT = 0.0;
-        const float R = fresnelDielectric(cosThetaTS(wo), etati, etait, cosThetaT);
-        const float T = 1.0 - R;
+        const float R   = fresnelDielectric(cosThetaTS(wo), etati, etait, cosThetaT);
+        const float T   = 1.0 - R;
 
         float pr = R, pt = T;
-        if (!sampleReflection(sampleFlags)) pr = 0.0;
-        if (!sampleTransmission(sampleFlags)) pt = 0.0;
-        if (pr == 0.0 && pt == 0.0)
-            return none;
-
-        if(Random::rand() < pr / (pr + pt)) // reflection
+        if (!sampleReflection(sampleFlags))
         {
-            sample.wi = reflectTS(wo);
+            pr = 0.0;
+        }
+        if (!sampleTransmission(sampleFlags))
+        {
+            pt = 0.0;
+        }
+        if (pr == 0.0 && pt == 0.0)
+        {
+            return none;
+        }
+
+        if (Random::rand() < pr / (pr + pt)) // reflection
+        {
+            sample.wi  = reflectTS(wo);
             sample.pdf = pr / (pr + pt);
 
             sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
@@ -41,7 +49,7 @@ struct SmoothDielectricBSDF : ILayerableBxDF
         {
             const Optional<float3> optionalDirection = refractTS(wo, cosThetaT, etati);
 
-            if(optionalDirection == none)
+            if (optionalDirection == none)
             {
                 return none;
             }
@@ -52,7 +60,7 @@ struct SmoothDielectricBSDF : ILayerableBxDF
 
             sample.f = T * specularTransmittance / abs(cosThetaTS(sample.wi));
 
-            if(mode == ETransportMode::radiance)
+            if (mode == ETransportMode::radiance)
             {
                 sample.f *= sqr(etati);
             }
@@ -89,21 +97,21 @@ struct SmoothThinPlateDielectricBSDF : ILayerableBxDF
 {
     __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta)
     {
-        this.specularReflectance = specularReflectance;
+        this.specularReflectance   = specularReflectance;
         this.specularTransmittance = specularTransmittance;
-        this.eta = eta;
+        this.eta                   = eta;
     }
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode, const EBxDFSampleFlags sampleFlags)
     {
         BxDFSample sample;
 
-        float etati = eta;
-        float etait = 0.0;
+        float etati     = eta;
+        float etait     = 0.0;
         float cosThetaT = 0.0;
-        float R = fresnelDielectric(abs(cosThetaTS(wo)), etati, etait, cosThetaT);
+        float R         = fresnelDielectric(abs(cosThetaTS(wo)), etati, etait, cosThetaT);
 
-        if(R < 1.0)
+        if (R < 1.0)
         {
             // Account for internal reflections
             R += sqr(1.0 - R) * R / (1.0 - sqr(R));
@@ -112,14 +120,16 @@ struct SmoothThinPlateDielectricBSDF : ILayerableBxDF
         const float T = 1.0 - R;
 
         float pr = R, pt = T;
-        if (!sampleReflection(sampleFlags)) pr = 0.0;
-        if (!sampleTransmission(sampleFlags)) pt = 0.0;
+        if (!sampleReflection(sampleFlags))
+            pr = 0.0;
+        if (!sampleTransmission(sampleFlags))
+            pt = 0.0;
         if (pr == 0.0 && pt == 0.0)
             return none;
 
-        if(Random::rand() < pr / (pr + pt)) // reflection
+        if (Random::rand() < pr / (pr + pt)) // reflection
         {
-            sample.wi = reflectTS(wo);
+            sample.wi  = reflectTS(wo);
             sample.pdf = pr / (pr + pt);
 
             sample.f = R * specularReflectance / abs(cosThetaTS(sample.wi));
@@ -166,10 +176,10 @@ struct RoughDielectricBSDF : ILayerableBxDF
 {
     __init(const float3 specularReflectance, const float3 specularTransmittance, const float eta, const GGXDistribution distr)
     {
-        this.specularReflectance = specularReflectance;
+        this.specularReflectance   = specularReflectance;
         this.specularTransmittance = specularTransmittance;
-        this.eta = eta;
-        this.distr = distr;
+        this.eta                   = eta;
+        this.distr                 = distr;
     }
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode, const EBxDFSampleFlags sampleFlags)
@@ -184,27 +194,35 @@ struct RoughDielectricBSDF : ILayerableBxDF
         }
 
         const float dotWoWm = dot(wo, mfSample.value.wm);
-        float etati = eta;
-        float etait = 0.0;
-        float cosThetaT = 0.0;
-        const float R = fresnelDielectric(dotWoWm, etati, etait, cosThetaT);
+        float etati         = eta;
+        float etait         = 0.0;
+        float cosThetaT     = 0.0;
+        const float R       = fresnelDielectric(dotWoWm, etati, etait, cosThetaT);
 
         const float T = 1.0 - R;
 
         float pr = R, pt = T;
-        if (!sampleReflection(sampleFlags)) pr = 0.0;
-        if (!sampleTransmission(sampleFlags)) pt = 0.0;
+        if (!sampleReflection(sampleFlags))
+        {
+            pr = 0.0;
+        }
+        if (!sampleTransmission(sampleFlags))
+        {
+            pt = 0.0;
+        }
         if (pr == 0.0 && pt == 0.0)
+        {
             return none;
+        }
 
-        if(Random::rand() < pr / (pr + pt)) // reflection
+        if (Random::rand() < pr / (pr + pt)) // reflection
         {
             sample.wi = reflect(wo, mfSample.value.wm);
 
             const float cosThetaI = cosThetaTS(sample.wi);
             const float cosThetaO = cosThetaTS(wo);
 
-            if(!sameHemisphere(cosThetaI, cosThetaO))
+            if (!sameHemisphere(cosThetaI, cosThetaO))
             {
                 return none;
             }
@@ -213,7 +231,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
 
             const float D = distr.D(mfSample.value.wm);
             const float G = distr.G(wo, sample.wi);
-            sample.f = D * G * R * specularReflectance / (4.0 * cosThetaI * cosThetaO);
+            sample.f      = D * G * R * specularReflectance / (4.0 * cosThetaI * cosThetaO);
 
             sample.flags = EBxDFFlags::glossyReflection;
         }
@@ -221,7 +239,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
         {
             Optional<float3> optionalDirection = refract(wo, mfSample.value.wm, cosThetaT, etati);
 
-            if(optionalDirection == none)
+            if (optionalDirection == none)
             {
                 return none;
             }
@@ -231,23 +249,22 @@ struct RoughDielectricBSDF : ILayerableBxDF
             const float cosThetaI = cosThetaTS(sample.wi);
             const float cosThetaO = cosThetaTS(wo);
 
-            if(sameHemisphere(cosThetaI, cosThetaO) || cosThetaI == 0.0)
+            if (sameHemisphere(cosThetaI, cosThetaO) || cosThetaI == 0.0)
             {
                 return none;
             }
 
             const float dotWiWm = dot(sample.wi, mfSample.value.wm);
-            const float dotWoWm = dot(wo, mfSample.value.wm);
-            const float denom = sqr(dotWiWm + dotWoWm * etati);
-            const float dwmDwi = abs(dotWiWm) / denom;
+            const float denom   = sqr(dotWiWm + dotWoWm * etati);
+            const float dwmDwi  = abs(dotWiWm) / denom;
 
             sample.pdf = pt / (pr + pt) * mfSample.value.pdf * dwmDwi;
 
             const float D = distr.D(mfSample.value.wm);
             const float G = distr.G(wo, sample.wi);
-            sample.f = T * D * G * specularTransmittance * abs(dotWiWm * dotWoWm / (cosThetaI * cosThetaO * denom));
+            sample.f      = T * D * G * specularTransmittance * abs(dotWiWm * dotWoWm / (cosThetaI * cosThetaO * denom));
 
-            if(mode == ETransportMode::radiance)
+            if (mode == ETransportMode::radiance)
             {
                 sample.f *= sqr(etati);
             }
@@ -265,7 +282,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
         const float cosThetaI = cosThetaTS(wi);
         const float cosThetaO = cosThetaTS(wo);
 
-        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        if (cosThetaI == 0.0 || cosThetaO == 0.0)
         {
             return float3(0.0);
         }
@@ -276,7 +293,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
 
         float3 wm = etait * wi + wo;
 
-        if(dot(wm, wm) < EPSILON)
+        if (dot(wm, wm) < EPSILON)
         {
             return float3(0.0);
         }
@@ -294,20 +311,20 @@ struct RoughDielectricBSDF : ILayerableBxDF
         const float D = distr.D(wm);
 
         const float etati = cosThetaO > 0.0 ? rcp(eta) : eta;
-        const float F = fresnelDielectric(dotWoWm, etati, etait);
+        const float F     = fresnelDielectric(dotWoWm, etati, etait);
 
         const float G = distr.G(wo, wi);
 
-        if(reflect)
+        if (reflect)
         {
             return D * G * F * specularReflectance / abs(4.0 * cosThetaI * cosThetaO);
         }
         else
         {
             const float denom = sqr(dotWiWm + dotWoWm * etati) * cosThetaI * cosThetaO;
-            float3 f = D * G * (1.0 - F) * specularTransmittance * abs(dotWiWm * dotWoWm / denom);
+            float3 f          = D * G * (1.0 - F) * specularTransmittance * abs(dotWiWm * dotWoWm / denom);
 
-            if(mode == ETransportMode::radiance)
+            if (mode == ETransportMode::radiance)
             {
                 f *= sqr(etati);
             }
@@ -321,7 +338,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
         const float cosThetaI = cosThetaTS(wi);
         const float cosThetaO = cosThetaTS(wo);
 
-        if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        if (cosThetaI == 0.0 || cosThetaO == 0.0)
         {
             return 0.0;
         }
@@ -332,7 +349,7 @@ struct RoughDielectricBSDF : ILayerableBxDF
 
         float3 wm = etait * wi + wo;
 
-        if(dot(wm, wm) < EPSILON)
+        if (dot(wm, wm) < EPSILON)
         {
             return 0.0;
         }
@@ -348,22 +365,24 @@ struct RoughDielectricBSDF : ILayerableBxDF
         }
 
         const float etati = cosThetaO > 0.0 ? rcp(eta) : eta;
-        const float R = fresnelDielectric(dotWoWm, etati, etait);
-        const float T = 1.0 - R;
+        const float R     = fresnelDielectric(dotWoWm, etati, etait);
+        const float T     = 1.0 - R;
 
         float pr = R, pt = T;
-        if (!sampleReflection(sampleFlags)) pr = 0.0;
-        if (!sampleTransmission(sampleFlags)) pt = 0.0;
+        if (!sampleReflection(sampleFlags))
+            pr = 0.0;
+        if (!sampleTransmission(sampleFlags))
+            pt = 0.0;
         if (pr == 0.0 && pt == 0.0)
             return 0.0;
 
-        if(reflect)
+        if (reflect)
         {
             return pr / (pr + pt) * distr.pdf(wo, wm) / (4.0 * abs(dotWoWm));
         }
         else
         {
-            const float denom = sqr(dotWiWm + dotWoWm * etati);
+            const float denom  = sqr(dotWiWm + dotWoWm * etati);
             const float dwmDwi = abs(dotWiWm) / denom;
 
             return pt / (pr + pt) * distr.pdf(wo, wm) * dwmDwi;

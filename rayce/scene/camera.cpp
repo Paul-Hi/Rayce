@@ -155,7 +155,15 @@ bool Camera::onImGuiRender()
     }
 
     ImGui::Spacing();
-    bool changed = ImGui::SliderFloat("Lens Radius", &mLensRadius, 0.0f, 1.0f);
+
+    bool changed = false;
+    changed |= ImGui::SliderFloat("Vertical Field of View", &mFovy, 1.0f, 179.0f);
+    if (changed)
+    {
+        mInverseProjection = perspective(deg_to_rad(mFovy), mAspect, mZNear, mZFar).inverse();
+    }
+    ImGui::Spacing();
+    changed |= ImGui::SliderFloat("Lens Radius", &mLensRadius, 0.0f, 1.0f);
     ImGui::Spacing();
     changed |= ImGui::SliderFloat("Focal Distance", &mFocalDistance, mZNear, mZFar);
 

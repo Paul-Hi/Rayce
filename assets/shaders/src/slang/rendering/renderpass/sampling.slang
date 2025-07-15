@@ -2,7 +2,7 @@ import rendering.renderingUtils;
 import core.data;
 import core.random;
 
-static bool allowIncompletePDF = false;
+static bool allowIncompletePDF = true;
 
 struct GeometrySample
 {

@@ -80,7 +80,7 @@ float fresnelDielectric(const float cosThetaI, inout float etati, out float etai
         return 0.0;
     }
 
-    const bool switch = cosThetaI > 0.0;
+    const bool switch = cosThetaI >= 0.0;
     etait = switch ? etati : rcp(etati);
     etati = switch ? rcp(etati) : etati;
 
@@ -94,7 +94,7 @@ float fresnelDielectric(const float cosThetaI, inout float etati, out float etai
     }
 
     const float absCosThetaI = abs(cosThetaI);
-    const float absCosThetaT = sqrt(cosThetaTSqrd);
+    const float absCosThetaT = safe_sqrt(cosThetaTSqrd);
 
     const float Rs = negativeMultiplyAndAdd(etait, absCosThetaT, absCosThetaI) / multiplyAndAdd(etait, absCosThetaT, absCosThetaI);
     const float Rp = negativeMultiplyAndAdd(etait, absCosThetaI, absCosThetaT) / multiplyAndAdd(etait, absCosThetaI, absCosThetaT);

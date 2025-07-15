@@ -1241,7 +1241,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
@@ -1298,7 +1298,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
@@ -1349,7 +1349,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularTransmittanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
@@ -1461,7 +1461,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
@@ -1674,7 +1674,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.diffuseReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));
@@ -1725,7 +1725,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 uint32 components = STBI_rgb_alpha;
                 uint32 imageSize  = width * height * components;
 
-                VkFormat format = getImageFormat(components, false);
+                VkFormat format = getImageFormat(components, true);
 
                 VkExtent2D extent{ width, height };
                 mImages[bsdf.possibleData.specularReflectanceTexture] = (std::make_unique<Image>(logicalDevice, extent, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT));

@@ -20,7 +20,7 @@ namespace rayce
 
     static VkFormat getImageFormat(uint32 components, bool srgb)
     {
-        // FIXME: This is really basic...
+        // FIXME: This is really basic...And also the info should be queried from the obj loader?
         if (srgb)
         {
             // clang-format off

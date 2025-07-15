@@ -48,14 +48,14 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
 
         pfSample.wi = normalize(space.tangentToWorld(w));
         pfSample.pdf = hG(cosTheta);
-        pfSample.p = 1.0;
+        pfSample.p = pfSample.pdf;
 
         return pfSample;
     }
 
     float3 p(const float3 wo, const float3 wi)
     {
-        return float3(hG(dot(wo, wi)));
+        return float3(pdf(wo, wi));
     }
 
     float pdf(const float3 wo, const float3 wi)

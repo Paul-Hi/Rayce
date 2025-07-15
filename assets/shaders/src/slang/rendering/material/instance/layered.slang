@@ -10,14 +10,14 @@ struct LayeredBSDF : IBxDF
 {
     __init(const ILayerableBxDF topLayer, const ILayerableBxDF bottomLayer, const float thickness = 0.01, const float3 albedo = float3(0.0), const float sigmaT = 1.0, const float henyeyGreensteinG = 0.0, const uint maxDepth = 10, const uint sampleCount = 1)
     {
-        this.topLayer = topLayer;
-        this.bottomLayer = bottomLayer;
-        this.albedo = albedo;
-        this.thickness = thickness;
-        this.sigmaT = sigmaT;
+        this.topLayer          = topLayer;
+        this.bottomLayer       = bottomLayer;
+        this.albedo            = albedo;
+        this.thickness         = thickness;
+        this.sigmaT            = sigmaT;
         this.henyeyGreensteinG = henyeyGreensteinG;
-        this.maxDepth = maxDepth;
-        this.sampleCount = sampleCount;
+        this.maxDepth          = maxDepth;
+        this.sampleCount       = sampleCount;
     }
 
     Optional<BxDFSample> sample(const float3 wo, const ETransportMode mode, const EBxDFSampleFlags sampleFlags)
@@ -28,29 +28,28 @@ struct LayeredBSDF : IBxDF
 
         BxDFSample sample;
 
-        const HenyeyGreensteinPhaseFunction phase = HenyeyGreensteinPhaseFunction(henyeyGreensteinG);
-
-        // sample a wo
-        const Optional<BxDFSample> woSample = sampleTopOrBottom(enterTop, wo, mode);
-        if (woSample == none)
+        // sample a wi
+        const Optional<BxDFSample> wiSample = sampleTopOrBottom(enterTop, wo, mode);
+        if (wiSample == none || !any(wiSample.value.f > 0.0) || wiSample.value.pdf == 0.0 || cosThetaTS(wiSample.value.wi) == 0.0)
         {
-            none;
+            return none;
         }
-        sample = woSample.value;
+        sample = wiSample.value;
         if (sample.isReflection())
         {
             sample.proportionalPDF = true; // since we use the approximation in pdf()
 
             return sample;
         }
+        const HenyeyGreensteinPhaseFunction phase = HenyeyGreensteinPhaseFunction(henyeyGreensteinG);
 
-        float3 w = sample.wi;
+        float3 w          = sample.wi;
         bool specularPath = sample.isSpecular();
-        float3 f = sample.f * abs(cosThetaTS(w));
-        float pdf = sample.pdf;
-        float z = enterTop ? thickness : 0.0;
+        float3 f          = sample.f * abs(cosThetaTS(w));
+        float pdf         = sample.pdf;
+        float z           = enterTop ? thickness : 0.0;
 
-        for(int depth = 0; depth < maxDepth; ++depth)
+        for (int depth = 0; depth < maxDepth; ++depth)
         {
             // russian roulette
             const float maxRRBeta = averageLuminance(f / pdf);
@@ -65,7 +64,7 @@ struct LayeredBSDF : IBxDF
                 pdf *= (1.0 - q);
             }
             const float cosTheta = cosThetaTS(w);
-            if(cosTheta == 0.0)
+            if (cosTheta == 0.0)
             {
                 return none;
             }
@@ -76,20 +75,20 @@ struct LayeredBSDF : IBxDF
                 const float zp = cosTheta > 0 ? (z + dz) : (z - dz);
                 if (z == zp)
                 {
-                    continue;
+                    return none;
                 }
                 if (zp > 0.0 && zp < thickness)
                 {
                     const Optional<PhaseFunctionSample> pfSample = phase.sample(-w);
-                    if(pfSample == none)
+                    if (pfSample == none || pfSample.value.pdf == 0.0 || cosThetaTS(pfSample.value.wi) == 0.0)
                     {
-                        continue;
+                        return none;
                     }
                     f *= albedo * pfSample.value.p;
                     pdf *= pfSample.value.pdf;
                     specularPath = false;
-                    w = pfSample.value.wi;
-                    z = zp;
+                    w            = pfSample.value.wi;
+                    z            = zp;
 
                     continue;
                 }
@@ -108,7 +107,7 @@ struct LayeredBSDF : IBxDF
             const Optional<BxDFSample> bxdfSample = sampleTopOrBottom(interface, -w, mode);
             if (bxdfSample == none)
             {
-                none;
+                return none;
             }
 
             f *= bxdfSample.value.f;
@@ -118,13 +117,13 @@ struct LayeredBSDF : IBxDF
 
             if (bxdfSample.value.isTransmission())
             {
-                sample.wi = w;
-                sample.pdf = pdf;
-                sample.f = f;
-                sample.flags = sameHemisphere(wo, w) ? EBxDFFlags::reflection : EBxDFFlags::transmission;
-                sample.flags = (EBxDFFlags)((uint)sample.flags | (specularPath ? (uint)(EBxDFFlags::specular) : (uint)(EBxDFFlags::glossy)));
+                sample.wi              = w;
+                sample.pdf             = pdf;
+                sample.f               = f;
+                sample.flags           = sameHemisphere(wo, w) ? EBxDFFlags::reflection : EBxDFFlags::transmission;
+                sample.flags           = (EBxDFFlags)((uint)sample.flags | (specularPath ? (uint)(EBxDFFlags::specular) : (uint)(EBxDFFlags::glossy)));
                 sample.proportionalPDF = true; // since we approximate in pdf()
-                sample.eta = 1.0;
+                sample.eta             = 1.0;
                 return sample;
             }
 
@@ -137,22 +136,22 @@ struct LayeredBSDF : IBxDF
     float3 f(const float3 wo, const float3 wi, const ETransportMode mode)
     {
         const bool enterTop = cosThetaTS(wo) > 0.0;
-        const bool exitTop = cosThetaTS(wi) > 0.0;
+        const bool exitTop  = cosThetaTS(wi) > 0.0;
 
-        const float exitZ = exitTop ? thickness : 0.0;
-        const bool exitNonSpecular = !isSpecular(flagsTopOrBottom(exitTop));
+        const float exitZ             = exitTop ? thickness : 0.0;
+        const bool exitNonSpecular    = !isSpecular(flagsTopOrBottom(exitTop));
         const bool nonExitNonSpecular = !isSpecular(flagsTopOrBottom(!exitTop));
 
         float3 f = float3(0.0);
 
-        if(enterTop == exitTop) // reflection at entrance interface?
+        if (enterTop == exitTop) // reflection at entrance interface?
         {
             f += sampleCount * fTopOrBottom(enterTop, wo, wi, mode);
         }
 
         const HenyeyGreensteinPhaseFunction phase = HenyeyGreensteinPhaseFunction(henyeyGreensteinG);
 
-        for(int s = 0; s < sampleCount; ++s)
+        for (int s = 0; s < sampleCount; ++s)
         {
             // sample a wo
             const Optional<BxDFSample> woSample = sampleTopOrBottom(enterTop, wo, mode, EBxDFSampleFlags::transmission);
@@ -168,11 +167,11 @@ struct LayeredBSDF : IBxDF
                 continue;
             }
 
-            float3 w = woSample.value.wi;
+            float3 w          = woSample.value.wi;
             float3 throughput = woSample.value.f * abs(cosThetaTS(w)) / woSample.value.pdf;
-            float z = enterTop ? thickness : 0.0;
+            float z           = enterTop ? thickness : 0.0;
 
-            for(int depth = 0; depth < maxDepth; ++depth)
+            for (int depth = 0; depth < maxDepth; ++depth)
             {
                 // russian roulette
                 const float maxRRBeta = averageLuminance(throughput);
@@ -190,8 +189,8 @@ struct LayeredBSDF : IBxDF
                 if (any(albedo > 0.0))
                 {
                     const float cosTheta = cosThetaTS(w);
-                    const float dz = -log(1.0 - Random::rand()) * abs(cosTheta) / sigmaT; // exponential sample
-                    const float zp = cosTheta > 0 ? (z + dz) : (z - dz);
+                    const float dz       = -log(1.0 - Random::rand()) * abs(cosTheta) / sigmaT; // exponential sample
+                    const float zp       = cosTheta > 0 ? (z + dz) : (z - dz);
                     if (z == zp)
                     {
                         continue;
@@ -205,12 +204,12 @@ struct LayeredBSDF : IBxDF
                         }
 
                         f += throughput * albedo * phase.p(-w, -wiSample.value.wi) * wt *
-                                transmittance(zp - exitZ, wiSample.value.wi) * wiSample.value.f / wiSample.value.pdf;
+                             transmittance(zp - exitZ, wiSample.value.wi) * wiSample.value.f / wiSample.value.pdf;
 
                         const Optional<PhaseFunctionSample> pfSample = phase.sample(-w);
-                        if(pfSample == none)
+                        if (pfSample == none)
                         {
-                            continue;
+                            break;
                         }
                         throughput *= albedo * pfSample.value.p / pfSample.value.pdf;
                         w = pfSample.value.wi;
@@ -222,7 +221,7 @@ struct LayeredBSDF : IBxDF
                             if (any(fExit > 0.0))
                             {
                                 const float exitPDF = pdfTopOrBottom(exitTop, -w, wi, mode, EBxDFSampleFlags::transmission);
-                                const float wt = powerHeuristic(pfSample.value.pdf, exitPDF);
+                                const float wt      = powerHeuristic(pfSample.value.pdf, exitPDF);
                                 f += throughput * transmittance(zp - exitZ, pfSample.value.wi) * fExit * wt;
                             }
                         }
@@ -262,7 +261,7 @@ struct LayeredBSDF : IBxDF
                         }
 
                         f += throughput * fTopOrBottom(!exitTop, -w, -wiSample.value.wi, mode) * abs(cosThetaTS(wiSample.value.wi)) * wt *
-                                transmittance(thickness, wiSample.value.wi) * wiSample.value.f / wiSample.value.pdf;
+                             transmittance(thickness, wiSample.value.wi) * wiSample.value.f / wiSample.value.pdf;
                     }
 
                     if (bxdfSample == none)
@@ -286,7 +285,7 @@ struct LayeredBSDF : IBxDF
                             if (nonExitNonSpecular)
                             {
                                 const float exitPDF = pdfTopOrBottom(exitTop, -w, wi, mode, EBxDFSampleFlags::transmission);
-                                float wt = powerHeuristic(bxdfSample.value.pdf, exitPDF);
+                                float wt            = powerHeuristic(bxdfSample.value.pdf, exitPDF);
                             }
                             f += throughput * transmittance(thickness, bxdfSample.value.wi) * fExit * wt;
                         }
@@ -304,33 +303,33 @@ struct LayeredBSDF : IBxDF
         // NOTE: Ignoring sampleFlags
 
         const bool enterTop = cosThetaTS(wo) > 0.0;
-        const bool exitTop = cosThetaTS(wi) > 0.0;
+        const bool exitTop  = cosThetaTS(wi) > 0.0;
 
         float pdf = 0.0;
-        if(enterTop == exitTop) // reflection at entrance interface?
+        if (enterTop == exitTop) // reflection at entrance interface?
         {
             pdf += sampleCount * pdfTopOrBottom(enterTop, wo, wi, mode, EBxDFSampleFlags::reflection);
         }
 
         const HenyeyGreensteinPhaseFunction phase = HenyeyGreensteinPhaseFunction(henyeyGreensteinG);
 
-        for(int s = 0; s < sampleCount; ++s)
+        for (int s = 0; s < sampleCount; ++s)
         {
             // TRT
-            if(enterTop == exitTop)
+            if (enterTop == exitTop)
             {
                 const bool transmissionInterface = enterTop;
-                const bool reflectionInterface = !transmissionInterface;
+                const bool reflectionInterface   = !transmissionInterface;
 
                 // sample a wo
                 const Optional<BxDFSample> woSample = sampleTopOrBottom(transmissionInterface, wo, mode, EBxDFSampleFlags::transmission);
                 if (woSample != none)
                 {
                     // sample a wi
-                    const Optional<BxDFSample> wiSample = sampleTopOrBottom(transmissionInterface, wi, (ETransportMode)!(uint)mode, EBxDFSampleFlags::transmission);
+                    const Optional<BxDFSample> wiSample = sampleTopOrBottom(transmissionInterface, wi, (ETransportMode) !(uint)mode, EBxDFSampleFlags::transmission);
                     if (wiSample == none)
                     {
-                            // do stuff
+                        // do stuff
                         if (!isNonSpecular(flagsTopOrBottom(transmissionInterface)))
                         {
                             pdf += pdfTopOrBottom(reflectionInterface, -woSample.value.wi, -wiSample.value.wi, mode);
@@ -338,7 +337,7 @@ struct LayeredBSDF : IBxDF
                         else
                         {
                             Optional<BxDFSample> bxdfSample = sampleTopOrBottom(reflectionInterface, -woSample.value.wi, mode);
-                            if(bxdfSample != none)
+                            if (bxdfSample != none)
                             {
                                 if (!isNonSpecular(flagsTopOrBottom(reflectionInterface)))
                                 {
@@ -347,11 +346,11 @@ struct LayeredBSDF : IBxDF
                                 else
                                 {
                                     const float rPDF = pdfTopOrBottom(reflectionInterface, -woSample.value.wi, -wiSample.value.wi, mode);
-                                    float wt = powerHeuristic(wiSample.value.pdf, rPDF);
+                                    float wt         = powerHeuristic(wiSample.value.pdf, rPDF);
                                     pdf += wt * rPDF;
 
                                     const float tPDF = pdfTopOrBottom(transmissionInterface, -bxdfSample.value.wi, wi, mode);
-                                    wt = powerHeuristic(bxdfSample.value.pdf, tPDF);
+                                    wt               = powerHeuristic(bxdfSample.value.pdf, tPDF);
                                     pdf += wt * tPDF;
                                 }
                             }
@@ -376,7 +375,7 @@ struct LayeredBSDF : IBxDF
                 }
 
                 // sample a wi
-                const Optional<BxDFSample> wiSample = sampleTopOrBottom(transmissionInterfaceI, wi, (ETransportMode)!(uint)mode);
+                const Optional<BxDFSample> wiSample = sampleTopOrBottom(transmissionInterfaceI, wi, (ETransportMode) !(uint)mode);
                 if (wiSample == none)
                 {
                     continue;
@@ -396,8 +395,7 @@ struct LayeredBSDF : IBxDF
                 }
                 else
                 {
-                    pdf += 0.5 * (pdfTopOrBottom(transmissionInterfaceI, -woSample.value.wi, wi, mode)
-                                + pdfTopOrBottom(transmissionInterfaceO, wo, -wiSample.value.wi, mode));
+                    pdf += 0.5 * (pdfTopOrBottom(transmissionInterfaceI, -woSample.value.wi, wi, mode) + pdfTopOrBottom(transmissionInterfaceO, wo, -wiSample.value.wi, mode));
                 }
             }
         }
@@ -407,7 +405,7 @@ struct LayeredBSDF : IBxDF
 
     EBxDFFlags flags()
     {
-        const EBxDFFlags topFlags = topLayer.flags();
+        const EBxDFFlags topFlags    = topLayer.flags();
         const EBxDFFlags bottomFlags = bottomLayer.flags();
 
         EBxDFFlags flags = EBxDFFlags::reflection;
@@ -435,7 +433,7 @@ struct LayeredBSDF : IBxDF
 
     Optional<BxDFSample> sampleTopOrBottom(const bool top, const float3 wo, const ETransportMode mode, const EBxDFSampleFlags sampleFlags = EBxDFSampleFlags::all)
     {
-        if(top)
+        if (top)
         {
             return topLayer.sample(wo, mode, sampleFlags);
         }
@@ -447,7 +445,7 @@ struct LayeredBSDF : IBxDF
 
     float3 fTopOrBottom(const bool top, const float3 wo, const float3 wi, const ETransportMode mode)
     {
-        if(top)
+        if (top)
         {
             return topLayer.f(wo, wi, mode);
         }
@@ -459,7 +457,7 @@ struct LayeredBSDF : IBxDF
 
     float pdfTopOrBottom(const bool top, const float3 wo, const float3 wi, const ETransportMode mode, const EBxDFSampleFlags sampleFlags = EBxDFSampleFlags::all)
     {
-        if(top)
+        if (top)
         {
             return topLayer.pdf(wo, wi, mode, sampleFlags);
         }
@@ -471,7 +469,7 @@ struct LayeredBSDF : IBxDF
 
     EBxDFFlags flagsTopOrBottom(const bool top)
     {
-        if(top)
+        if (top)
         {
             return topLayer.flags();
         }
@@ -483,7 +481,7 @@ struct LayeredBSDF : IBxDF
 
     float transmittance(const float z, const float3 w)
     {
-        return exp(-sigmaT * abs(z / cosThetaTS(w)));
+        return exp(-abs(z / cosThetaTS(w)));
     }
 
     ILayerableBxDF topLayer;
