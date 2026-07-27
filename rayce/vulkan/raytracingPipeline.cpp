@@ -59,16 +59,18 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
 
     pDescriptorSetLayoutRT = std::make_unique<DescriptorSetLayout>(logicalDevice, bindings, 0);
 
+    const uint32 descriptorBufferCount = std::max<uint32>(1u, static_cast<uint32>(std::max(vertexBuffers.size(), indexBuffers.size())));
+
     VkDescriptorSetLayoutBinding layoutBindingVertexBuffer{};
     layoutBindingVertexBuffer.binding         = VERTEX_BINDING;
     layoutBindingVertexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    layoutBindingVertexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
+    layoutBindingVertexBuffer.descriptorCount = descriptorBufferCount;
     layoutBindingVertexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutBinding layoutBindingIndexBuffer{};
     layoutBindingIndexBuffer.binding         = INDEX_BINDING;
     layoutBindingIndexBuffer.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    layoutBindingIndexBuffer.descriptorCount = 1024; // FIXME: Limits to 1024 objects!
+    layoutBindingIndexBuffer.descriptorCount = descriptorBufferCount;
     layoutBindingIndexBuffer.stageFlags      = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     bindings = { layoutBindingVertexBuffer, layoutBindingIndexBuffer };
@@ -237,8 +239,17 @@ RaytracingPipeline::RaytracingPipeline(const std::unique_ptr<Device>& logicalDev
     pShaderBindingTableBuffer->getDeviceMemory()->unmap();
 
     // descriptor sets
-    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1000 }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 }, { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 } });
-    pDescriptorPool = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, 1000 * poolSizes.size(), 0);
+    const uint32 descriptorsPerFrameStorageBuffers = descriptorBufferCount * 2 + 4; // input set (vertex+index) + model set (instance/material/light/sphere)
+    const uint32 storageBufferDescriptorCount      = std::max<uint32>(1u, descriptorsPerFrameStorageBuffers * framesInFlight);
+    const uint32 imageSamplerDescriptorCount       = std::max<uint32>(1u, requiredImageDescriptors * framesInFlight);
+
+    std::vector<VkDescriptorPoolSize> poolSizes({ { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, std::max<uint32>(1u, framesInFlight) },
+                                                  { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, std::max<uint32>(1u, 2u * framesInFlight) },
+                                                  { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, std::max<uint32>(1u, framesInFlight) },
+                                                  { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageSamplerDescriptorCount },
+                                                  { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, storageBufferDescriptorCount } });
+    const uint32 maxDescriptorSets = std::max<uint32>(1u, 4u * framesInFlight);
+    pDescriptorPool                = std::make_unique<DescriptorPool>(logicalDevice, poolSizes, maxDescriptorSets, 0);
 
     pDescriptorSetsRT     = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutRT, framesInFlight);
     pDescriptorSetsCamera = std::make_unique<DescriptorSets>(logicalDevice, pDescriptorPool, pDescriptorSetLayoutCamera, framesInFlight);

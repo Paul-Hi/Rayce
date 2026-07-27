@@ -30,26 +30,26 @@ Sampler2D gTextures[];
 // SamplerState gSamplers[];
 // layout(set = MODEL_SET, binding = TEXTURE_BINDING) uniform sampler2D textures[];
 
-[[vk::binding(INSTANCE_BINDING,MODEL_SET)]]
+[[vk::binding(INSTANCE_BINDING, MODEL_SET)]]
 StructuredBuffer<InstanceData> gInstanceData;
 // layout(set = MODEL_SET, binding = INSTANCE_BINDING, scalar) buffer _InstanceInfo { InstanceData ref[]; };
 
-[[vk::binding(MATERIAL_BINDING,MODEL_SET)]]
+[[vk::binding(MATERIAL_BINDING, MODEL_SET)]]
 StructuredBuffer<Material> gMaterials;
 // layout(set = MODEL_SET, binding = MATERIAL_BINDING, scalar) buffer _MaterialInfo { Material materials[]; };
 
-[[vk::binding(LIGHT_BINDING,MODEL_SET)]]
+[[vk::binding(LIGHT_BINDING, MODEL_SET)]]
 StructuredBuffer<Light> gLights;
 // layout(set = MODEL_SET, binding = LIGHT_BINDING, scalar) buffer _LightInfo { Light lights[]; };
 
-[[vk::binding(SPHERE_BINDING,MODEL_SET)]]
+[[vk::binding(SPHERE_BINDING, MODEL_SET)]]
 StructuredBuffer<Sphere> gSpheres;
 // layout(set = MODEL_SET, binding = SPHERE_BINDING, scalar) buffer _SphereInfo { Sphere spheres[]; };
 
-[[vk::binding(VERTEX_BINDING,INPUT_SET)]]
+[[vk::binding(VERTEX_BINDING, INPUT_SET)]]
 StructuredBuffer<Vertex> gVertices[];
 // layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };p
-[[vk::binding(INDEX_BINDING,INPUT_SET)]]
+[[vk::binding(INDEX_BINDING, INPUT_SET)]]
 StructuredBuffer<uint> gIndices[];
 // layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 
@@ -60,10 +60,10 @@ struct PushConstants
     int maxDepth;
     int lightCount;
     int environmentLightIdx;
+    int initialRISSamples;
 };
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> gPushConstants;
-
 
 DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomIndex, const float2 hitAttributes, const float4x3 worldToObject)
 {
@@ -75,14 +75,13 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     const let ib = gIndices[objIdx];
     const let vb = gVertices[objIdx];
 
-    [ForceUnroll]
-    for(uint i = 0; i < 3; ++i)
+    [ForceUnroll] for (uint i = 0; i < 3; ++i)
     {
-        const uint idx = ib[triangleIndex + i];
+        const uint idx  = ib[triangleIndex + i];
         tri.vertices[i] = vb[idx];
     }
 
-    tri.barycentrics = float3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
+    tri.barycentrics   = float3(1.0 - hitAttributes.x - hitAttributes.y, hitAttributes.x, hitAttributes.y);
     tri.interpolatedUV = tri.vertices[0].uv * tri.barycentrics.x + tri.vertices[1].uv * tri.barycentrics.y + tri.vertices[2].uv * tri.barycentrics.z;
 
     tri.interpolatedNormal = tri.vertices[0].normal * tri.barycentrics.x + tri.vertices[1].normal * tri.barycentrics.y + tri.vertices[2].normal * tri.barycentrics.z;
@@ -97,8 +96,7 @@ DeviceTriangle getTriangle(const uint primitiveIndex, const uint instanceCustomI
     tri.geometryNormal = float3(
         tri.dfd1.y * tri.dfd2.z - tri.dfd1.z * tri.dfd2.y,
         tri.dfd1.z * tri.dfd2.x - tri.dfd1.x * tri.dfd2.z,
-        tri.dfd1.x * tri.dfd2.y - tri.dfd1.y * tri.dfd2.x
-    );
+        tri.dfd1.x * tri.dfd2.y - tri.dfd1.y * tri.dfd2.x);
     tri.geometryNormal = normalize(mul(worldToObject, tri.geometryNormal).xyz);
 
     tri.materialId = gInstanceData[instanceCustomIndex].materialId;
@@ -117,7 +115,7 @@ DeviceSphere getSphere(const float3 hitPoint, const uint primitiveIndex, const u
     const Sphere pSphere = gSpheres[sphereId];
 
     const float3 p = hitPoint - pSphere.center;
-    sphere.normal = normalize(p);
+    sphere.normal  = normalize(p);
 
     sphere.materialId = gInstanceData[instanceCustomIndex + primitiveIndex].materialId;
 
@@ -126,7 +124,7 @@ DeviceSphere getSphere(const float3 hitPoint, const uint primitiveIndex, const u
     const float3 local = mul(worldToObject, hitPoint - pSphere.center).xyz;
 
     const float theta = acos(local.y / pSphere.radius);
-    float phi = atan2(local.x, local.z);
+    float phi         = atan2(local.x, local.z);
 
     if (phi < 0.0)
         phi += TWO_PI;

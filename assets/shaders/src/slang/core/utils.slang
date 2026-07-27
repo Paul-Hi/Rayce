@@ -27,17 +27,17 @@ func sqr<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, 
     return v * v;
 }
 
-func safe_sqrt<T : __BuiltinFloatingPointType>(T v) -> T
+func safeSqrt<T : __BuiltinFloatingPointType>(T v) -> T
 {
     return sqrt(max(T(1e-9), v)); // looks like slang sqrt(0) is nan?
 }
 
-func safe_sqrt<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> v) -> vector<T, N>
+func safeSqrt<T : __BuiltinFloatingPointType, let N : int>(vector<T, N> v) -> vector<T, N>
 {
     return sqrt(max(vector<T, N>(T(1e-9)), v)); // looks like slang sqrt(0) is nan?
 }
 
-func safe_sqrt<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, M> v) -> matrix<T, N, M>
+func safeSqrt<T : __BuiltinFloatingPointType, let N : int, let M : int>(matrix<T, N, M> v) -> matrix<T, N, M>
 {
     return sqrt(max(matrix<T, N, M>(T(1e-9)), v)); // looks like slang sqrt(0) is nan?
 }
@@ -66,16 +66,16 @@ func negativeMultiplyAndAdd<T : __BuiltinFloatingPointType, let N : int>(vector<
 uint interleave32Bit(uint2 v)
 {
     uint x = v.x & 0x0000ffff;
-    x = (x | (x << 8)) & 0x00FF00FF;
-    x = (x | (x << 4)) & 0x0F0F0F0F;
-    x = (x | (x << 2)) & 0x33333333;
-    x = (x | (x << 1)) & 0x55555555;
+    x      = (x | (x << 8)) & 0x00FF00FF;
+    x      = (x | (x << 4)) & 0x0F0F0F0F;
+    x      = (x | (x << 2)) & 0x33333333;
+    x      = (x | (x << 1)) & 0x55555555;
 
     uint y = v.y & 0x0000ffff;
-    y = (y | (y << 8)) & 0x00FF00FF;
-    y = (y | (y << 4)) & 0x0F0F0F0F;
-    y = (y | (y << 2)) & 0x33333333;
-    y = (y | (y << 1)) & 0x55555555;
+    y      = (y | (y << 8)) & 0x00FF00FF;
+    y      = (y | (y << 4)) & 0x0F0F0F0F;
+    y      = (y | (y << 2)) & 0x33333333;
+    y      = (y | (y << 1)) & 0x55555555;
 
     return x | (y << 1);
 }

@@ -40,7 +40,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
             cosTheta = -1.0 / (2.0 * g) * (1.0 + gSqrd - sqr((1.0 - gSqrd) / (1.0 + g - 2.0 * g * rand.x)));
         }
 
-        const float sinTheta = safe_sqrt(1.0 - sqr(cosTheta));
+        const float sinTheta = safeSqrt(1.0 - sqr(cosTheta));
         const float phi = TWO_PI * rand.y;
 
         const float3 w = float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
@@ -67,7 +67,7 @@ struct HenyeyGreensteinPhaseFunction : IPhaseFunction
     {
         const float gSqrd = sqr(g);
         const float denom = 1.0 + gSqrd + 2.0 * g * cosTheta;
-        return INV_FOUR_PI * (1.0 - gSqrd) / (denom * safe_sqrt(denom));
+        return INV_FOUR_PI * (1.0 - gSqrd) / (denom * safeSqrt(denom));
     }
 
     float g;

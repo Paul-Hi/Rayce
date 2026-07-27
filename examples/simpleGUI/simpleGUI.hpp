@@ -34,6 +34,7 @@ namespace rayce
         int32 mAccumulationFrame;
         int32 mMaxDepth;
         int32 mMaxSamples;
+        int32 mInitialRISSamples;
         bool mViewportChange;
         bool mReInitialize;
         bool mRecreateRTData;

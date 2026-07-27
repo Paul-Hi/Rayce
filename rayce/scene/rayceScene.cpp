@@ -111,6 +111,10 @@ static EBxDFType bsdfFromPluginType(const str& pluginType)
     {
         return EBxDFType::bsdfTypeCount;
     }
+    else if (pluginType == "principled")
+    {
+        return EBxDFType::roughPlastic;
+    }
     else
     {
         RAYCE_LOG_WARN("We do not support BSDF Type %s!", pluginType.c_str());
@@ -345,12 +349,149 @@ static LinearInterpolatedSpectrum convertMitsubaSpectrumToLIS(const mp::Spectrum
 static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<mp::Object>& bsdfObject, std::vector<str>& imagesToLoad, bool twoSided = false)
 {
     MitsubaBSDF bsdf;
+    const str pluginType       = bsdfObject->pluginType();
     bsdf.id                    = bsdfObject->id();
-    bsdf.type                  = bsdfFromPluginType(bsdfObject->pluginType());
+    bsdf.type                  = bsdfFromPluginType(pluginType);
     bsdf.possibleData.twoSided = twoSided;
     bsdf.possibleData.bxdfType = bsdf.type;
 
     auto& props = bsdfObject->properties();
+
+    if (pluginType == "principled") // FIXME: this is a quick hack to support the principled BSDF
+    {
+        vec3 baseColor(0.5, 0.5, 0.5);
+        float roughness = 0.5f;
+        float metallic  = 0.0f;
+        float specTrans = 0.0f;
+        float specular  = 0.5f;
+
+        if (props.contains("base_color"))
+        {
+            auto p = props.at("base_color");
+            if (p.type() == mp::PT_COLOR)
+            {
+                auto& c   = p.getColor();
+                baseColor = vec3(c.r, c.g, c.b);
+            }
+            else if (p.type() == mp::PT_SPECTRUM)
+            {
+                auto& spec = p.getSpectrum();
+                baseColor  = spectrumToRGB(convertMitsubaSpectrumToLIS(spec));
+            }
+        }
+        if (props.contains("roughness"))
+        {
+            auto p = props.at("roughness");
+            if (p.type() == mp::PT_NUMBER)
+            {
+                roughness = p.getNumber();
+            }
+        }
+        if (props.contains("metallic"))
+        {
+            auto p = props.at("metallic");
+            if (p.type() == mp::PT_NUMBER)
+            {
+                metallic = p.getNumber();
+            }
+        }
+        if (props.contains("spec_trans"))
+        {
+            auto p = props.at("spec_trans");
+            if (p.type() == mp::PT_NUMBER)
+            {
+                specTrans = p.getNumber();
+            }
+        }
+        if (props.contains("specular"))
+        {
+            auto p = props.at("specular");
+            if (p.type() == mp::PT_NUMBER)
+            {
+                specular = p.getNumber();
+            }
+        }
+
+        const bool isTransmissive = specTrans > 0.05f;
+        const bool isMetallic     = metallic > 0.5f;
+
+        bsdf.possibleData.diffuseReflectance  = baseColor;
+        bsdf.possibleData.alpha               = vec3(roughness, roughness, 0.0);
+        bsdf.possibleData.specularReflectance = vec3(specular, specular, specular);
+
+        for (const auto& textureChild : bsdfObject->namedChildren())
+        {
+            if (textureChild.second->type() != mp::OT_TEXTURE)
+            {
+                continue;
+            }
+
+            for (const auto& textureProperty : textureChild.second->properties())
+            {
+                if (textureProperty.first != "filename")
+                {
+                    continue;
+                }
+
+                if (textureChild.first == "base_color")
+                {
+                    if (isTransmissive)
+                    {
+                        bsdf.possibleData.specularTransmittanceTexture = imagesToLoad.size();
+                    }
+                    else if (isMetallic)
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                    }
+                    else
+                    {
+                        bsdf.possibleData.diffuseReflectanceTexture = imagesToLoad.size();
+                    }
+                    imagesToLoad.push_back(textureProperty.second.getString());
+                }
+                else if (textureChild.first == "roughness")
+                {
+                    bsdf.possibleData.alphaTexture = imagesToLoad.size();
+                    imagesToLoad.push_back(textureProperty.second.getString());
+                }
+                else if (textureChild.first == "specular")
+                {
+                    if (!isMetallic)
+                    {
+                        bsdf.possibleData.specularReflectanceTexture = imagesToLoad.size();
+                    }
+                    imagesToLoad.push_back(textureProperty.second.getString());
+                }
+            }
+        }
+
+        if (isTransmissive)
+        {
+            bsdf.type                               = roughness > 0.02f ? EBxDFType::roughDielectric : EBxDFType::smoothDielectric;
+            bsdf.possibleData.bxdfType              = bsdf.type;
+            bsdf.possibleData.interiorIor           = 1.5f;
+            bsdf.possibleData.exteriorIor           = 1.000277f;
+            bsdf.possibleData.specularTransmittance = baseColor;
+        }
+        else if (isMetallic)
+        {
+            bsdf.type                             = roughness > 0.02f ? EBxDFType::roughConductor : EBxDFType::smoothConductor;
+            bsdf.possibleData.bxdfType            = bsdf.type;
+            bsdf.possibleData.specularReflectance = baseColor;
+            bsdf.possibleData.conductorEta        = vec3(0.0, 0.0, 0.0);
+            bsdf.possibleData.conductorK          = vec3(1.0, 1.0, 1.0);
+        }
+        else
+        {
+            bsdf.type                     = roughness > 0.02f ? EBxDFType::roughPlastic : EBxDFType::smoothPlastic;
+            bsdf.possibleData.bxdfType    = bsdf.type;
+            bsdf.possibleData.interiorIor = 1.5f;
+            bsdf.possibleData.exteriorIor = 1.000277f;
+        }
+
+        return bsdf;
+    }
+
     switch (bsdf.type)
     {
     case EBxDFType::bsdfTypeCount: // twosided adapter
@@ -371,6 +512,29 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<mp::Object>& bsdfObject
 
             return inlineBSDF;
         }
+
+        for (const auto& [childName, bsdfChild] : bsdfObject->namedChildren())
+        {
+            (void)childName;
+            if (bsdfChild->type() != mp::OT_BSDF)
+            {
+                continue;
+            }
+
+            auto inlineBSDF = loadMitsubaBSDF(bsdfChild, imagesToLoad, true);
+
+            if (inlineBSDF.id.empty())
+            {
+                inlineBSDF.id = bsdf.id;
+            }
+
+            return inlineBSDF;
+        }
+
+        // Fallback so unsupported adapters never produce an invalid material type.
+        bsdf.type                            = EBxDFType::lambertDiffuse;
+        bsdf.possibleData.bxdfType           = bsdf.type;
+        bsdf.possibleData.diffuseReflectance = vec3(0.7, 0.7, 0.7);
         break;
     }
     case EBxDFType::lambertDiffuse:
@@ -393,11 +557,29 @@ static MitsubaBSDF loadMitsubaBSDF(const std::shared_ptr<mp::Object>& bsdfObject
                 bsdf.possibleData.diffuseReflectance = spectrumToRGB(spectrum);
             }
         }
+        else if (props.contains("base_color"))
+        {
+            auto baseColor = props.at("base_color");
+
+            if (baseColor.type() == mp::PT_COLOR)
+            {
+                auto& c                              = baseColor.getColor();
+                bsdf.possibleData.diffuseReflectance = vec3(c.r, c.g, c.b);
+            }
+            if (baseColor.type() == mp::PT_SPECTRUM)
+            {
+                auto& spec = baseColor.getSpectrum();
+
+                LinearInterpolatedSpectrum spectrum = convertMitsubaSpectrumToLIS(spec);
+
+                bsdf.possibleData.diffuseReflectance = spectrumToRGB(spectrum);
+            }
+        }
 
         for (const auto& textureChild : bsdfObject->namedChildren())
         {
             // texture
-            if (textureChild.first != "reflectance" || textureChild.second->type() != mp::OT_TEXTURE)
+            if ((textureChild.first != "reflectance" && textureChild.first != "base_color") || textureChild.second->type() != mp::OT_TEXTURE)
             {
                 continue;
             }
@@ -1058,7 +1240,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
     std::vector<str> imagesToLoad;
     uint32 inlineBSDFId = 0;
 
-    for (const auto& object : scene.anonymousChildren())
+    auto loadTopLevelObject = [&](const std::shared_ptr<mp::Object>& object)
     {
         switch (object->type())
         {
@@ -1130,14 +1312,14 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                 }
             }
 
-            for (const auto& child : object->anonymousChildren())
+            auto loadShapeChild = [&](const std::shared_ptr<mp::Object>& child)
             {
                 if (child->type() == mp::OT_BSDF)
                 {
                     if (mitsubaBSDFs.find(child->id()) != mitsubaBSDFs.end())
                     {
                         shape.bsdf = child->id();
-                        continue;
+                        return;
                     }
                     MitsubaBSDF mbsdf = loadMitsubaBSDF(child, imagesToLoad);
 
@@ -1148,7 +1330,7 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
 
                     shape.bsdf               = mbsdf.id;
                     mitsubaBSDFs[shape.bsdf] = mbsdf;
-                    continue;
+                    return;
                 }
 
                 if (child->type() == mp::OT_EMITTER)
@@ -1156,8 +1338,18 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
                     MitsubaEmitter emitter = loadMitsubaEmitter(child, imagesToLoad);
                     shape.emitter          = mitsubaEmitters.size();
                     mitsubaEmitters.push_back(emitter);
-                    continue;
+                    return;
                 }
+            };
+
+            for (const auto& child : object->anonymousChildren())
+            {
+                loadShapeChild(child);
+            }
+            for (const auto& [childName, child] : object->namedChildren())
+            {
+                (void)childName;
+                loadShapeChild(child);
             }
             mitsubaShapes.push_back(shape);
             break;
@@ -1188,6 +1380,16 @@ void RayceScene::loadFromMitsubaFile(const str& filename, const std::unique_ptr<
         default:
             break;
         }
+    };
+
+    for (const auto& object : scene.anonymousChildren())
+    {
+        loadTopLevelObject(object);
+    }
+    for (const auto& [objectName, object] : scene.namedChildren())
+    {
+        (void)objectName;
+        loadTopLevelObject(object);
     }
 
     pGeometry = std::make_unique<Geometry>();

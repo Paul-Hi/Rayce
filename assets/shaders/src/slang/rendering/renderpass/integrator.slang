@@ -285,26 +285,239 @@ struct DirectIntegrator : IIntegrator
             let twoSided         = materialData.twoSided == 1;
             let adapter          = material.getAdapter(twoSided);
 
-            if (isNonSpecular(materialInstance.flags()))
+            const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, payload.lightId, payload.space, twoSided);
+            if (lightSample != none)
             {
-                const Optional<LightSample> lightSample = sampleLights(payload.hitPoint, payload.lightId, payload.space, twoSided);
-                if (lightSample != none)
-                {
-                    const float bsdfPdf  = adapter.pdf(materialInstance, wo, lightSample.value.wi);
-                    const float miWeight = powerHeuristic(lightSample.value.pdf, bsdfPdf);
-                    const float3 f       = adapter.f(materialInstance, wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
-                    pathState.L += miWeight * f * lightSample.value.radiance / lightSample.value.pdf;
-                }
-            }
-
-            const Optional<BxDFSample> optionalSample = adapter.sample(materialInstance, wo);
-
-            if (optionalSample == none)
-            {
-                return pathState;
+                const float3 f = adapter.f(materialInstance, wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
+                pathState.L += f * lightSample.value.radiance / lightSample.value.pdf;
             }
         }
 
+        return pathState;
+    }
+};
+
+struct RestirDIIntegrator : IIntegrator
+{
+    struct PathState
+    {
+        __init()
+        {
+            this.scatterRay = Ray();
+            this.throughput = float3(1.0);
+            this.L          = float3(0.0);
+        }
+
+        Ray scatterRay;
+
+        float3 throughput;
+        float3 L;
+    };
+
+    struct Reservoir
+    {
+        __init()
+        {
+            this.wi        = float3(0.0);
+            this.wDir      = float3(0.0);
+            this.radiance  = float3(0.0);
+            this.weight    = 0.0;
+            this.weightSum = 0.0;
+            this.M         = 0.0;
+            this.p_hat     = 0.0;
+        }
+
+        float3 radiance;
+        float weight;
+        float3 wi;
+        float weightSum;
+        float3 wDir;
+        float p_hat;
+
+        float M;
+    };
+
+    void updateReservoir(inout Reservoir reservoir, const float3 wi, const float3 wDir, const float3 radiance, const float weight, const float p_hat)
+    {
+        reservoir.weightSum += weight;
+        reservoir.M += 1.0;
+        if (Random::rand() < weight / reservoir.weightSum)
+        {
+            reservoir.wi       = wi;
+            reservoir.wDir     = wDir;
+            reservoir.radiance = radiance;
+            reservoir.p_hat    = p_hat;
+        }
+    }
+
+    void resample(inout Reservoir reservoir, const int M, const float3 wo, in RayPayload payload)
+    {
+        let materialData     = gMaterials[payload.materialId];
+        let material         = materialData.getMaterial();
+        let materialInstance = material.getMaterialInstance(payload.uv);
+        let twoSided         = materialData.twoSided == 1;
+        let adapter          = material.getAdapter(twoSided);
+
+        for (int i = 0; i < M; i++)
+        {
+            const Optional<LightSample> lightSample = sampleLightsNoVisibility(payload.hitPoint, payload.lightId, payload.space, twoSided);
+            if (lightSample == none)
+            {
+                reservoir.M += 1.0;
+                continue;
+            }
+
+            const float3 f     = adapter.f(materialInstance, wo, lightSample.value.wi) * abs(cosThetaTS(lightSample.value.wi));
+            const float p_hat  = averageLuminance(f * lightSample.value.radiance);
+            const float weight = p_hat / lightSample.value.pdf;
+
+            updateReservoir(reservoir, lightSample.value.wi, lightSample.value.wDir, lightSample.value.radiance, weight, p_hat);
+        }
+
+        if (reservoir.weightSum > 0.0)
+        {
+            reservoir.weight = (reservoir.weightSum / reservoir.M) / reservoir.p_hat;
+        }
+        else
+        {
+            reservoir.weight = 0.0;
+        }
+    }
+
+    typedef PathState IntegratorPathState;
+
+    Ray createPrimaryRay(const float2 uv)
+    {
+        Ray ray;
+        ray.origin              = float3(0.0, 0.0, 0.0);
+        const float4 imagePlane = mul(gCamera.inverseProjection, float4(uv.x, uv.y, 1.0, 1.0));
+        ray.direction           = normalize(imagePlane.xyz);
+
+        if (gCamera.pbData.x > 0.0)
+        {
+            const float2 pointOnLens = gCamera.pbData.x * sampleUniformConcentricDisk(Random::rand2());
+
+            const float focalD      = gCamera.pbData.y / ray.direction.z;
+            const float3 focusPoint = ray.origin - focalD * ray.direction;
+
+            ray.origin    = float3(pointOnLens, 0.0);
+            ray.direction = normalize(focusPoint - ray.origin);
+        }
+
+        ray.origin    = mul(gCamera.inverseView, float4(ray.origin, 1.0)).xyz;
+        ray.direction = normalize(mul(gCamera.inverseView, float4(ray.direction, 0.0)).xyz);
+
+        return ray;
+    }
+
+    void traceRay(const Ray ray, inout RayPayload payload)
+    {
+        RayDesc rayDescriptor;
+        rayDescriptor.Origin    = ray.offsetOrigin();
+        rayDescriptor.Direction = ray.direction;
+        rayDescriptor.TMin      = 0.001;
+        rayDescriptor.TMax      = 1000.0;
+        TraceRay(
+            gTLAS,
+            RAY_FLAG_FORCE_OPAQUE, // FIXME: | RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+            0xff,                  // cullMask
+            0,                     // sbtRecordOffset
+            0,                     // sbtRecordStride
+            0,                     // missIndex
+            rayDescriptor,
+            payload);
+    }
+
+    Reservoir initialCandidates(in int M, const float3 wo, in RayPayload payload)
+    {
+        Reservoir reservoir;
+
+        resample(reservoir, M, wo, payload);
+        return reservoir;
+    }
+
+    void visibilityCheck(inout Reservoir reservoir, const float3 wo, in RayPayload payload)
+    {
+        float3 wDir               = reservoir.wDir;
+        const float pointDistance = length(wDir);
+        wDir                      = normalize(wDir);
+
+        ShadowRayPayload pld;
+        pld.hit = true;
+        RayDesc rayDescriptor;
+        rayDescriptor.Origin    = payload.hitPoint + payload.space.normal * EPSILON;
+        rayDescriptor.Direction = wDir;
+        rayDescriptor.TMin      = 0.001;
+        rayDescriptor.TMax      = (pointDistance - EPSILON) * 0.99;
+        TraceRay(
+            gTLAS,
+            RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE, // FIXME: | RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+            0xff,                                                                                                // cullMask
+            0,                                                                                                   // sbtRecordOffset
+            0,                                                                                                   // sbtRecordStride
+            1,                                                                                                   // missIndex
+            rayDescriptor,
+            pld);
+
+        if (pld.hit)
+        {
+            reservoir.weight = 0.0;
+        }
+    }
+
+    PathState estimate(const float2 uv)
+    {
+        PathState pathState;
+        pathState.scatterRay = createPrimaryRay(uv);
+
+        RayPayload payload;
+
+        traceRay(pathState.scatterRay, payload);
+
+        if (payload.hitKind == EHitKind::miss)
+        {
+            pathState.L += getEnvironmentRadiance(pathState.scatterRay.direction);
+            return pathState;
+        }
+        else
+        {
+            if (payload.lightId >= 0)
+            {
+                const bool orientationValid = lightSampleOrientationValid(payload.lightId, pathState.scatterRay.origin, payload.hitPoint);
+                if (orientationValid)
+                {
+                    pathState.L += gLights[payload.lightId].radiance;
+                }
+            }
+
+            const float3 wo = payload.space.worldToTangentFrame(-pathState.scatterRay.direction);
+
+            Reservoir reservoir = initialCandidates(gPushConstants.initialRISSamples, wo, payload);
+
+            if (reservoir.weight > 0.0)
+            {
+                let materialData     = gMaterials[payload.materialId];
+                let material         = materialData.getMaterial();
+                let materialInstance = material.getMaterialInstance(payload.uv);
+                let twoSided         = materialData.twoSided == 1;
+                let adapter          = material.getAdapter(twoSided);
+
+                // visibility
+                visibilityCheck(reservoir, wo, payload);
+
+                if (reservoir.weight == 0.0)
+                {
+                    return pathState;
+                }
+
+                // temporal reuse
+
+                // spatial reuse
+
+                const float3 f = adapter.f(materialInstance, wo, reservoir.wi) * abs(cosThetaTS(reservoir.wi));
+                pathState.L += f * reservoir.radiance * reservoir.weight;
+            }
+        }
         return pathState;
     }
 };

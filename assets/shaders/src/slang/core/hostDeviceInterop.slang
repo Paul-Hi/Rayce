@@ -3,7 +3,7 @@
 
 #ifdef __cplusplus
 #include <core/types.hpp>
-using uint     = rayce::uint32;
+using uint = rayce::uint32;
 // using uint64_t = rayce::uint64;
 using float3   = rayce::vec3;
 using float4   = rayce::vec4;
@@ -16,10 +16,10 @@ namespace rayce
 #define RAYCE_API_EXPORT
 #endif
 
-// binding points
-    static const int INPUT_SET     = 0;
+    // binding points
+    static const int INPUT_SET      = 0;
     static const int VERTEX_BINDING = 0;
-    static const int INDEX_BINDING = 1;
+    static const int INDEX_BINDING  = 1;
 
     static const int RT_SET         = 1;
     static const int TLAS_BINDING   = 0;
@@ -29,8 +29,8 @@ namespace rayce
     static const int CAMERA_SET     = 2;
     static const int CAMERA_BINDING = 0;
 
-    static const int MODEL_SET        = 3;
-    static const int TEXTURE_BINDING  = 0; // Combined Image Sampler
+    static const int MODEL_SET       = 3;
+    static const int TEXTURE_BINDING = 0; // Combined Image Sampler
     // static const int SAMPLER_BINDING  = 0; // Combined Image Sampler
     static const int INSTANCE_BINDING = 1;
     static const int MATERIAL_BINDING = 2;
@@ -41,10 +41,11 @@ namespace rayce
     {
         direct           = 0,
         path             = 1,
-        debugDepth       = 2,
-        debugNormals     = 3,
-        debugReflectance = 4,
-        debugEmission    = 5,
+        restirDI         = 2,
+        debugDepth       = 3,
+        debugNormals     = 4,
+        debugReflectance = 5,
+        debugEmission    = 6,
     };
 
     struct RAYCE_API_EXPORT Vertex
@@ -159,11 +160,11 @@ namespace rayce
 
     struct RAYCE_API_EXPORT Light
     {
-        float3     wCenter;
+        float3 wCenter;
         ELightType type;
 
         float3 radiance;
-        int    radianceTexture;
+        int radianceTexture;
 
         // float3   direction;
         // float    openingAngle;
@@ -172,11 +173,10 @@ namespace rayce
         // float    penumbraAngle;
 
         // analytic area lights
-        float3   tangent;
-        float    surfaceArea;
-        float3   bitangent;
-        float    pad0;
-
+        float3 tangent;
+        float surfaceArea;
+        float3 bitangent;
+        float pad0;
 
         // infinite area lights
         float sceneRadius;
@@ -186,7 +186,6 @@ namespace rayce
 
         float4x4 lightToWorld;
         float4x4 worldToLight;
-
 
 #ifdef __cplusplus
         Light()
@@ -207,23 +206,23 @@ namespace rayce
         {
         }
 #else
-        __init()
-        {
-            this.wCenter = float3(0.0);
-            this.type = ELightType::analyticSphere;
-            this.radiance = float3(0.0, 0.0, 0.0);
-            this.radianceTexture = -1;
-            this.tangent = float3(0.0, 0.0, 0.0);
-            this.surfaceArea = 0.0;
-            this.bitangent = float3(0.0, 0.0, 0.0);
-            this.pad0 = 0;
-            this.sceneRadius = 0.0;
-            this.scale = 1.0;
-            this.pad1 = 0;
-            this.pad2 = 0;
-            this.lightToWorld = float4x4(0.0);
-            this.worldToLight = float4x4(0.0);
-        }
+    __init()
+    {
+        this.wCenter         = float3(0.0);
+        this.type            = ELightType::analyticSphere;
+        this.radiance        = float3(0.0, 0.0, 0.0);
+        this.radianceTexture = -1;
+        this.tangent         = float3(0.0, 0.0, 0.0);
+        this.surfaceArea     = 0.0;
+        this.bitangent       = float3(0.0, 0.0, 0.0);
+        this.pad0            = 0;
+        this.sceneRadius     = 0.0;
+        this.scale           = 1.0;
+        this.pad1            = 0;
+        this.pad2            = 0;
+        this.lightToWorld    = float4x4(0.0);
+        this.worldToLight    = float4x4(0.0);
+    }
 #endif
     };
 
@@ -262,7 +261,6 @@ namespace rayce
 
         uint canUseUv;
 
-
 #ifdef __cplusplus
         Material()
             : diffuseReflectance(float3(0.5, 0.5, 0.5))
@@ -285,26 +283,26 @@ namespace rayce
         {
         }
 #else
-        __init()
-        {
-            this.diffuseReflectance = float3(0.5, 0.5, 0.5);
-            this.diffuseReflectanceTexture = -1;
-            this.twoSided = 0;
-            this.bxdfType = EBxDFType::lambertDiffuse;
-            this.interiorIor = 1.5046f;
-            this.exteriorIor = 1.000277f;
-            this.specularReflectance = float3(1.0, 1.0, 1.0);
-            this.specularReflectanceTexture = -1;
-            this.specularTransmittance = float3(1.0, 1.0, 1.0);
-            this.specularTransmittanceTexture = -1;
-            this.alpha = float3(0.1, 0.1, 0.0);
-            this.alphaTexture = -1;
-            this.conductorEta = float3(0.0, 0.0, 0.0);
-            this.conductorEtaTexture = -1;
-            this.conductorK = float3(1.0, 1.0, 1.0);
-            this.conductorKTexture = -1;
-            this.canUseUv = 0;
-        }
+    __init()
+    {
+        this.diffuseReflectance           = float3(0.5, 0.5, 0.5);
+        this.diffuseReflectanceTexture    = -1;
+        this.twoSided                     = 0;
+        this.bxdfType                     = EBxDFType::lambertDiffuse;
+        this.interiorIor                  = 1.5046f;
+        this.exteriorIor                  = 1.000277f;
+        this.specularReflectance          = float3(1.0, 1.0, 1.0);
+        this.specularReflectanceTexture   = -1;
+        this.specularTransmittance        = float3(1.0, 1.0, 1.0);
+        this.specularTransmittanceTexture = -1;
+        this.alpha                        = float3(0.1, 0.1, 0.0);
+        this.alphaTexture                 = -1;
+        this.conductorEta                 = float3(0.0, 0.0, 0.0);
+        this.conductorEtaTexture          = -1;
+        this.conductorK                   = float3(1.0, 1.0, 1.0);
+        this.conductorKTexture            = -1;
+        this.canUseUv                     = 0;
+    }
 #endif
 
         /*

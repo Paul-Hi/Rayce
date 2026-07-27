@@ -13,4 +13,5 @@ void main(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes att
     payload.lightId = triangle.lightId;
     payload.space = CoordinateSpace(!any(abs(triangle.interpolatedNormal) > 0.0) ? triangle.geometryNormal : triangle.interpolatedNormal,
                                         gMaterials[triangle.materialId].canUseUv == 1, triangle.dfd1, triangle.dfd2, triangle.uvd1, triangle.uvd2);
+                                        // FIXME: can use partials is wrong if the uvs ar stupid ...
 }

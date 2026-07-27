@@ -36,24 +36,23 @@ float2 sampleUniformConcentricDisk(const float2 p)
     float theta, r;
     if (abs(mapped.x) > abs(mapped.y))
     {
-        r = mapped.x;
+        r     = mapped.x;
         theta = QUARTER_PI * (mapped.y / mapped.x);
     }
     else
     {
-        r = mapped.y;
+        r     = mapped.y;
         theta = HALF_PI - QUARTER_PI * (mapped.x / mapped.y);
     }
 
     return r * float2(cos(theta), sin(theta));
-
 }
 
 float3 cosineHemisphereSample(const float2 uv = Random::rand2())
 {
     const float2 d = sampleUniformConcentricDisk(uv);
 
-    const float z = safe_sqrt(1.0 - sqr(d.x) - sqr(d.y));
+    const float z = safeSqrt(1.0 - sqr(d.x) - sqr(d.y));
 
     return float3(d.x, d.y, z);
 }
@@ -65,7 +64,7 @@ float cosineHemispherePdf(const float cosTheta)
 
 float fresnelDielectric(const float cosThetaI, const float etati, const float etait)
 {
-    float eta = etati;
+    float eta      = etati;
     float _ignore0 = 0.0;
     float _ignore1 = 0.0;
     return fresnelDielectric(cosThetaI, eta, _ignore0, _ignore1);
@@ -73,16 +72,16 @@ float fresnelDielectric(const float cosThetaI, const float etati, const float et
 
 float fresnelDielectric(const float cosThetaI, inout float etati, out float etait, out float cosThetaT)
 {
-    if(etati == 1.0)
+    if (etati == 1.0)
     {
-        etait = etati;
+        etait     = etati;
         cosThetaT = -cosThetaI;
         return 0.0;
     }
 
     const bool switch = cosThetaI >= 0.0;
-    etait = switch ? etati : rcp(etati);
-    etati = switch ? rcp(etati) : etati;
+    etait             = switch ? etati : rcp(etati);
+    etati             = switch ? rcp(etati) : etati;
 
     const float cosThetaTSqrd = negativeMultiplyAndAdd(negativeMultiplyAndAdd(cosThetaI, cosThetaI, 1.0), sqr(etati), 1.0);
 
@@ -94,7 +93,7 @@ float fresnelDielectric(const float cosThetaI, inout float etati, out float etai
     }
 
     const float absCosThetaI = abs(cosThetaI);
-    const float absCosThetaT = safe_sqrt(cosThetaTSqrd);
+    const float absCosThetaT = safeSqrt(cosThetaTSqrd);
 
     const float Rs = negativeMultiplyAndAdd(etait, absCosThetaT, absCosThetaI) / multiplyAndAdd(etait, absCosThetaT, absCosThetaI);
     const float Rp = negativeMultiplyAndAdd(etait, absCosThetaI, absCosThetaT) / multiplyAndAdd(etait, absCosThetaI, absCosThetaT);
@@ -112,10 +111,10 @@ float3 fresnelConductorExact(const float cosThetaI, const float3 eta, const floa
     const float sin4ThetaI = sqr(sin2ThetaI);
 
     const float3 etaSqrd = sqr(eta);
-    const float3 kSqrd = sqr(k);
-    const float3 t0 = etaSqrd - kSqrd - sin2ThetaI;
-    const float3 a2pb2 = safe_sqrt(t0 * t0 + 4.0 * kSqrd * etaSqrd);
-    const float3 a = safe_sqrt(0.5 * (a2pb2 + t0));
+    const float3 kSqrd   = sqr(k);
+    const float3 t0      = etaSqrd - kSqrd - sin2ThetaI;
+    const float3 a2pb2   = safeSqrt(t0 * t0 + 4.0 * kSqrd * etaSqrd);
+    const float3 a       = safeSqrt(0.5 * (a2pb2 + t0));
 
     const float3 term1 = a2pb2 + cos2ThetaI;
     const float3 term2 = 2.0 * a * cosThetaI;
@@ -132,7 +131,7 @@ float3 fresnelConductorExact(const float cosThetaI, const float3 eta, const floa
 
 float3 fresnelConductorApprox(const float cosThetaI, const float3 eta, const float3 k)
 {
-    const float cos2ThetaI = cosThetaI * cosThetaI;
+    const float cos2ThetaI        = cosThetaI * cosThetaI;
     const float3 twoEtaCos2ThetaI = 2.0 * eta * cos2ThetaI;
 
     const float3 t0 = sqr(eta) + sqr(k);
@@ -145,7 +144,7 @@ float3 fresnelConductorApprox(const float cosThetaI, const float3 eta, const flo
 
 bool sameHemisphere(const float3 w, const float3 wp)
 {
-    const float cosTheta = cosThetaTS(w);
+    const float cosTheta  = cosThetaTS(w);
     const float cosThetaP = cosThetaTS(wp);
 
     return cosTheta * cosThetaP > 0.0;

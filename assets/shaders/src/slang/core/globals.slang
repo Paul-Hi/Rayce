@@ -208,18 +208,7 @@ struct LightSample
     float3 radiance;
     float pdf = 0.0;
     float3 wi;
-};
-
-struct VertexLightSample
-{
-    float3 radiance;
-    float pdf = 0.0;
-    float3 wi;
-    float cosTheta;
-    float3 point;
-    float pdfDirection;
-    float3 normal;
-    float pad;
+    float3 wDir;
 };
 
 struct SphereIntersectionAttributes

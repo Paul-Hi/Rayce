@@ -15,7 +15,7 @@ bool finalizeSolidAngleSampling(inout float pdf, const float3 normal, const floa
 {
     const float3 dir     = point - samplePoint;
     const float distSqrd = dot(dir, dir);
-    const float cosTheta = dot(normal, dir / safe_sqrt(distSqrd));
+    const float cosTheta = dot(normal, dir / safeSqrt(distSqrd));
     if (cosTheta <= 0.0)
     {
         return false;
@@ -41,7 +41,7 @@ struct SphereSampler : ISampler
         GeometrySample sample;
         const float2 uv        = Random::rand2();
         const float z          = 1.0 - 2.0 * uv.x;
-        const float r          = safe_sqrt(1.0 - z * z);
+        const float r          = safeSqrt(1.0 - z * z);
         const float phi        = TWO_PI * uv.y;
         const float3 unitPoint = float3(r * cos(phi), r * sin(phi), z);
         sample.point           = center + unitPoint * radius;
@@ -69,7 +69,7 @@ struct SphereSampler : ISampler
         const float radiusSqrd = sqr(radius);
         // max cone angles
         const float sinThetaMaxSqrd = radiusSqrd / distSqrd;
-        const float cosThetaMax     = safe_sqrt(1.0 - sinThetaMaxSqrd);
+        const float cosThetaMax     = safeSqrt(1.0 - sinThetaMaxSqrd);
         sample.pdf                  = INV_TWO_PI / (1.0 - cosThetaMax);
         // random in cone
         const float2 uv          = Random::rand2();
@@ -77,8 +77,8 @@ struct SphereSampler : ISampler
         const float sinThetaSqrd = max(0.0, 1.0 - sqr(cosTheta));
         const float phi          = TWO_PI * uv.y;
         // project to sphere surface
-        const float cosAlpha = dist / radius * sinThetaSqrd + cosTheta * safe_sqrt(1.0 - distSqrd / radiusSqrd * sinThetaSqrd);
-        const float sinAlpha = safe_sqrt(1.0 - sqr(cosAlpha));
+        const float cosAlpha = dist / radius * sinThetaSqrd + cosTheta * safeSqrt(1.0 - distSqrd / radiusSqrd * sinThetaSqrd);
+        const float sinAlpha = safeSqrt(1.0 - sqr(cosAlpha));
         float3 samplePoint   = float3(sinAlpha * cos(phi), sinAlpha * sin(phi), cosAlpha);
         samplePoint          = space.flipped().tangentToWorld(samplePoint);
 
@@ -103,7 +103,7 @@ struct SphereSampler : ISampler
         }
 
         const float sinThetaMaxSqrd = sqr(radius) / sqr(dist);
-        const float cosThetaMax     = safe_sqrt(1.0 - sinThetaMaxSqrd);
+        const float cosThetaMax     = safeSqrt(1.0 - sinThetaMaxSqrd);
 
         return INV_TWO_PI / (1.0 - cosThetaMax);
     }
@@ -187,7 +187,8 @@ struct RectangleSampler : ISampler
     }
 }
 
-float pdfLight(const int lightId, const float3 surfacePoint, const float3 samplePoint)
+float
+pdfLight(const int lightId, const float3 surfacePoint, const float3 samplePoint)
 {
     const float pdf   = 1.0 / gPushConstants.lightCount;
     const Light light = gLights[lightId];
@@ -267,8 +268,8 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         {
             return none;
         }
-        sample = SphereSampler::sampleUniform(sampledLight.wCenter, 1.0, FOUR_PI);
-        twoSided = true;
+        sample           = SphereSampler::sampleUniform(sampledLight.wCenter, 1.0, FOUR_PI);
+        twoSided         = true;
         distanceOverride = 2.0 * sampledLight.sceneRadius;
     }
     else
@@ -283,7 +284,15 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
 
     lightSample.pdf = pdf * sample.pdf;
 
-    float3 wDir               = (distanceOverride * sample.point) - p;
+    if (lightSample.pdf <= 0.0)
+    {
+        return none;
+    }
+
+    float3 wDir = (distanceOverride * sample.point) - p;
+
+    lightSample.wDir = wDir;
+
     const float pointDistance = length(wDir);
     wDir                      = normalize(wDir);
 
@@ -295,7 +304,7 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
         cosTheta *= -1.0;
     }
 
-    if (lightSample.pdf <= 0.0 || cosTheta <= 0.0)
+    if (cosTheta <= 0.0)
     {
         return none;
     }
@@ -324,13 +333,89 @@ Optional<LightSample> sampleLights(const float3 p, const int lightId, const Coor
 
     lightSample.radiance = cosTheta * sampledLight.radiance * sampledLight.scale;
 
+    return lightSample;
+};
+
+Optional<LightSample> sampleLightsNoVisibility(const float3 p, const int lightId, const CoordinateSpace space, bool twoSided)
+{
+    LightSample lightSample;
+    if ((lightId >= 0 && gPushConstants.lightCount == 1) || gPushConstants.lightCount == 0)
+    {
+        return none;
+    }
+
+    int lightIndex;
+
+    do
+    {
+        lightIndex = min(int(Random::rand() * gPushConstants.lightCount), gPushConstants.lightCount - 1);
+    } while (lightIndex == lightId);
+
+    const float pdf = 1.0 / gPushConstants.lightCount;
+
+    float distanceOverride = 1.0;
+
+    const Light sampledLight = gLights[lightIndex];
+    GeometrySample sample;
+    if (sampledLight.type == ELightType::analyticSphere)
+    {
+        sample = SphereSampler::sampleSolidAngle(p, sampledLight);
+    }
+    else if (sampledLight.type == ELightType::analyticRectangle)
+    {
+        sample = RectangleSampler::sampleSolidAngle(p, sampledLight);
+    }
+    else if (sampledLight.type == ELightType::constant)
+    {
+        if (allowIncompletePDF)
+        {
+            return none;
+        }
+        sample           = SphereSampler::sampleUniform(sampledLight.wCenter, 1.0, FOUR_PI);
+        twoSided         = true;
+        distanceOverride = 2.0 * sampledLight.sceneRadius;
+    }
+    else
+    {
+        return none;
+    }
+
+    if (!lightSampleOrientationValid(lightIndex, p, sample.point))
+    {
+        return none;
+    }
+
+    lightSample.pdf = pdf * sample.pdf;
+
     if (lightSample.pdf <= 0.0)
     {
         return none;
     }
 
+    float3 wDir = (distanceOverride * sample.point) - p;
+
+    lightSample.wDir = wDir;
+
+    const float pointDistance = length(wDir);
+    wDir                      = normalize(wDir);
+
+    lightSample.wi = space.worldToTangentFrame(wDir);
+    float cosTheta = cosThetaTS(lightSample.wi);
+
+    if (twoSided && cosTheta < 0.0)
+    {
+        cosTheta *= -1.0;
+    }
+
+    if (cosTheta <= 0.0)
+    {
+        return none;
+    }
+
+    lightSample.radiance = cosTheta * sampledLight.radiance * sampledLight.scale;
+
     return lightSample;
-};
+}
 
 float3 getEnvironmentRadiance(const float3 wi)
 {

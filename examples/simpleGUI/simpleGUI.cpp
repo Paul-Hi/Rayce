@@ -46,6 +46,7 @@ SimpleGUI::SimpleGUI(const RayceOptions& options)
     mMaxSamples        = 8192;
     mMaxDepth          = 8;
     mIntegratorType    = EIntegratorType::path;
+    mInitialRISSamples = 16;
 
     mReInitialize = false;
 }
@@ -60,7 +61,7 @@ bool SimpleGUI::onInitialize()
 
     pScene = std::make_unique<RayceScene>();
 
-    const str testScene = "./assets/scenes/bathroom/scene.xml";
+    const str testScene = "./assets/scenes/demo/scene.xml";
 
     pScene->loadFromMitsubaFile(testScene, device, commandPool, 1.0f);
 
@@ -290,6 +291,7 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
         int32 maxDepth;
         int32 lightCount;
         int32 environmentLightIdx;
+        int32 initialRISSamples;
     } pushConstants;
     pushConstants.integrator          = mIntegratorType;
     pushConstants.frame               = mAccumulationFrame;
@@ -298,6 +300,7 @@ void SimpleGUI::onRender(VkCommandBuffer commandBuffer, const uint32 imageIndex)
     auto it                           = std::find_if(pScene->getLights().begin(), pScene->getLights().end(), [](const std::unique_ptr<Light>& light)
                                                      { return light->type == ELightType::constant || light->type == ELightType::envmap; });
     pushConstants.environmentLightIdx = it != pScene->getLights().end() ? it - pScene->getLights().begin() : -1;
+    pushConstants.initialRISSamples   = mInitialRISSamples;
 
     vkCmdPushConstants(commandBuffer, pRaytracingPipeline->getVkPipelineLayout(), VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, sizeof(pushConstants), static_cast<void*>(&pushConstants));
 
@@ -418,12 +421,12 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
     ImGui::SliderInt("Max. Depth", &mMaxDepth, 1, 16);
 
     ImGui::Separator();
-    const char* integrators[]  = { "Direct", "Path", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };
+    const char* integrators[]  = { "Direct", "Path", "RestirDI", "Debug Depth", "Debug Normals", "Debug Reflectance", "Debug Emission" };
     static const char* current = integrators[1];
 
     if (ImGui::BeginCombo("Integrator##IntegratorSelection", current))
     {
-        for (int n = 0; n < 5; ++n)
+        for (int n = 0; n < 7; ++n)
         {
             bool isSelected = (current == integrators[n]);
             if (ImGui::Selectable(integrators[n], isSelected))
@@ -441,6 +444,8 @@ void SimpleGUI::onImGuiRender(VkCommandBuffer commandBuffer, const uint32 imageI
         }
         ImGui::EndCombo();
     }
+    ImGui::Separator();
+    ImGui::SliderInt("Initial RIS Samples", &mInitialRISSamples, 1, 4096);
     ImGui::Separator();
 
     // ImGui::InputText("Filename");
